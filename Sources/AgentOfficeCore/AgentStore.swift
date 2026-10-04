@@ -13,6 +13,8 @@ public final class AgentStore {
         public var lastPrompt: String?
         public var providerSessionID: String?
         public var lastEventAt: Date?
+        /// Ajanın tool'larla dokunduğu dosyalar (git olmayan klasörlerde diff yerine gösterilir).
+        public var touchedFiles: [String] = []
     }
 
     public private(set) var sessions: [Session] = []
@@ -41,6 +43,8 @@ public final class AgentStore {
             case .sessionStarted(let providerID?): session.providerSessionID = providerID
             case .promptSubmitted(let text): session.lastPrompt = text
             case .todosChanged(let todos): session.todos = todos
+            case .toolFinished(_, let files):
+                for file in files where !session.touchedFiles.contains(file) { session.touchedFiles.append(file) }
             default: break
             }
         }

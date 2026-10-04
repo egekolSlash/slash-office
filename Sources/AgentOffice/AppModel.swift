@@ -103,7 +103,8 @@ final class AppModel {
 
     func newClaudeSession(cwd: URL) {
         let id = UUID().uuidString.lowercased()
-        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: id, createdAt: .now)
+        var record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: id, createdAt: .now)
+        record.baseline = GitWorkspace(directory: cwd.path).head()
         guard launch(record: record, claudeSessionID: id, resume: false) else { return }
         records[id] = record
         saveRecords()
@@ -113,8 +114,9 @@ final class AppModel {
 
     func newShellSession(cwd: URL) {
         let id = UUID().uuidString.lowercased()
-        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
+        var record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
                                    createdAt: .now, kind: .shell)
+        record.baseline = GitWorkspace(directory: cwd.path).head()
         guard launchShell(record: record) else { return }
         records[id] = record
         saveRecords()

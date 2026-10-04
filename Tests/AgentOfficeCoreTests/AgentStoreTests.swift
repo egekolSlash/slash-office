@@ -68,4 +68,12 @@ import Testing
         store.setState(.idle, for: "ghost")
         #expect(store.sessions.count == 1)
     }
+
+    @Test func touchedFilesAccumulateWithoutDuplicates() {
+        let store = AgentStore()
+        store.register(id: "a", title: "A", cwd: "/a")
+        store.apply([.toolFinished(name: "Edit", touchedFiles: ["/a/x", "/a/y"])], to: "a")
+        store.apply([.toolFinished(name: "Write", touchedFiles: ["/a/x"]), .toolFinished(name: "Bash", touchedFiles: [])], to: "a")
+        #expect(store.session("a")?.touchedFiles == ["/a/x", "/a/y"])
+    }
 }

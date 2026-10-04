@@ -58,4 +58,16 @@ import Testing
         try SessionStore.save([record], to: url)
         #expect(SessionStore.load(from: url).first?.kind == .shell)
     }
+
+    @Test func baselineRoundTripsAndOldRecordsHaveNone() throws {
+        let url = tempURL()
+        var record = SessionRecord(id: "s", title: "p", cwd: "/p", claudeSessionID: nil, createdAt: Date(timeIntervalSince1970: 0))
+        record.baseline = "abc123"
+        try SessionStore.save([record], to: url)
+        #expect(SessionStore.load(from: url).first?.baseline == "abc123")
+        let old = tempURL()
+        try FileManager.default.createDirectory(at: old.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"[{"id":"a","title":"t","cwd":"/p","createdAt":"2026-10-05T10:00:00Z"}]"#.utf8).write(to: old)
+        #expect(SessionStore.load(from: old).first?.baseline == nil)
+    }
 }

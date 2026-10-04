@@ -15,6 +15,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var claudeSessionHistory: [String] = []
     public var createdAt: Date
     public var kind: SessionKind = .claude
+    /// Oturum açıldığında klasörün `HEAD`'i; diff bunun üzerinden alınır. Git deposu değilse nil.
+    public var baseline: String?
 
     public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date, kind: SessionKind = .claude) {
         self.id = id
@@ -35,6 +37,7 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         // Tür alanından önceki kayıtlar Claude oturumudur.
         kind = try container.decodeIfPresent(SessionKind.self, forKey: .kind) ?? .claude
+        baseline = try container.decodeIfPresent(String.self, forKey: .baseline)
     }
 }
 
