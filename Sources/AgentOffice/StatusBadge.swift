@@ -18,7 +18,7 @@ struct StatusBadge: View {
         case .working(nil): "Çalışıyor"
         case .waiting(.permission): "İzin bekliyor"
         case .waiting(.question): "Soru soruyor"
-        case .exited: "Kapandı"
+        case .exited: "Durdu"
         }
     }
 

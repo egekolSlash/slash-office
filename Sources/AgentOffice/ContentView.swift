@@ -15,6 +15,12 @@ struct ContentView: View {
                     }
                 }
                 .tag(session.id)
+                .contextMenu {
+                    if session.state == .exited {
+                        Button("Devam ettir") { model.resume(session.id) }
+                    }
+                    Button("Kaldır", role: .destructive) { model.remove(session.id) }
+                }
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
             .toolbar {
@@ -22,8 +28,12 @@ struct ContentView: View {
                     .keyboardShortcut("n")
             }
         } detail: {
-            if let id = model.selectedID, let terminal = model.terminals[id] {
-                TerminalHost(terminal: terminal).id(id)
+            if let id = model.selectedID, let session = model.store.session(id), session.state == .exited {
+                StoppedSessionView(session: session,
+                                   onResume: { model.resume(id) },
+                                   onRemove: { model.remove(id) })
+            } else if let id = model.selectedID, let terminal = model.terminals[id] {
+                TerminalHost(terminal: terminal).id(ObjectIdentifier(terminal))
             } else {
                 ContentUnavailableView("Oturum yok", systemImage: "terminal",
                                        description: Text("⌘N ile bir proje klasörü seçip Claude başlat."))
