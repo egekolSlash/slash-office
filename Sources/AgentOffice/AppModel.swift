@@ -30,6 +30,7 @@ final class AppModel {
     let claudeProjectsDirectory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/projects")
 
     func start() {
+        guard server == nil else { return }
         do {
             try FileManager.default.createDirectory(at: supportDirectory.appendingPathComponent("sessions"), withIntermediateDirectories: true)
             let server = HookServer(socketPath: socketPath) { [weak self] envelope in
@@ -60,7 +61,7 @@ final class AppModel {
         // /clear sonrası Claude'un oturum kimliği değişir; resume için en sonuncusunu sakla.
         if let claudeID = store.session(envelope.session)?.providerSessionID,
            var record = records[envelope.session], record.claudeSessionID != claudeID {
-            record.claudeSessionID = claudeID
+            record.noteClaudeSession(claudeID)
             records[envelope.session] = record
             saveRecords()
         }
@@ -80,7 +81,7 @@ final class AppModel {
 
     func newClaudeSession(cwd: URL) {
         let id = UUID().uuidString.lowercased()
-        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil, createdAt: .now)
+        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: id, createdAt: .now)
         guard launch(record: record, claudeSessionID: id, resume: false) else { return }
         records[id] = record
         saveRecords()
@@ -90,12 +91,28 @@ final class AppModel {
 
     /// Kapanmış oturumu kaldığı yerden açar. Hiç mesaj yazılmamışsa (transcript yok) aynı kimlikle sıfırdan başlar.
     func resume(_ id: String) {
-        guard let record = records[id] else { return }
-        let claudeID = record.claudeSessionID ?? id
-        let canResume = ClaudeTranscript.exists(sessionID: claudeID, projectsDirectory: claudeProjectsDirectory)
-        guard launch(record: record, claudeSessionID: canResume ? claudeID : id, resume: canResume) else { return }
+        guard var record = records[id] else { return }
+        // Süreç hâlâ çalışıyorsa yeni terminal açmak eskisini (ve içindeki claude'u) öldürür.
+        if terminals[id]?.process.running == true {
+            store.restart(id)
+            return
+        }
+        let projects = claudeProjectsDirectory
+        let plan = ResumePlan.decide(candidates: record.resumeCandidates,
+                                     transcriptExists: { ClaudeTranscript.exists(sessionID: $0, projectsDirectory: projects) },
+                                     freshID: { UUID().uuidString.lowercased() })
+        guard launch(record: record, claudeSessionID: plan.claudeSessionID, resume: plan.resume) else { return }
+        record.noteClaudeSession(plan.claudeSessionID)
+        records[id] = record
+        saveRecords()
         store.restart(id)
         selectedID = id
+    }
+
+    /// Terminal var ve süreci kapanmışsa true: çıktısı (ör. hata mesajı) görünür kalsın diye terminal gösterilir.
+    func hasEndedTerminal(_ id: String) -> Bool {
+        guard let terminal = terminals[id] else { return false }
+        return !terminal.process.running
     }
 
     func remove(_ id: String) {
@@ -115,6 +132,10 @@ final class AppModel {
         let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: env["PATH"])
         guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs) else {
             errorMessage = "`claude` bulunamadı. Aranan dizinler: \(dirs.joined(separator: ", "))"
+            return false
+        }
+        guard FileManager.default.isExecutableFile(atPath: hookBinaryPath) else {
+            errorMessage = "Hook yardımcısı bulunamadı: \(hookBinaryPath)\nÖnce `swift build` çalıştır (sadece `swift run AgentOffice` onu derlemez)."
             return false
         }
         let settings = settingsURL(for: record.id)

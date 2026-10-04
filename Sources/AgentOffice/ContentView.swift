@@ -28,12 +28,26 @@ struct ContentView: View {
                     .keyboardShortcut("n")
             }
         } detail: {
-            if let id = model.selectedID, let session = model.store.session(id), session.state == .exited {
+            if let id = model.selectedID, let session = model.store.session(id), session.state == .exited,
+               model.terminals[id] == nil {
                 StoppedSessionView(session: session,
                                    onResume: { model.resume(id) },
                                    onRemove: { model.remove(id) })
             } else if let id = model.selectedID, let terminal = model.terminals[id] {
-                TerminalHost(terminal: terminal).id(ObjectIdentifier(terminal))
+                VStack(spacing: 0) {
+                    if model.store.session(id)?.state == .exited, model.hasEndedTerminal(id) {
+                        // Süreç bitti: terminal çıktısı (hata mesajları dahil) görünür kalır, üstte eylemler.
+                        HStack {
+                            Label("Oturum kapandı", systemImage: "pause.circle")
+                            Spacer()
+                            Button("Devam ettir") { model.resume(id) }.keyboardShortcut(.defaultAction)
+                            Button("Kaldır", role: .destructive) { model.remove(id) }
+                        }
+                        .padding(8)
+                        .background(.bar)
+                    }
+                    TerminalHost(terminal: terminal).id(ObjectIdentifier(terminal))
+                }
             } else {
                 ContentUnavailableView("Oturum yok", systemImage: "terminal",
                                        description: Text("⌘N ile bir proje klasörü seçip Claude başlat."))
