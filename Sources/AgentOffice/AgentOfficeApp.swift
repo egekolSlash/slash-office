@@ -12,6 +12,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.start()
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard model.hasActiveAgents else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = "Çalışan ajanlar var"
+        alert.informativeText = "Çıkarsan çalışan ve cevap bekleyen ajanların süreçleri kapanır. Oturumlar sonra kaldığı yerden devam ettirilebilir."
+        alert.addButton(withTitle: "Çık")
+        alert.addButton(withTitle: "Vazgeç")
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         model.stop()
     }

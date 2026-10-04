@@ -69,7 +69,12 @@ final class AppModel {
 
     private func handle(_ envelope: HookEnvelope) {
         guard envelope.provider == "claude" else { return }
+        let wasWaiting: Bool = if case .waiting = store.session(envelope.session)?.state { true } else { false }
         store.apply(ClaudeNormalizer.events(from: envelope.payload), to: envelope.session)
+        if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
+            Notifier.notifyWaiting(sessionID: session.id, title: session.title, reason: reason)
+        }
+        Notifier.updateBadge(waiting: store.waitingCount)
         // /clear sonrası Claude'un oturum kimliği değişir; resume için en sonuncusunu sakla.
         if let claudeID = store.session(envelope.session)?.providerSessionID,
            var record = records[envelope.session], record.claudeSessionID != claudeID {
@@ -131,6 +136,16 @@ final class AppModel {
         return !terminal.process.running
     }
 
+    /// Çıkışta onay istenmesi gereken (çalışan ya da cevap bekleyen) ajan var mı?
+    var hasActiveAgents: Bool {
+        store.sessions.contains { session in
+            switch session.state {
+            case .working, .waiting: isRunning(session.id)
+            default: false
+            }
+        }
+    }
+
     func isRunning(_ id: String) -> Bool {
         terminals[id]?.process.running == true
     }
@@ -171,7 +186,10 @@ final class AppModel {
                                            settingsPath: settings.path, cwd: record.cwd, socketPath: socketPath,
                                            baseEnvironment: env, tag: record.id)
         let terminal = LocalProcessTerminalView(frame: .init(x: 0, y: 0, width: 800, height: 600))
-        let coordinator = TerminalCoordinator(sessionID: record.id) { [weak self] id in self?.store.markExited(id) }
+        let coordinator = TerminalCoordinator(sessionID: record.id) { [weak self] id in
+            self?.store.markExited(id)
+            Notifier.updateBadge(waiting: self?.store.waitingCount ?? 0)
+        }
         terminal.processDelegate = coordinator
         terminals[record.id] = terminal
         coordinators[record.id] = coordinator
