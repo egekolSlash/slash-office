@@ -4,6 +4,8 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var model: AppModel
     @State private var pendingRemoval: String?
+    @State private var inspectorTab: InspectorTab =
+        ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .diff : .sessions
 
     /// Çalışan bir ajanı kaldırmadan önce onay ister.
     private func requestRemove(_ id: String) {
@@ -21,7 +23,7 @@ struct ContentView: View {
                         .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                     VSplitView {
                         office.frame(minHeight: 220, maxHeight: .infinity)
-                        SessionList(model: model, requestRemove: requestRemove).frame(minHeight: 120, maxHeight: .infinity)
+                        inspector.frame(minHeight: 160, maxHeight: .infinity)
                     }
                     .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, maxHeight: .infinity)
                 }
@@ -56,6 +58,25 @@ struct ContentView: View {
             Button("Tamam") { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
+        }
+    }
+
+    /// Sağ sütunun alt kısmı: oturum listesi, odaktaki oturumun diff'i ve todo listesi.
+    private var inspector: some View {
+        VStack(spacing: 0) {
+            Picker("Inspector", selection: $inspectorTab) {
+                Text("Oturumlar").tag(InspectorTab.sessions)
+                Text("Diff").tag(InspectorTab.diff)
+                Text("Todo").tag(InspectorTab.todo)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(6)
+            switch inspectorTab {
+            case .sessions: SessionList(model: model, requestRemove: requestRemove)
+            case .diff: DiffInspector(model: model)
+            case .todo: TodoInspector(model: model)
+            }
         }
     }
 

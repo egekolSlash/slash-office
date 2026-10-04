@@ -8,6 +8,7 @@ import SwiftTerm
 @Observable
 final class AppModel {
     let store = AgentStore()
+    let diffWatcher = DiffWatcher()
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work
     var errorMessage: String?
@@ -75,7 +76,8 @@ final class AppModel {
     private func handle(_ envelope: HookEnvelope) {
         guard envelope.provider == "claude" else { return }
         let wasWaiting: Bool = if case .waiting = store.session(envelope.session)?.state { true } else { false }
-        store.apply(ClaudeNormalizer.events(from: envelope.payload), to: envelope.session)
+        let events = ClaudeNormalizer.events(from: envelope.payload)
+        store.apply(events, to: envelope.session)
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: session.title, reason: reason)
         }
@@ -87,6 +89,33 @@ final class AppModel {
             records[envelope.session] = record
             saveRecords()
         }
+        if events.contains(where: Self.changesFiles) { diffChanged(envelope.session) }
+    }
+
+    /// Dosyaya dokunmuş olabilecek olaylar: dosya yazan tool'lar, Bash ve tur sonu.
+    private static func changesFiles(_ event: AgentEvent) -> Bool {
+        switch event {
+        case .toolFinished(let name, let files): !files.isEmpty || ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"].contains(name)
+        case .turnEnded: true
+        default: false
+        }
+    }
+
+    /// Odaktaki oturumun diff'i yenilenir; diğerleri eskidi olarak işaretlenir, odağa gelince yenilenir.
+    func diffChanged(_ id: String) {
+        if id == layout.focused { requestDiff(id) } else { diffWatcher.markStale(id) }
+    }
+
+    func requestDiff(_ id: String, immediately: Bool = false) {
+        guard var record = records[id] else { return }
+        if record.baseline == nil, let head = GitWorkspace(directory: record.cwd).head() {
+            // Baseline özelliğinden önce açılmış oturum: diff bu andan itibaren başlar.
+            record.baseline = head
+            records[id] = record
+            saveRecords()
+        }
+        diffWatcher.refresh(id: id, cwd: record.cwd, baseline: record.baseline,
+                            delay: immediately ? .zero : .milliseconds(500))
     }
 
     private func saveRecords() {
@@ -189,6 +218,7 @@ final class AppModel {
         try? FileManager.default.removeItem(at: settingsURL(for: id))
         saveRecords()
         layout.close(id)
+        diffWatcher.forget(id)
         Notifier.updateBadge(waiting: store.waitingCount)
         focusTerminalView()
     }
@@ -268,8 +298,10 @@ final class AppModel {
             let group = ShellActivity.foregroundGroup(ptyFD: terminal.process.childfd)
             let state = ShellActivity.state(shellPID: pid, foregroundGroup: group,
                                             commandName: group.flatMap(ShellActivity.processName))
-            if store.session(id)?.state != state { DebugLog.write("shell \(id) -> \(state)") }
+            let previous = store.session(id)?.state
+            if previous != state { DebugLog.write("shell \(id) -> \(state)") }
             store.setState(state, for: id)
+            if case .working = previous, state == .idle { diffChanged(id) }
         }
     }
 }
@@ -366,8 +398,15 @@ extension AppModel {
             records[id] = SessionRecord(id: id, title: "api", cwd: "/demo/api", claudeSessionID: nil, createdAt: .now, kind: .shell)
             store.register(id: id, title: "api", cwd: "/demo/api", state: state)
         }
+        // AGENT_OFFICE_DEMO_REPO + AGENT_OFFICE_DEMO_BASE: ilk demo oturumunun diff'i gerçek bir depodan gelsin.
+        let env = ProcessInfo.processInfo.environment
+        if let repo = env["AGENT_OFFICE_DEMO_REPO"] {
+            var record = SessionRecord(id: "demo-0", title: "juice-merge", cwd: repo, claudeSessionID: nil, createdAt: .now)
+            record.baseline = env["AGENT_OFFICE_DEMO_BASE"]
+            records["demo-0"] = record
+        }
         layout.show("demo-0")
-        switch ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_MODE"] {
+        switch env["AGENT_OFFICE_DEMO_MODE"] {
         case "office": mode = .office
         case "focus": mode = .focus
         default: break
