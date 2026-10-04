@@ -1,4 +1,5 @@
 import Testing
+import simd
 @testable import AgentOfficeCore
 
 @Suite struct IsoCameraTests {
@@ -34,5 +35,26 @@ import Testing
         #expect(camera.center == SIMD3<Float>(0.6, 0.3, 1.2))
         let empty = IsoCamera.fitting(columns: 0, rows: 0, tileSize: 1.2)
         #expect(empty.scale > 0)
+    }
+
+    @Test func unprojectInvertsProjectOnAGivenHeight() {
+        let camera = IsoCamera(center: [1.2, 0.3, 0.6], scale: 2.5)
+        for point in [SIMD3<Float>(0, 0, 0), [2.4, 0, 1.2], [1.1, 0.4, -0.3]] {
+            let screen = camera.project(point, viewSize: size)
+            let back = camera.unproject(x: screen.x, y: screen.y, viewSize: size, height: point.y)
+            #expect(simd_distance(back, point) < 0.001)
+        }
+    }
+
+    @Test func tileHitPrefersDeskHeightThenFloor() {
+        let tiles = [TilePlacement(id: "a", column: 0, row: 0, project: "/p"), TilePlacement(id: "b", column: 1, row: 0, project: "/p")]
+        let camera = IsoCamera.fitting(columns: 2, rows: 1, tileSize: 1.2)
+        // Karonun masa yüksekliğindeki merkezine tıklama o karoyu seçer.
+        let onB = camera.project([1.2, 0.45, 0], viewSize: size)
+        #expect(camera.tile(atX: onB.x, y: onB.y, viewSize: size, tiles: tiles, tileSize: 1.2) == "b")
+        let onA = camera.project([0, 0.02, 0], viewSize: size)
+        #expect(camera.tile(atX: onA.x, y: onA.y, viewSize: size, tiles: tiles, tileSize: 1.2) == "a")
+        // Boş alana tıklama hiçbir şey seçmez.
+        #expect(camera.tile(atX: 2, y: 2, viewSize: size, tiles: tiles, tileSize: 1.2) == nil)
     }
 }

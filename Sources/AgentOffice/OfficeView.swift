@@ -27,12 +27,24 @@ struct OfficeView: View {
             root.children.removeAll()
             root.addChild(OfficeScene.build(snapshot))
         }
-        .gesture(SpatialTapGesture().targetedToAnyEntity().onEnded { value in
-            guard let id = OfficeScene.sessionID(of: value.entity) else { return }
-            if NSEvent.modifierFlags.contains(.shift) { model.addTerminal(id) } else { model.showTerminal(id) }
-        })
         .realityViewCameraControls(.none)
         .overlay { OfficeLabels(snapshot: snapshot) }
+        .overlay {
+            // RealityKit'in entity seçimi bu kurulumda tıklamaları almadı; tıklama noktası aynı izometrik
+            // kamera tanımıyla karoya çevrilir.
+            GeometryReader { geometry in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture(coordinateSpace: .local) { location in
+                        let size = (width: Double(geometry.size.width), height: Double(geometry.size.height))
+                        let camera = OfficeScene.camera(for: snapshot.grid)
+                        guard let id = camera.tile(atX: location.x, y: location.y, viewSize: size,
+                                                   tiles: snapshot.tiles.map(\.placement), tileSize: OfficeScene.tileSize)
+                        else { return }
+                        if NSEvent.modifierFlags.contains(.shift) { model.addTerminal(id) } else { model.showTerminal(id) }
+                    }
+            }
+        }
         .overlay {
             if snapshot.tiles.isEmpty {
                 ContentUnavailableView("Ofis boş", systemImage: "building.2",

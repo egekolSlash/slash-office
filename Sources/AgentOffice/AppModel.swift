@@ -11,7 +11,7 @@ final class AppModel {
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work
     var errorMessage: String?
-    @ObservationIgnored private(set) var terminals: [String: LocalProcessTerminalView] = [:]
+    @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
 
@@ -185,7 +185,10 @@ final class AppModel {
         let command = ClaudeLaunch.command(claudePath: claude, sessionID: claudeSessionID, resume: resume,
                                            settingsPath: settings.path, cwd: record.cwd, socketPath: socketPath,
                                            baseEnvironment: env, tag: record.id)
-        let terminal = LocalProcessTerminalView(frame: .init(x: 0, y: 0, width: 800, height: 600))
+        let terminal = AgentTerminalView(frame: .init(x: 0, y: 0, width: 800, height: 600))
+        // Kullanıcı terminale tıklayıp yazmaya başlayınca odak vurgusu o panele geçsin.
+        let id = record.id
+        terminal.onFocus = { [weak self] in self?.noteKeyboardFocus(id) }
         let coordinator = TerminalCoordinator(sessionID: record.id) { [weak self] id in
             self?.store.markExited(id)
             Notifier.updateBadge(waiting: self?.store.waitingCount ?? 0)
@@ -260,10 +263,18 @@ extension AppModel {
         if let next { showTerminal(next) }
     }
 
-    /// Odaktaki terminalin klavyeyi alması için.
+    /// Odaktaki terminal klavyeyi alır; panel yeni açıldıysa pencereye yerleştiği anda alır.
     func focusTerminalView() {
+        for (id, terminal) in terminals { terminal.wantsKeyboard = id == layout.focused }
         guard let id = layout.focused, let terminal = terminals[id] else { return }
-        DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) }
+        DispatchQueue.main.async { terminal.takeKeyboard() }
+    }
+
+    /// Terminal tıklanarak klavyeyi aldığında: görünür panellerdense odak vurgusunu ona taşı.
+    func noteKeyboardFocus(_ id: String) {
+        guard layout.visible.contains(id), layout.focused != id else { return }
+        layout.show(id)
+        for (other, terminal) in terminals { terminal.wantsKeyboard = other == id }
     }
 }
 

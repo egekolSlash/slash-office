@@ -37,4 +37,32 @@ public struct IsoCamera: Equatable, Sendable {
         let y = Double(simd_dot(offset, Self.screenUp)) * pointsPerUnit
         return (viewSize.width / 2 + x, viewSize.height / 2 - y)
     }
+
+    /// `project`'in tersi: ekran noktasından geçen görüş ışınının `height` yüksekliğindeki yatay düzlemle kesişimi.
+    public func unproject(x: Double, y: Double, viewSize: (width: Double, height: Double), height: Float) -> SIMD3<Float> {
+        let unitsPerPoint = 2 * Double(scale) / viewSize.height
+        let right = Float((x - viewSize.width / 2) * unitsPerPoint)
+        let up = Float((viewSize.height / 2 - y) * unitsPerPoint)
+        // Kamera düzlemindeki nokta; ışın -direction yönünde ilerler.
+        let onPlane = center + Self.screenRight * right + Self.screenUp * up
+        let t = (onPlane.y - height) / Self.direction.y
+        return onPlane - Self.direction * t
+    }
+
+    /// Ekrandaki tıklamanın denk geldiği karo. Önce masa ve NPC yüksekliğinde, sonra zeminde aranır:
+    /// izometrik görünümde öndeki karonun mobilyası arkadaki karonun zeminini örter.
+    public func tile(atX x: Double, y: Double, viewSize: (width: Double, height: Double),
+                     tiles: [TilePlacement], tileSize: Float) -> String? {
+        for height: Float in [0.45, 0.02] {
+            let point = unproject(x: x, y: y, viewSize: viewSize, height: height)
+            let column = Int((point.x / tileSize).rounded())
+            let row = Int((point.z / tileSize).rounded())
+            let insideTile = abs(point.x - Float(column) * tileSize) <= tileSize / 2
+                && abs(point.z - Float(row) * tileSize) <= tileSize / 2
+            if insideTile, let hit = tiles.first(where: { $0.column == column && $0.row == row }) {
+                return hit.id
+            }
+        }
+        return nil
+    }
 }
