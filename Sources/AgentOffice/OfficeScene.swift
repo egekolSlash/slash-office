@@ -12,9 +12,11 @@ struct OfficeSnapshot: Equatable {
     var tiles: [Tile]
     var focused: String?
     var grid: (columns: Int, rows: Int)
+    /// Görünümün en/boy oranı: dar ve uzun sütunda kamera genişliğe göre sığdırır.
+    var aspect: Double
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.tiles == rhs.tiles && lhs.focused == rhs.focused && lhs.grid == rhs.grid
+        lhs.tiles == rhs.tiles && lhs.focused == rhs.focused && lhs.grid == rhs.grid && lhs.aspect == rhs.aspect
     }
 }
 
@@ -28,7 +30,7 @@ enum OfficeScene {
         for tile in snapshot.tiles {
             root.addChild(makeTile(tile, focused: snapshot.focused == tile.placement.id))
         }
-        root.addChild(makeCamera(grid: snapshot.grid))
+        root.addChild(makeCamera(camera(for: snapshot.grid, aspect: snapshot.aspect)))
         return root
     }
 
@@ -103,8 +105,8 @@ enum OfficeScene {
         return npc
     }
 
-    static func camera(for grid: (columns: Int, rows: Int)) -> IsoCamera {
-        IsoCamera.fitting(columns: grid.columns, rows: grid.rows, tileSize: tileSize)
+    static func camera(for grid: (columns: Int, rows: Int), aspect: Double) -> IsoCamera {
+        IsoCamera.fitting(columns: grid.columns, rows: grid.rows, tileSize: tileSize, aspect: aspect)
     }
 
     /// Bir karonun dünya konumu; etiketler bu noktadan yukarı doğru yerleştirilir.
@@ -112,8 +114,7 @@ enum OfficeScene {
         [Float(placement.column) * tileSize, 0, Float(placement.row) * tileSize]
     }
 
-    private static func makeCamera(grid: (columns: Int, rows: Int)) -> Entity {
-        let iso = camera(for: grid)
+    private static func makeCamera(_ iso: IsoCamera) -> Entity {
         var ortho = OrthographicCameraComponent()
         ortho.scale = iso.scale
         let camera = Entity()

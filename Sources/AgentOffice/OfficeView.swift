@@ -6,6 +6,7 @@ import SwiftUI
 struct OfficeView: View {
     @Bindable var model: AppModel
     @State private var root = Entity()
+    @State private var viewSize = CGSize(width: 800, height: 500)
 
     private var snapshot: OfficeSnapshot {
         let sessions = model.store.sessions
@@ -15,7 +16,8 @@ struct OfficeView: View {
             guard let session = byID[placement.id] else { return nil }
             return .init(placement: placement, title: session.title, state: session.state)
         }
-        return OfficeSnapshot(tiles: tiles, focused: model.layout.focused, grid: OfficeLayout.gridSize(placements))
+        return OfficeSnapshot(tiles: tiles, focused: model.layout.focused, grid: OfficeLayout.gridSize(placements),
+                              aspect: Double(viewSize.width / max(viewSize.height, 1)))
     }
 
     var body: some View {
@@ -28,13 +30,14 @@ struct OfficeView: View {
             root.addChild(OfficeScene.build(snapshot))
         }
         .realityViewCameraControls(.none)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { viewSize = $0 }
         .overlay { OfficeLabels(snapshot: snapshot) }
         .overlay {
             // RealityView bir AppKit görünümü olarak SwiftUI katmanının üstünde durur ve fare olaylarını alır;
             // SwiftUI tıklaması ona hiç ulaşmaz. Üste konan küçük bir AppKit görünümü tıklamayı yakalar,
             // nokta aynı izometrik kamera tanımıyla karoya çevrilir.
             ClickCatcher { location, size, shift in
-                let camera = OfficeScene.camera(for: snapshot.grid)
+                let camera = OfficeScene.camera(for: snapshot.grid, aspect: Double(size.width / max(size.height, 1)))
                 let id = camera.tile(atX: location.x, y: location.y, viewSize: (Double(size.width), Double(size.height)),
                                      tiles: snapshot.tiles.map(\.placement), tileSize: OfficeScene.tileSize,
                                      labelBox: OfficeLabels.labelBox(viewHeight: Double(size.height), camera: camera))

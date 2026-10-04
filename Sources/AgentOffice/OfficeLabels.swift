@@ -8,7 +8,7 @@ struct OfficeLabels: View {
     var body: some View {
         GeometryReader { geometry in
             let size = (width: Double(geometry.size.width), height: Double(geometry.size.height))
-            let camera = OfficeScene.camera(for: snapshot.grid)
+            let camera = OfficeScene.camera(for: snapshot.grid, aspect: size.width / max(size.height, 1))
             let fontSize = Self.fontSize(viewHeight: size.height, camera: camera)
             ForEach(snapshot.tiles, id: \.placement.id) { tile in
                 let origin = OfficeScene.tileOrigin(tile.placement)

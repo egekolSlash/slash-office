@@ -159,6 +159,8 @@ final class AppModel {
         try? FileManager.default.removeItem(at: settingsURL(for: id))
         saveRecords()
         layout.close(id)
+        Notifier.updateBadge(waiting: store.waitingCount)
+        focusTerminalView()
     }
 
     @discardableResult
@@ -234,12 +236,15 @@ enum WorkspaceMode: Equatable {
 
 extension AppModel {
     func showTerminal(_ id: String) {
+        // Kaldırılmış bir oturumun eski bildirimine tıklanırsa boş panel açılmasın.
+        guard store.session(id) != nil else { return }
         layout.show(id)
         if mode == .office { mode = .work }
         focusTerminalView()
     }
 
     func addTerminal(_ id: String) {
+        guard store.session(id) != nil else { return }
         layout.add(id)
         if mode == .office { mode = .work }
         focusTerminalView()

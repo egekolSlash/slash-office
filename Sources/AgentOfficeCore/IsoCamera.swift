@@ -22,14 +22,17 @@ public struct IsoCamera: Equatable, Sendable {
 
     public var eye: SIMD3<Float> { center + Self.direction * 10 }
 
-    /// İzometrik izdüşümde ızgaranın ekrandaki yüksekliği yaklaşık (w+d)·0.41 + etiketler, genişliği (w+d)·0.71;
-    /// ikisinden büyük olanı pencereye sığdırılır.
-    public static func fitting(columns: Int, rows: Int, tileSize: Float) -> IsoCamera {
+    /// Izgarayı ve başlıkları görünüme sığdırır. `scale` görünür yüksekliğin yarısıdır; görünür yarı genişlik
+    /// `scale · aspect`. İzometrik izdüşümde ızgaranın ekrandaki yüksekliği yaklaşık (w+d)·0.41 + başlık ve balon,
+    /// genişliği (w+d)·0.71 + başlık kutusu; dar ve uzun görünümlerde (çalışma modundaki sağ sütun) genişlik belirler.
+    public static func fitting(columns: Int, rows: Int, tileSize: Float, aspect: Double = 1.6) -> IsoCamera {
         let width = Float(max(columns, 1)) * tileSize
         let depth = Float(max(rows, 1)) * tileSize
         let span = width + depth
         let center = SIMD3<Float>((width - tileSize) / 2, 0.3, (depth - tileSize) / 2)
-        return IsoCamera(center: center, scale: max((span * 0.41 + 1.4) / 1.6, span * 0.71 / 1.7))
+        let forHeight = (span * 0.41 + 1.4) / 1.6
+        let forWidth = (span * 0.355 + 0.9) / Float(max(aspect, 0.1))
+        return IsoCamera(center: center, scale: max(forHeight, forWidth))
     }
 
     /// Dünya noktasının görünüm içindeki konumu (sol üst orijin, nokta biriminde).
