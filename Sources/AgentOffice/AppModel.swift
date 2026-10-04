@@ -8,7 +8,8 @@ import SwiftTerm
 @Observable
 final class AppModel {
     let store = AgentStore()
-    var selectedID: String?
+    var layout = TerminalLayout()
+    var mode: WorkspaceMode = .work
     var errorMessage: String?
     @ObservationIgnored private(set) var terminals: [String: LocalProcessTerminalView] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
@@ -54,7 +55,7 @@ final class AppModel {
             records[record.id] = record
             store.register(id: record.id, title: record.title, cwd: record.cwd, state: .exited)
         }
-        selectedID = store.sessions.first?.id
+        if let first = store.sessions.first?.id { layout.show(first) }
     }
 
     func stop() {
@@ -93,7 +94,7 @@ final class AppModel {
         records[id] = record
         saveRecords()
         store.register(id: id, title: record.title, cwd: record.cwd)
-        selectedID = id
+        showTerminal(id)
     }
 
     /// Kapanmış oturumu kaldığı yerden açar. Hiç mesaj yazılmamışsa (transcript yok) aynı kimlikle sıfırdan başlar.
@@ -117,7 +118,7 @@ final class AppModel {
         records[id] = record
         saveRecords()
         store.restart(id)
-        selectedID = id
+        showTerminal(id)
     }
 
     /// Terminal var ve süreci kapanmışsa true: çıktısı (ör. hata mesajı) görünür kalsın diye terminal gösterilir.
@@ -138,7 +139,7 @@ final class AppModel {
         store.remove(id)
         try? FileManager.default.removeItem(at: settingsURL(for: id))
         saveRecords()
-        if selectedID == id { selectedID = store.sessions.first?.id }
+        layout.close(id)
     }
 
     @discardableResult
@@ -199,5 +200,47 @@ final class TerminalCoordinator: LocalProcessTerminalViewDelegate {
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         let id = sessionID, onExit = onExit
         DispatchQueue.main.async { MainActor.assumeIsolated { onExit(id) } }
+    }
+}
+
+enum WorkspaceMode: Equatable {
+    case office, work, focus
+}
+
+extension AppModel {
+    func showTerminal(_ id: String) {
+        layout.show(id)
+        if mode == .office { mode = .work }
+        focusTerminalView()
+    }
+
+    func addTerminal(_ id: String) {
+        layout.add(id)
+        if mode == .office { mode = .work }
+        focusTerminalView()
+    }
+
+    func closePane(_ id: String) {
+        layout.close(id)
+        focusTerminalView()
+    }
+
+    func cycleFocus() {
+        layout.cycle()
+        focusTerminalView()
+    }
+
+    func jumpToWaiting() {
+        let ids = store.sessions.map(\.id)
+        let next = WaitingNavigator.next(after: layout.focused, ids: ids) { id in
+            if case .waiting = self.store.session(id)?.state { true } else { false }
+        }
+        if let next { showTerminal(next) }
+    }
+
+    /// Odaktaki terminalin klavyeyi alması için.
+    func focusTerminalView() {
+        guard let id = layout.focused, let terminal = terminals[id] else { return }
+        DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) }
     }
 }

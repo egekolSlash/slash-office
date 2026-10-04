@@ -11,53 +11,34 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            List(model.store.sessions, selection: $model.selectedID) { session in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(session.title).font(.headline)
-                    StatusBadge(state: session.state)
-                    if let prompt = session.lastPrompt {
-                        Text(prompt).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+        Group {
+            switch model.mode {
+            case .office:
+                office
+            case .work:
+                HSplitView {
+                    TerminalGrid(model: model, requestRemove: requestRemove).frame(minWidth: 500)
+                    VSplitView {
+                        office.frame(minHeight: 220)
+                        SessionList(model: model, requestRemove: requestRemove).frame(minHeight: 120)
                     }
+                    .frame(minWidth: 240, idealWidth: 320, maxWidth: 480)
                 }
-                .tag(session.id)
-                .contextMenu {
-                    if session.state == .exited {
-                        Button("Devam ettir") { model.resume(session.id) }
-                    }
-                    Button("Kaldır", role: .destructive) { requestRemove(session.id) }
+            case .focus:
+                HStack(spacing: 0) {
+                    TerminalGrid(model: model, requestRemove: requestRemove)
+                    StatusStrip(model: model)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 240)
-            .toolbar {
-                Button("Yeni Claude oturumu", systemImage: "plus") { model.chooseFolderAndStart() }
-                    .keyboardShortcut("n")
+        }
+        .toolbar {
+            Picker("Mod", selection: $model.mode) {
+                Text("Ofis").tag(WorkspaceMode.office)
+                Text("Çalışma").tag(WorkspaceMode.work)
+                Text("Odak").tag(WorkspaceMode.focus)
             }
-        } detail: {
-            if let id = model.selectedID, let session = model.store.session(id), session.state == .exited,
-               model.terminals[id] == nil {
-                StoppedSessionView(session: session,
-                                   onResume: { model.resume(id) },
-                                   onRemove: { model.remove(id) })
-            } else if let id = model.selectedID, let terminal = model.terminals[id] {
-                VStack(spacing: 0) {
-                    if model.store.session(id)?.state == .exited, model.hasEndedTerminal(id) {
-                        // Süreç bitti: terminal çıktısı (hata mesajları dahil) görünür kalır, üstte eylemler.
-                        HStack {
-                            Label("Oturum kapandı", systemImage: "pause.circle")
-                            Spacer()
-                            Button("Devam ettir") { model.resume(id) }.keyboardShortcut(.defaultAction)
-                            Button("Kaldır", role: .destructive) { requestRemove(id) }
-                        }
-                        .padding(8)
-                        .background(.bar)
-                    }
-                    TerminalHost(terminal: terminal).id(ObjectIdentifier(terminal))
-                }
-            } else {
-                ContentUnavailableView("Oturum yok", systemImage: "terminal",
-                                       description: Text("⌘N ile bir proje klasörü seçip Claude başlat."))
-            }
+            .pickerStyle(.segmented)
+            Button("Yeni Claude oturumu", systemImage: "plus") { model.chooseFolderAndStart() }
         }
         .confirmationDialog("Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır.",
                             isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } })) {
@@ -70,6 +51,42 @@ struct ContentView: View {
             Button("Tamam") { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
+        }
+    }
+
+    private var office: some View {
+        // Task 6'da OfficeView ile değiştirilecek.
+        ContentUnavailableView("Ofis", systemImage: "building.2")
+    }
+}
+
+/// Odak modunda sağ kenardaki ince durum şeridi: her oturum için bir nokta, tıklayınca o terminal.
+struct StatusStrip: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(model.store.sessions) { session in
+                Circle()
+                    .fill(color(session.state))
+                    .frame(width: 12, height: 12)
+                    .overlay(Circle().stroke(model.layout.focused == session.id ? Color.primary : .clear, lineWidth: 2))
+                    .help(session.title)
+                    .onTapGesture { model.showTerminal(session.id) }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 10)
+        .frame(width: 24)
+        .background(.bar)
+    }
+
+    private func color(_ state: AgentState) -> Color {
+        switch state {
+        case .waiting: .orange
+        case .working: .blue
+        case .exited: .gray.opacity(0.4)
+        default: .gray
         }
     }
 }

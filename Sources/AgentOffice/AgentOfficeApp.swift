@@ -27,5 +27,22 @@ struct AgentOfficeApp: App {
             ContentView(model: delegate.model)
                 .frame(minWidth: 900, minHeight: 560)
         }
+        .commands {
+            CommandMenu("Ajanlar") {
+                Button("Yeni Claude oturumu") { delegate.model.chooseFolderAndStart() }
+                    .keyboardShortcut("n")
+                Divider()
+                Button("Ofis") { delegate.model.mode = .office }.keyboardShortcut("1")
+                Button("Çalışma") { delegate.model.mode = .work }.keyboardShortcut("2")
+                Button("Odak") { delegate.model.mode = .focus }.keyboardShortcut("3")
+                Divider()
+                Button("Bekleyen ajana atla") { delegate.model.jumpToWaiting() }.keyboardShortcut("j")
+                Button("Sonraki terminal") { delegate.model.cycleFocus() }.keyboardShortcut(.tab, modifiers: .control)
+                Button("Paneli kapat") {
+                    if let id = delegate.model.layout.focused { delegate.model.closePane(id) }
+                }
+                .keyboardShortcut("w")
+            }
+        }
     }
 }
