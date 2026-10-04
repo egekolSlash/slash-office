@@ -30,19 +30,16 @@ struct OfficeView: View {
         .realityViewCameraControls(.none)
         .overlay { OfficeLabels(snapshot: snapshot) }
         .overlay {
-            // RealityKit'in entity seçimi bu kurulumda tıklamaları almadı; tıklama noktası aynı izometrik
-            // kamera tanımıyla karoya çevrilir.
-            GeometryReader { geometry in
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture(coordinateSpace: .local) { location in
-                        let size = (width: Double(geometry.size.width), height: Double(geometry.size.height))
-                        let camera = OfficeScene.camera(for: snapshot.grid)
-                        guard let id = camera.tile(atX: location.x, y: location.y, viewSize: size,
-                                                   tiles: snapshot.tiles.map(\.placement), tileSize: OfficeScene.tileSize)
-                        else { return }
-                        if NSEvent.modifierFlags.contains(.shift) { model.addTerminal(id) } else { model.showTerminal(id) }
-                    }
+            // RealityView bir AppKit görünümü olarak SwiftUI katmanının üstünde durur ve fare olaylarını alır;
+            // SwiftUI tıklaması ona hiç ulaşmaz. Üste konan küçük bir AppKit görünümü tıklamayı yakalar,
+            // nokta aynı izometrik kamera tanımıyla karoya çevrilir.
+            ClickCatcher { location, size, shift in
+                let camera = OfficeScene.camera(for: snapshot.grid)
+                let id = camera.tile(atX: location.x, y: location.y, viewSize: (Double(size.width), Double(size.height)),
+                                     tiles: snapshot.tiles.map(\.placement), tileSize: OfficeScene.tileSize)
+                DebugLog.write("office click \(location) in \(size) -> \(id ?? "nil")")
+                guard let id else { return }
+                if shift { model.addTerminal(id) } else { model.showTerminal(id) }
             }
         }
         .overlay {
@@ -50,6 +47,34 @@ struct OfficeView: View {
                 ContentUnavailableView("Ofis boş", systemImage: "building.2",
                                        description: Text("⌘N ile bir ajan başlat."))
             }
+        }
+    }
+}
+
+/// Tıklamaları SwiftUI yerine AppKit düzeyinde yakalar (sol üst orijinli nokta, görünüm boyutu, ⇧ basılı mı).
+struct ClickCatcher: NSViewRepresentable {
+    let onClick: (CGPoint, CGSize, Bool) -> Void
+
+    func makeNSView(context: Context) -> CatcherView {
+        let view = CatcherView()
+        view.onClick = onClick
+        return view
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) {
+        view.onClick = onClick
+    }
+
+    final class CatcherView: NSView {
+        var onClick: ((CGPoint, CGSize, Bool) -> Void)?
+        override var isFlipped: Bool { true }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            frame.contains(point) ? self : nil
+        }
+        override func mouseUp(with event: NSEvent) {
+            let point = convert(event.locationInWindow, from: nil)
+            onClick?(point, bounds.size, event.modifierFlags.contains(.shift))
         }
     }
 }

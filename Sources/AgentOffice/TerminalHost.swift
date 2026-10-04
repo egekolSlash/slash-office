@@ -15,10 +15,19 @@ final class AgentTerminalView: LocalProcessTerminalView {
         responderObservation = window?.observe(\.firstResponder, options: [.new]) { [weak self] window, _ in
             MainActor.assumeIsolated {
                 guard let self, window.firstResponder === self else { return }
+                DebugLog.write("terminal became first responder")
                 self.onFocus?()
             }
         }
         if wantsKeyboard { takeKeyboard() }
+    }
+
+    /// Claude'un arayüzü fare raporlamasını açtığında SwiftTerm tıklamayı programa iletip döner ve terminali
+    /// odaklamaz; tıklanan terminal klavyeyi alsın diye önce odak verilir.
+    override func mouseDown(with event: NSEvent) {
+        DebugLog.write("terminal mouseDown, firstResponder=\(window?.firstResponder === self)")
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        super.mouseDown(with: event)
     }
 
     func takeKeyboard() {

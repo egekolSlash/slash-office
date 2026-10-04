@@ -272,6 +272,7 @@ extension AppModel {
 
     /// Terminal tıklanarak klavyeyi aldığında: görünür panellerdense odak vurgusunu ona taşı.
     func noteKeyboardFocus(_ id: String) {
+        DebugLog.write("noteKeyboardFocus \(id) visible=\(layout.visible.contains(id)) focused=\(layout.focused ?? "-")")
         guard layout.visible.contains(id), layout.focused != id else { return }
         layout.show(id)
         for (other, terminal) in terminals { terminal.wantsKeyboard = other == id }
