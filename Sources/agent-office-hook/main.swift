@@ -1,2 +1,5 @@
+import AgentOfficeCore
 import Foundation
-exit(0)
+
+let input = FileHandle.standardInput.readDataToEndOfFile()
+exit(HookCLI.run(arguments: CommandLine.arguments, environment: ProcessInfo.processInfo.environment, stdin: input))
