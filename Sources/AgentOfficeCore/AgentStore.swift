@@ -27,9 +27,9 @@ public final class AgentStore {
         sessions.first { $0.id == id }
     }
 
-    public func register(id: String, title: String, cwd: String) {
+    public func register(id: String, title: String, cwd: String, state: AgentState = .starting) {
         guard session(id) == nil else { return }
-        sessions.append(Session(id: id, title: title, cwd: cwd))
+        sessions.append(Session(id: id, title: title, cwd: cwd, state: state))
     }
 
     public func apply(_ events: [AgentEvent], to id: String, at date: Date = .now) {
@@ -51,6 +51,12 @@ public final class AgentStore {
     public func markExited(_ id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].state = .exited
+    }
+
+    /// Kapanmış bir oturum yeniden başlatılırken durumu sıfırlar.
+    public func restart(_ id: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        sessions[index].state = .starting
     }
 
     public func remove(_ id: String) {

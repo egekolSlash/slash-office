@@ -48,4 +48,15 @@ import Testing
         store.remove("a")
         #expect(store.sessions.map(\.id) == ["b"])
     }
+
+    @Test func restoredSessionStartsStoppedAndCanRestart() {
+        let store = AgentStore()
+        store.register(id: "a", title: "A", cwd: "/a", state: .exited)
+        #expect(store.session("a")?.state == .exited)
+        store.restart("a")
+        #expect(store.session("a")?.state == .starting)
+        store.apply([.sessionStarted(providerSessionID: "new")], to: "a")
+        #expect(store.session("a")?.state == .idle)
+        #expect(store.session("a")?.providerSessionID == "new")
+    }
 }

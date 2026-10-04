@@ -1,0 +1,51 @@
+import Foundation
+
+/// Uygulama yeniden açıldığında oturumu geri getirmek için gereken kalıcı bilgi.
+public struct SessionRecord: Codable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var cwd: String
+    /// Claude'un son bildirdiği oturum kimliği (`/clear` sonrası değişir). `--resume` bununla yapılır.
+    public var claudeSessionID: String?
+    public var createdAt: Date
+
+    public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date) {
+        self.id = id
+        self.title = title
+        self.cwd = cwd
+        self.claudeSessionID = claudeSessionID
+        self.createdAt = createdAt
+    }
+}
+
+public enum SessionStore {
+    /// Dosya yoksa ya da bozuksa boş liste döner; uygulama açılışı hiçbir zaman buna takılmaz.
+    public static func load(from url: URL) -> [SessionRecord] {
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        return (try? decoder.decode([SessionRecord].self, from: data)) ?? []
+    }
+
+    public static func save(_ records: [SessionRecord], to url: URL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(records).write(to: url, options: .atomic)
+    }
+
+    private static var decoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+}
+
+public enum ClaudeTranscript {
+    /// Claude bir oturumun transcript'ini ancak ilk mesajdan sonra yazar; transcript yoksa `--resume` başarısız olur.
+    public static func exists(sessionID: String, projectsDirectory: URL, fileManager: FileManager = .default) -> Bool {
+        guard let projects = try? fileManager.contentsOfDirectory(atPath: projectsDirectory.path) else { return false }
+        return projects.contains { project in
+            fileManager.fileExists(atPath: projectsDirectory.appendingPathComponent(project).appendingPathComponent("\(sessionID).jsonl").path)
+        }
+    }
+}

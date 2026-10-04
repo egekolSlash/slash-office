@@ -55,4 +55,11 @@ import Testing
                                            settingsPath: "/s", cwd: "/proj", socketPath: "/sock", baseEnvironment: [:])
         #expect(resumed.args.last == "exec '/c' --resume '1111' --settings '/s'")
     }
+
+    @Test func resumeUsesClaudeSessionIDButKeepsOfficeTag() {
+        let command = ClaudeLaunch.command(claudePath: "/c", sessionID: "claude-2", resume: true, settingsPath: "/s",
+                                           cwd: "/p", socketPath: "/sock", baseEnvironment: [:], tag: "office-1")
+        #expect(command.args.last == "exec '/c' --resume 'claude-2' --settings '/s'")
+        #expect(command.environment["AGENT_OFFICE_SESSION"] == "office-1")
+    }
 }

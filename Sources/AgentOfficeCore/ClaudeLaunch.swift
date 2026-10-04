@@ -38,13 +38,14 @@ public enum ClaudeLaunch {
     }
 
     public static func command(claudePath: String, sessionID: String, resume: Bool, settingsPath: String,
-                               cwd: String, socketPath: String, baseEnvironment: [String: String]) -> LaunchCommand {
+                               cwd: String, socketPath: String, baseEnvironment: [String: String],
+                               tag: String? = nil) -> LaunchCommand {
         let flag = resume ? "--resume" : "--session-id"
         let script = "exec \(shellQuote(claudePath)) \(flag) \(shellQuote(sessionID)) --settings \(shellQuote(settingsPath))"
         var environment = baseEnvironment
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
-        environment["AGENT_OFFICE_SESSION"] = sessionID
+        environment["AGENT_OFFICE_SESSION"] = tag ?? sessionID
         environment["AGENT_OFFICE_SOCKET"] = socketPath
         return LaunchCommand(executable: "/bin/zsh", args: ["-l", "-c", script], environment: environment, currentDirectory: cwd)
     }
