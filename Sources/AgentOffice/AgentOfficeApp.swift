@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,6 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `swift run` ile bundle'sız çalışırken Dock'ta görünmesi ve klavye odağı alması için.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()
+        if Notifier.canNotify {
+            UNUserNotificationCenter.current().delegate = self
+            Notifier.requestAuthorization()
+        }
         model.start()
     }
 
@@ -24,6 +29,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         model.stop()
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard let id = response.notification.request.content.userInfo["sessionID"] as? String else { return }
+        await MainActor.run {
+            NSApplication.shared.activate()
+            model.showTerminal(id)
+        }
     }
 }
 
