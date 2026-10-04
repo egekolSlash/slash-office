@@ -43,4 +43,19 @@ import Testing
         #expect(!ClaudeTranscript.exists(sessionID: "nope", projectsDirectory: projects))
         #expect(!ClaudeTranscript.exists(sessionID: "abc", projectsDirectory: projects.appendingPathComponent("missing")))
     }
+
+    @Test func recordsWithoutKindLoadAsClaude() throws {
+        let url = tempURL()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"[{"id":"a","title":"t","cwd":"/p","createdAt":"2026-10-05T10:00:00Z"}]"#.utf8).write(to: url)
+        #expect(SessionStore.load(from: url).first?.kind == .claude)
+    }
+
+    @Test func shellKindRoundTrips() throws {
+        let url = tempURL()
+        let record = SessionRecord(id: "s", title: "proj", cwd: "/p", claudeSessionID: nil,
+                                   createdAt: Date(timeIntervalSince1970: 0), kind: .shell)
+        try SessionStore.save([record], to: url)
+        #expect(SessionStore.load(from: url).first?.kind == .shell)
+    }
 }

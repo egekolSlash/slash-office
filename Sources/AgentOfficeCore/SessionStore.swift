@@ -1,5 +1,9 @@
 import Foundation
 
+public enum SessionKind: String, Codable, Sendable {
+    case claude, shell
+}
+
 /// Uygulama yeniden açıldığında oturumu geri getirmek için gereken kalıcı bilgi.
 public struct SessionRecord: Codable, Equatable, Sendable {
     public var id: String
@@ -10,13 +14,15 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     /// Önceki Claude oturum kimlikleri, en yenisi başta.
     public var claudeSessionHistory: [String] = []
     public var createdAt: Date
+    public var kind: SessionKind = .claude
 
-    public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date) {
+    public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date, kind: SessionKind = .claude) {
         self.id = id
         self.title = title
         self.cwd = cwd
         self.claudeSessionID = claudeSessionID
         self.createdAt = createdAt
+        self.kind = kind
     }
 
     public init(from decoder: Decoder) throws {
@@ -27,6 +33,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         claudeSessionID = try container.decodeIfPresent(String.self, forKey: .claudeSessionID)
         claudeSessionHistory = try container.decodeIfPresent([String].self, forKey: .claudeSessionHistory) ?? []
         createdAt = try container.decode(Date.self, forKey: .createdAt)
+        // Tür alanından önceki kayıtlar Claude oturumudur.
+        kind = try container.decodeIfPresent(SessionKind.self, forKey: .kind) ?? .claude
     }
 }
 

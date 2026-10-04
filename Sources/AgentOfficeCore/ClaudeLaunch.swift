@@ -42,14 +42,22 @@ public enum ClaudeLaunch {
                                tag: String? = nil) -> LaunchCommand {
         let flag = resume ? "--resume" : "--session-id"
         let script = "exec \(shellQuote(claudePath)) \(flag) \(shellQuote(sessionID)) --settings \(shellQuote(settingsPath))"
-        // Uygulama bir Claude oturumunun içinden başlatıldıysa onun değişkenleri ajana geçmesin.
-        var environment = baseEnvironment.filter { key, _ in
+        let environment = LaunchEnvironment.prepare(baseEnvironment, sessionID: tag ?? sessionID, socketPath: socketPath)
+        return LaunchCommand(executable: "/bin/zsh", args: ["-l", "-c", script], environment: environment, currentDirectory: cwd)
+    }
+}
+
+public enum LaunchEnvironment {
+    /// Terminal değişkenlerini ayarlar. Uygulama bir Claude oturumunun içinden başlatıldıysa onun değişkenleri
+    /// başlatılan sürece geçmesin. Socket sadece hook'u olan oturumlara verilir.
+    public static func prepare(_ base: [String: String], sessionID: String, socketPath: String?) -> [String: String] {
+        var environment = base.filter { key, _ in
             key != "CLAUDECODE" && !key.hasPrefix("CLAUDE_CODE_") && !key.hasPrefix("AGENT_OFFICE_")
         }
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
-        environment["AGENT_OFFICE_SESSION"] = tag ?? sessionID
-        environment["AGENT_OFFICE_SOCKET"] = socketPath
-        return LaunchCommand(executable: "/bin/zsh", args: ["-l", "-c", script], environment: environment, currentDirectory: cwd)
+        environment["AGENT_OFFICE_SESSION"] = sessionID
+        if let socketPath { environment["AGENT_OFFICE_SOCKET"] = socketPath }
+        return environment
     }
 }
