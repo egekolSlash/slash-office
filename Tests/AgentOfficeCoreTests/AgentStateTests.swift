@@ -32,6 +32,13 @@ import Testing
         #expect(AgentStateMachine.reduce(asked, .promptSubmitted(text: "b")) == .working(tool: nil))
     }
 
+    @Test func permissionNotificationAfterQuestionKeepsQuestion() throws {
+        // Gerçek sıra: AskUserQuestion PreToolUse'unun hemen ardından genel bir permission_prompt bildirimi gelir.
+        let events = ClaudeNormalizer.events(from: try fixture("claude", "PreToolUse-AskUserQuestion"))
+            + ClaudeNormalizer.events(from: try fixture("claude", "Notification-permission"))
+        #expect(run(events, from: .working(tool: nil)) == .waiting(.question("Hangi rengi seçmek istersin?")))
+    }
+
     @Test func compactionSessionStartDoesNotInterruptWork() {
         #expect(AgentStateMachine.reduce(.working(tool: "Bash"), .sessionStarted(providerSessionID: nil)) == .working(tool: "Bash"))
     }

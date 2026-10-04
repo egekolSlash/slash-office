@@ -20,6 +20,8 @@ public enum AgentStateMachine {
         case .toolFinished:
             return .working(tool: nil)
         case .needsInput(let reason):
+            // Claude, AskUserQuestion'dan hemen sonra genel bir izin bildirimi de gönderir; soruyu ezmesin.
+            if case .waiting(.question) = state, case .permission = reason { return state }
             return .waiting(reason)
         case .turnEnded:
             return .idle
