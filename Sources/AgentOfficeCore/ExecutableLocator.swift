@@ -3,7 +3,8 @@ import Foundation
 public enum ExecutableLocator {
     /// GUI'den açılan uygulamada PATH kısıtlı olabildiği için bilinen dizinler önce denenir.
     public static func defaultDirectories(home: String, pathVariable: String?) -> [String] {
-        let known = ["\(home)/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "\(home)/.npm-global/bin"]
+        let known = ["\(home)/.local/bin", "\(home)/.claude/local", "/opt/homebrew/bin", "/usr/local/bin",
+                     "\(home)/.npm-global/bin", "\(home)/.bun/bin", "\(home)/.volta/bin"]
         let fromPath = (pathVariable ?? "").split(separator: ":").map(String.init)
         var seen = Set<String>()
         return (known + fromPath).filter { seen.insert($0).inserted }

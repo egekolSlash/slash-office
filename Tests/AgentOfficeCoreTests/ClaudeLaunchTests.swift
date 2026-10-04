@@ -62,4 +62,23 @@ import Testing
         #expect(command.args.last == "exec '/c' --resume 'claude-2' --settings '/s'")
         #expect(command.environment["AGENT_OFFICE_SESSION"] == "office-1")
     }
+
+    @Test func launchEnvironmentDropsParentAgentVariables() {
+        let command = ClaudeLaunch.command(claudePath: "/c", sessionID: "s", resume: false, settingsPath: "/x", cwd: "/p",
+                                           socketPath: "/sock",
+                                           baseEnvironment: ["CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli",
+                                                             "AGENT_OFFICE_SESSION": "parent", "HOME": "/h", "PATH": "/a:/b"])
+        #expect(command.environment["CLAUDECODE"] == nil)
+        #expect(command.environment["CLAUDE_CODE_ENTRYPOINT"] == nil)
+        #expect(command.environment["AGENT_OFFICE_SESSION"] == "s")
+        #expect(command.environment["HOME"] == "/h")
+        #expect(command.environment["PATH"] == "/a:/b")
+    }
+
+    @Test func defaultDirectoriesCoverCommonInstallers() {
+        let dirs = ExecutableLocator.defaultDirectories(home: "/Users/me", pathVariable: nil)
+        for dir in ["/Users/me/.claude/local", "/Users/me/.bun/bin", "/Users/me/.volta/bin", "/Users/me/.npm-global/bin"] {
+            #expect(dirs.contains(dir))
+        }
+    }
 }

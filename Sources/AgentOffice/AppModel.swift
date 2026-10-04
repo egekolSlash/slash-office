@@ -26,6 +26,11 @@ final class AppModel {
     }
 
     @ObservationIgnored private var records: [String: SessionRecord] = [:]
+    /// Kullanıcının shell'indeki PATH (`.zshrc` dahil); npm/nvm/bun ile kurulan claude ve node için gerekli.
+    @ObservationIgnored private lazy var launchPATH: String? = {
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        return ShellPath.capture(shell: shell, timeout: 3) ?? ProcessInfo.processInfo.environment["PATH"]
+    }()
     var recordsURL: URL { supportDirectory.appendingPathComponent("sessions.json") }
     let claudeProjectsDirectory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/projects")
 
@@ -39,6 +44,8 @@ final class AppModel {
             }
             try server.start()
             self.server = server
+        } catch HookServerError.alreadyRunning {
+            errorMessage = "Agent Office zaten açık. Durumlar diğer pencerede güncelleniyor; bu kopyayı kapat."
         } catch {
             errorMessage = "Hook sunucusu başlatılamadı: \(error)"
         }
@@ -92,6 +99,10 @@ final class AppModel {
     /// Kapanmış oturumu kaldığı yerden açar. Hiç mesaj yazılmamışsa (transcript yok) aynı kimlikle sıfırdan başlar.
     func resume(_ id: String) {
         guard var record = records[id] else { return }
+        guard FileManager.default.fileExists(atPath: record.cwd) else {
+            errorMessage = "Proje klasörü bulunamadı: \(record.cwd)\nKlasör taşındıysa oturumu kaldırıp yeniden aç."
+            return
+        }
         // Süreç hâlâ çalışıyorsa yeni terminal açmak eskisini (ve içindeki claude'u) öldürür.
         if terminals[id]?.process.running == true {
             store.restart(id)
@@ -115,6 +126,10 @@ final class AppModel {
         return !terminal.process.running
     }
 
+    func isRunning(_ id: String) -> Bool {
+        terminals[id]?.process.running == true
+    }
+
     func remove(_ id: String) {
         terminals[id]?.terminate()
         terminals[id] = nil
@@ -128,8 +143,9 @@ final class AppModel {
 
     @discardableResult
     private func launch(record: SessionRecord, claudeSessionID: String, resume: Bool) -> Bool {
-        let env = ProcessInfo.processInfo.environment
-        let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: env["PATH"])
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = launchPATH
+        let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
         guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs) else {
             errorMessage = "`claude` bulunamadı. Aranan dizinler: \(dirs.joined(separator: ", "))"
             return false

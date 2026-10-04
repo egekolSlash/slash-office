@@ -6,6 +6,7 @@ public enum HookServerError: Error {
     case socket(Int32)
     case bind(Int32)
     case listen(Int32)
+    case alreadyRunning(String)
 }
 
 /// Unix socket üzerinden satır satır HookEnvelope alır.
@@ -28,7 +29,9 @@ public final class HookServer: @unchecked Sendable {
 
     public func start() throws {
         guard let address = UnixSocket.address(socketPath) else { throw HookServerError.pathTooLong(socketPath) }
-        unlink(socketPath) // çökmüş bir önceki çalıştırmadan kalan dosya
+        // Başka bir kopya dinliyorsa onun socket'ini ele geçirme; dinleyen yoksa dosya çökmüş bir çalıştırmadan kalmıştır.
+        if HookClient.canConnect(toSocket: socketPath) { throw HookServerError.alreadyRunning(socketPath) }
+        unlink(socketPath)
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw HookServerError.socket(errno) }
         guard UnixSocket.withSockaddr(address, { bind(fd, $0, $1) }) == 0 else {

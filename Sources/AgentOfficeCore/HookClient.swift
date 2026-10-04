@@ -24,4 +24,12 @@ public enum HookClient {
             return true
         }
     }
+
+    static func canConnect(toSocket path: String) -> Bool {
+        guard let address = UnixSocket.address(path) else { return false }
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { return false }
+        defer { close(fd) }
+        return UnixSocket.withSockaddr(address, { connect(fd, $0, $1) }) == 0
+    }
 }

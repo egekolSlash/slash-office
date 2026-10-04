@@ -21,11 +21,17 @@ import Testing
         #expect(SessionStore.load(from: tempURL()).isEmpty)
     }
 
-    @Test func corruptFileLoadsEmpty() throws {
+    @Test func corruptFileLoadsEmptyAndIsKeptAside() throws {
         let url = tempURL()
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let dir = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try Data("{not json".utf8).write(to: url)
         #expect(SessionStore.load(from: url).isEmpty)
+        // Bir sonraki kayıt bozuk dosyanın üstüne yazmasın: kenara alınmış olmalı.
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+        let aside = try FileManager.default.contentsOfDirectory(atPath: dir.path).filter { $0.contains("corrupt") }
+        #expect(aside.count == 1)
+        #expect(try String(contentsOf: dir.appendingPathComponent(aside[0]), encoding: .utf8) == "{not json")
     }
 
     @Test func transcriptLookupFindsSessionInAnyProject() throws {

@@ -42,7 +42,10 @@ public enum ClaudeLaunch {
                                tag: String? = nil) -> LaunchCommand {
         let flag = resume ? "--resume" : "--session-id"
         let script = "exec \(shellQuote(claudePath)) \(flag) \(shellQuote(sessionID)) --settings \(shellQuote(settingsPath))"
-        var environment = baseEnvironment
+        // Uygulama bir Claude oturumunun içinden başlatıldıysa onun değişkenleri ajana geçmesin.
+        var environment = baseEnvironment.filter { key, _ in
+            key != "CLAUDECODE" && !key.hasPrefix("CLAUDE_CODE_") && !key.hasPrefix("AGENT_OFFICE_")
+        }
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
         environment["AGENT_OFFICE_SESSION"] = tag ?? sessionID

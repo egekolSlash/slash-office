@@ -34,7 +34,12 @@ public enum SessionStore {
     /// Dosya yoksa ya da bozuksa boş liste döner; uygulama açılışı hiçbir zaman buna takılmaz.
     public static func load(from url: URL) -> [SessionRecord] {
         guard let data = try? Data(contentsOf: url) else { return [] }
-        return (try? decoder.decode([SessionRecord].self, from: data)) ?? []
+        if let records = try? decoder.decode([SessionRecord].self, from: data) { return records }
+        // Bozuk dosyayı kenara al ki bir sonraki kayıt onu ezmesin; elle kurtarılabilsin.
+        let stamp = Int(Date().timeIntervalSince1970)
+        let aside = url.deletingPathExtension().appendingPathExtension("corrupt-\(stamp).json")
+        try? FileManager.default.moveItem(at: url, to: aside)
+        return []
     }
 
     public static func save(_ records: [SessionRecord], to url: URL) throws {

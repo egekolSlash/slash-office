@@ -84,6 +84,7 @@ func line(_ session: String, _ event: String, extra: String = "") -> Data {
         let path = tempSocketPath()
         let old = HookServer(socketPath: path) { _ in }
         try old.start()
+        unlink(path) // dosya başka biri tarafından silinip yeniden oluşturulmuş gibi
         let collector = Collector()
         let new = HookServer(socketPath: path) { collector.add($0) }
         try new.start()
@@ -91,6 +92,18 @@ func line(_ session: String, _ event: String, extra: String = "") -> Data {
         old.stop()
         old.stop() // idempotent
         #expect(FileManager.default.fileExists(atPath: path))
+        #expect(HookClient.send(line("s", "Stop"), toSocket: path))
+        #expect(await collector.wait(count: 1).count == 1)
+    }
+
+    @Test func refusesToStealARunningServersSocket() async throws {
+        let path = tempSocketPath()
+        let collector = Collector()
+        let first = HookServer(socketPath: path) { collector.add($0) }
+        try first.start()
+        defer { first.stop() }
+        let second = HookServer(socketPath: path) { _ in }
+        #expect(throws: HookServerError.self) { try second.start() }
         #expect(HookClient.send(line("s", "Stop"), toSocket: path))
         #expect(await collector.wait(count: 1).count == 1)
     }

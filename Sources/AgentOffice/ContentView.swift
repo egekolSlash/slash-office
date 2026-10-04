@@ -3,6 +3,12 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: AppModel
+    @State private var pendingRemoval: String?
+
+    /// Çalışan bir ajanı kaldırmadan önce onay ister.
+    private func requestRemove(_ id: String) {
+        if model.isRunning(id) { pendingRemoval = id } else { model.remove(id) }
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -19,7 +25,7 @@ struct ContentView: View {
                     if session.state == .exited {
                         Button("Devam ettir") { model.resume(session.id) }
                     }
-                    Button("Kaldır", role: .destructive) { model.remove(session.id) }
+                    Button("Kaldır", role: .destructive) { requestRemove(session.id) }
                 }
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
@@ -41,7 +47,7 @@ struct ContentView: View {
                             Label("Oturum kapandı", systemImage: "pause.circle")
                             Spacer()
                             Button("Devam ettir") { model.resume(id) }.keyboardShortcut(.defaultAction)
-                            Button("Kaldır", role: .destructive) { model.remove(id) }
+                            Button("Kaldır", role: .destructive) { requestRemove(id) }
                         }
                         .padding(8)
                         .background(.bar)
@@ -51,6 +57,13 @@ struct ContentView: View {
             } else {
                 ContentUnavailableView("Oturum yok", systemImage: "terminal",
                                        description: Text("⌘N ile bir proje klasörü seçip Claude başlat."))
+            }
+        }
+        .confirmationDialog("Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır.",
+                            isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } })) {
+            Button("Kapat ve kaldır", role: .destructive) {
+                if let id = pendingRemoval { model.remove(id) }
+                pendingRemoval = nil
             }
         }
         .alert("Hata", isPresented: .constant(model.errorMessage != nil)) {
