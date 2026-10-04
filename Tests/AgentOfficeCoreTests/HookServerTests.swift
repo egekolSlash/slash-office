@@ -54,9 +54,9 @@ func line(_ session: String, _ event: String, extra: String = "") -> Data {
         try server.start()
         defer { server.stop() }
         let big = String(repeating: "x", count: 2_000_000)
-        #expect(HookClient.send(line("s", "PostToolUse", extra: #","tool_response":"\#(big)""#), toSocket: path, timeout: 2))
+        #expect(HookClient.send(line("s", "PostToolUse", extra: #","last_assistant_message":"\#(big)""#), toSocket: path, timeout: 2))
         let received = await collector.wait(count: 1)
-        #expect(received.first?.payload["tool_response"]?.string?.count == 2_000_000)
+        #expect(received.first?.payload["last_assistant_message"]?.string?.count == 2_000_000)
     }
 
     @Test func ignoresGarbageLines() async throws {
@@ -78,6 +78,21 @@ func line(_ session: String, _ event: String, extra: String = "") -> Data {
         #expect(FileManager.default.fileExists(atPath: path))
         server.stop()
         #expect(!FileManager.default.fileExists(atPath: path))
+    }
+
+    @Test func stoppingReplacedServerKeepsNewServersSocket() async throws {
+        let path = tempSocketPath()
+        let old = HookServer(socketPath: path) { _ in }
+        try old.start()
+        let collector = Collector()
+        let new = HookServer(socketPath: path) { collector.add($0) }
+        try new.start()
+        defer { new.stop() }
+        old.stop()
+        old.stop() // idempotent
+        #expect(FileManager.default.fileExists(atPath: path))
+        #expect(HookClient.send(line("s", "Stop"), toSocket: path))
+        #expect(await collector.wait(count: 1).count == 1)
     }
 
     @Test func rejectsTooLongPath() {

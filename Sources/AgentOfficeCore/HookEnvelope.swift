@@ -11,9 +11,23 @@ public struct HookEnvelope: Codable, Equatable, Sendable {
         self.payload = payload
     }
 
+    /// Uygulamanın kullanmadığı, MB'larca olabilen alanlar. Ajanı bekletmemek ve socket'i tıkamamak için atılır.
+    static let droppedPayloadKeys = ["tool_response"]
+
     /// Ham hook JSON'unu tek satırlık zarfa çevirir. Geçersiz JSON'da nil döner.
     public static func encodeLine(session: String, provider: String, rawPayload: Data) -> Data? {
-        guard let payload = try? JSONDecoder().decode(JSONValue.self, from: rawPayload) else { return nil }
-        return try? JSONEncoder().encode(HookEnvelope(session: session, provider: provider, payload: payload))
+        guard var object = (try? JSONSerialization.jsonObject(with: rawPayload)) as? [String: Any] else { return nil }
+        for key in droppedPayloadKeys { object[key] = nil }
+        guard let payload = try? JSONSerialization.data(withJSONObject: object),
+              let session = try? JSONEncoder().encode(session),
+              let provider = try? JSONEncoder().encode(provider) else { return nil }
+        var line = Data(#"{"session":"#.utf8)
+        line.append(session)
+        line.append(contentsOf: Data(#","provider":"#.utf8))
+        line.append(provider)
+        line.append(contentsOf: Data(#","payload":"#.utf8))
+        line.append(payload)
+        line.append(contentsOf: Data("}".utf8))
+        return line
     }
 }

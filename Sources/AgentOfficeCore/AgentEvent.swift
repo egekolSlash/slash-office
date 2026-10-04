@@ -23,4 +23,5 @@ public enum AgentEvent: Equatable, Sendable {
     case turnEnded
     case todosChanged([TodoItem])
     case sessionEnded
+    case inputIdle
 }

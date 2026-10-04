@@ -48,9 +48,16 @@ import Testing
         #expect(untyped == typed)
     }
 
-    @Test func idleNotificationIsIgnored() {
+    @Test func idleNotificationMeansInputIdle() {
+        // Esc ile kesilen turda Stop gelmez; Claude'un 60 sn sonraki idle_prompt bildirimi turun bittiğini gösterir.
         let events = ClaudeNormalizer.events(from: json(#"{"hook_event_name":"Notification","notification_type":"idle_prompt","message":"Claude is waiting for your input"}"#))
-        #expect(events.isEmpty)
+        #expect(events == [.inputIdle])
+    }
+
+    @Test(arguments: ["clear", "resume"])
+    func sessionEndDuringClearOrResumeIsNotAnExit(reason: String) {
+        // Claude /clear ve /resume sırasında SessionEnd gönderir ama süreç çalışmaya devam eder.
+        #expect(ClaudeNormalizer.events(from: json(#"{"hook_event_name":"SessionEnd","reason":"\#(reason)"}"#)).isEmpty)
     }
 
     @Test func stopEndAndUnknown() {

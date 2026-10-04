@@ -39,6 +39,13 @@ import Testing
         #expect(run(events, from: .working(tool: nil)) == .waiting(.question("Hangi rengi seçmek istersin?")))
     }
 
+    @Test func inputIdleEndsInterruptedTurn() {
+        #expect(AgentStateMachine.reduce(.working(tool: "Bash"), .inputIdle) == .idle)
+        #expect(AgentStateMachine.reduce(.waiting(.permission("p")), .inputIdle) == .idle)
+        #expect(AgentStateMachine.reduce(.waiting(.question("q")), .inputIdle) == .waiting(.question("q")))
+        #expect(AgentStateMachine.reduce(.starting, .inputIdle) == .starting)
+    }
+
     @Test func compactionSessionStartDoesNotInterruptWork() {
         #expect(AgentStateMachine.reduce(.working(tool: "Bash"), .sessionStarted(providerSessionID: nil)) == .working(tool: "Bash"))
     }

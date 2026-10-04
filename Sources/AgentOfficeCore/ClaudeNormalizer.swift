@@ -27,13 +27,16 @@ public enum ClaudeNormalizer {
         case "Notification":
             let message = payload["message"]?.string ?? ""
             let type = payload["notification_type"]?.string
+            if type == "idle_prompt" { return [.inputIdle] }
             let isPermission = type == "permission_prompt"
                 || (type == nil && message.localizedCaseInsensitiveContains("permission"))
             return isPermission ? [.needsInput(.permission(message))] : []
         case "Stop":
             return [.turnEnded]
         case "SessionEnd":
-            return [.sessionEnded]
+            // /clear ve /resume sırasında da gelir ama süreç çalışmaya devam eder; ardından yeni bir SessionStart gelir.
+            let reason = payload["reason"]?.string
+            return reason == "clear" || reason == "resume" ? [] : [.sessionEnded]
         default:
             return []
         }

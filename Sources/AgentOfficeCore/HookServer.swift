@@ -14,8 +14,12 @@ public final class HookServer: @unchecked Sendable {
     public let socketPath: String
     private let onEnvelope: @Sendable (HookEnvelope) -> Void
     private let queue = DispatchQueue(label: "agentoffice.hookserver")
-    private var listenFD: Int32 = -1
+    /// Çözümleme ayrı seri kuyrukta: büyük bir payload'ı çözerken yeni bağlantılar kabul edilmeye devam eder, sıra korunur.
+    private let decodeQueue = DispatchQueue(label: "agentoffice.hookserver.decode")
+    private let lock = NSLock()
     private var acceptSource: DispatchSourceRead?
+    /// Bağlandığımız socket dosyasının kimliği; stop() sadece kendi dosyamızı siler.
+    private var boundFile: (device: dev_t, inode: ino_t)?
 
     public init(socketPath: String, onEnvelope: @escaping @Sendable (HookEnvelope) -> Void) {
         self.socketPath = socketPath
@@ -33,29 +37,39 @@ public final class HookServer: @unchecked Sendable {
             throw HookServerError.bind(error)
         }
         chmod(socketPath, 0o600)
+        var info = stat()
+        let identity = stat(socketPath, &info) == 0 ? (info.st_dev, info.st_ino) : nil
         guard listen(fd, 64) == 0 else {
             let error = errno
             close(fd)
             throw HookServerError.listen(error)
         }
-        listenFD = fd
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
-        source.setEventHandler { [weak self] in self?.acceptOne() }
+        source.setEventHandler { [weak self] in self?.acceptOne(listenFD: fd) }
         source.setCancelHandler { close(fd) }
-        acceptSource = source
+        lock.withLock {
+            acceptSource = source
+            boundFile = identity.map { (device: $0.0, inode: $0.1) }
+        }
         source.resume()
     }
 
     public func stop() {
-        acceptSource?.cancel()
-        acceptSource = nil
-        listenFD = -1
-        unlink(socketPath)
+        let (source, file) = lock.withLock {
+            defer { acceptSource = nil; boundFile = nil }
+            return (acceptSource, boundFile)
+        }
+        source?.cancel()
+        // Aynı yola sonradan bağlanan başka bir sunucunun dosyasını silme.
+        var info = stat()
+        if let file, stat(socketPath, &info) == 0, info.st_dev == file.device, info.st_ino == file.inode {
+            unlink(socketPath)
+        }
     }
 
     deinit { stop() }
 
-    private func acceptOne() {
+    private func acceptOne(listenFD: Int32) {
         let client = accept(listenFD, nil, nil)
         guard client >= 0 else { return }
         defer { close(client) }
@@ -68,10 +82,13 @@ public final class HookServer: @unchecked Sendable {
             if count <= 0 { break }
             data.append(contentsOf: chunk[0..<count])
         }
-        let decoder = JSONDecoder()
-        for line in data.split(separator: 0x0A) where !line.isEmpty {
-            if let envelope = try? decoder.decode(HookEnvelope.self, from: Data(line)) {
-                onEnvelope(envelope)
+        let onEnvelope = onEnvelope
+        decodeQueue.async {
+            let decoder = JSONDecoder()
+            for line in data.split(separator: 0x0A) where !line.isEmpty {
+                if let envelope = try? decoder.decode(HookEnvelope.self, from: Data(line)) {
+                    onEnvelope(envelope)
+                }
             }
         }
     }

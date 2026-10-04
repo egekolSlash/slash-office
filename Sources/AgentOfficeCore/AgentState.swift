@@ -29,6 +29,12 @@ public enum AgentStateMachine {
             return state
         case .sessionEnded:
             return .exited
+        case .inputIdle:
+            // Esc ile kesilen turda Stop gelmez. Açık bir soru hâlâ cevap bekliyor olabilir, onu koru.
+            switch state {
+            case .working, .waiting(.permission): return .idle
+            default: return state
+            }
         }
     }
 }

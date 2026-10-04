@@ -7,6 +7,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var cwd: String
     /// Claude'un son bildirdiği oturum kimliği (`/clear` sonrası değişir). `--resume` bununla yapılır.
     public var claudeSessionID: String?
+    /// Önceki Claude oturum kimlikleri, en yenisi başta.
+    public var claudeSessionHistory: [String] = []
     public var createdAt: Date
 
     public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date) {
@@ -15,6 +17,16 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         self.cwd = cwd
         self.claudeSessionID = claudeSessionID
         self.createdAt = createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        cwd = try container.decode(String.self, forKey: .cwd)
+        claudeSessionID = try container.decodeIfPresent(String.self, forKey: .claudeSessionID)
+        claudeSessionHistory = try container.decodeIfPresent([String].self, forKey: .claudeSessionHistory) ?? []
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 }
 
