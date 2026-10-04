@@ -35,8 +35,13 @@ final class AppModel {
     var recordsURL: URL { supportDirectory.appendingPathComponent("sessions.json") }
     let claudeProjectsDirectory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/projects")
 
+    @ObservationIgnored private var shellTimer: Timer?
+
     func start() {
         guard server == nil else { return }
+        shellTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pollShells() }
+        }
         do {
             try FileManager.default.createDirectory(at: supportDirectory.appendingPathComponent("sessions"), withIntermediateDirectories: true)
             let server = HookServer(socketPath: socketPath) { [weak self] envelope in
@@ -106,7 +111,23 @@ final class AppModel {
         showTerminal(id)
     }
 
+    func newShellSession(cwd: URL) {
+        let id = UUID().uuidString.lowercased()
+        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
+                                   createdAt: .now, kind: .shell)
+        guard launchShell(record: record) else { return }
+        records[id] = record
+        saveRecords()
+        store.register(id: id, title: record.title, cwd: record.cwd, state: .idle)
+        showTerminal(id)
+    }
+
+    func kind(of id: String) -> SessionKind {
+        records[id]?.kind ?? .claude
+    }
+
     /// Kapanmış oturumu kaldığı yerden açar. Hiç mesaj yazılmamışsa (transcript yok) aynı kimlikle sıfırdan başlar.
+    /// Shell oturumu aynı klasörde yeni bir shell olarak açılır.
     func resume(_ id: String) {
         guard var record = records[id] else { return }
         guard FileManager.default.fileExists(atPath: record.cwd) else {
@@ -116,6 +137,13 @@ final class AppModel {
         // Süreç hâlâ çalışıyorsa yeni terminal açmak eskisini (ve içindeki claude'u) öldürür.
         if terminals[id]?.process.running == true {
             store.restart(id)
+            return
+        }
+        if record.kind == .shell {
+            guard launchShell(record: record) else { return }
+            store.restart(id)
+            store.setState(.idle, for: id)
+            showTerminal(id)
             return
         }
         let projects = claudeProjectsDirectory
@@ -187,6 +215,22 @@ final class AppModel {
         let command = ClaudeLaunch.command(claudePath: claude, sessionID: claudeSessionID, resume: resume,
                                            settingsPath: settings.path, cwd: record.cwd, socketPath: socketPath,
                                            baseEnvironment: env, tag: record.id)
+        startTerminal(record: record, command: command)
+        return true
+    }
+
+    /// Düz terminal: kullanıcının login shell'i, hook ve claude araması yok.
+    @discardableResult
+    private func launchShell(record: SessionRecord) -> Bool {
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = launchPATH
+        let shell = env["SHELL"].flatMap { FileManager.default.isExecutableFile(atPath: $0) ? $0 : nil } ?? "/bin/zsh"
+        startTerminal(record: record, command: ShellLaunch.command(shellPath: shell, cwd: record.cwd,
+                                                                   sessionID: record.id, baseEnvironment: env))
+        return true
+    }
+
+    private func startTerminal(record: SessionRecord, command: LaunchCommand) {
         let terminal = AgentTerminalView(frame: .init(x: 0, y: 0, width: 800, height: 600))
         // Kullanıcı terminale tıklayıp yazmaya başlayınca odak vurgusu o panele geçsin.
         let id = record.id
@@ -200,15 +244,31 @@ final class AppModel {
         coordinators[record.id] = coordinator
         terminal.startProcess(executable: command.executable, args: command.args,
                               environment: command.environmentList, currentDirectory: command.currentDirectory)
-        return true
     }
 
-    func chooseFolderAndStart() {
+    func chooseFolderAndStart(_ kind: SessionKind = .claude) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.prompt = "Ajanı başlat"
-        if panel.runModal() == .OK, let url = panel.url { newClaudeSession(cwd: url) }
+        panel.prompt = kind == .shell ? "Terminali aç" : "Ajanı başlat"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        switch kind {
+        case .claude: newClaudeSession(cwd: url)
+        case .shell: newShellSession(cwd: url)
+        }
+    }
+
+    /// Shell oturumlarında hook yok: ön plandaki komut saniyede bir okunur.
+    func pollShells() {
+        for (id, record) in records where record.kind == .shell {
+            guard let terminal = terminals[id], terminal.process.running else { continue }
+            let pid = terminal.process.shellPid
+            let group = ShellActivity.foregroundGroup(ptyFD: terminal.process.childfd)
+            let state = ShellActivity.state(shellPID: pid, foregroundGroup: group,
+                                            commandName: group.flatMap(ShellActivity.processName))
+            if store.session(id)?.state != state { DebugLog.write("shell \(id) -> \(state)") }
+            store.setState(state, for: id)
+        }
     }
 }
 
@@ -298,6 +358,11 @@ extension AppModel {
             let id = "demo-\(index)"
             store.register(id: id, title: item.0, cwd: item.1)
             store.apply(item.2, to: id)
+        }
+        for (index, state) in [AgentState.idle, .working(tool: "npm")].enumerated() {
+            let id = "demo-shell-\(index)"
+            records[id] = SessionRecord(id: id, title: "api", cwd: "/demo/api", claudeSessionID: nil, createdAt: .now, kind: .shell)
+            store.register(id: id, title: "api", cwd: "/demo/api", state: state)
         }
         layout.show("demo-0")
         switch ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_MODE"] {

@@ -40,7 +40,10 @@ struct ContentView: View {
                 Text("Odak").tag(WorkspaceMode.focus)
             }
             .pickerStyle(.segmented)
-            Button("Yeni Claude oturumu", systemImage: "plus") { model.chooseFolderAndStart() }
+            Menu("Yeni", systemImage: "plus") {
+                Button("Claude oturumu") { model.chooseFolderAndStart(.claude) }
+                Button("Terminal") { model.chooseFolderAndStart(.shell) }
+            }
         }
         .confirmationDialog("Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır.",
                             isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } })) {

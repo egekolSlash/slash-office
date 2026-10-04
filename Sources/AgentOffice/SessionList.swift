@@ -11,7 +11,7 @@ struct SessionList: View {
         List(model.store.sessions) { session in
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.title).font(.headline)
-                StatusBadge(state: session.state)
+                StatusBadge(state: session.state, kind: model.kind(of: session.id))
             }
             .contentShape(Rectangle())
             .onTapGesture {

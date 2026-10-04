@@ -14,7 +14,7 @@ struct OfficeView: View {
         let byID = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         let tiles = placements.compactMap { placement -> OfficeSnapshot.Tile? in
             guard let session = byID[placement.id] else { return nil }
-            return .init(placement: placement, title: session.title, state: session.state)
+            return .init(placement: placement, title: session.title, state: session.state, kind: model.kind(of: session.id))
         }
         return OfficeSnapshot(tiles: tiles, focused: model.layout.focused, grid: OfficeLayout.gridSize(placements),
                               aspect: Double(viewSize.width / max(viewSize.height, 1)))

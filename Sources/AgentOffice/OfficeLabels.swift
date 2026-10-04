@@ -47,6 +47,8 @@ private struct TileLabel: View {
                 .font(.system(size: fontSize, weight: .semibold))
                 .foregroundStyle(tile.state == .exited ? .secondary : .primary)
             switch tile.state {
+            case .idle where tile.kind == .shell, .starting where tile.kind == .shell:
+                Text("terminal").font(.system(size: fontSize * 0.8)).foregroundStyle(.secondary)
             case .working(let tool?):
                 Text(tool).font(.system(size: fontSize * 0.8, weight: .medium)).foregroundStyle(.cyan)
             case .idle:

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct StatusBadge: View {
     let state: AgentState
+    var kind: SessionKind = .claude
 
     var body: some View {
         Label(text, systemImage: symbol)
@@ -11,7 +12,15 @@ struct StatusBadge: View {
     }
 
     private var text: String {
-        switch state {
+        if kind == .shell {
+            switch state {
+            case .working(let command?): return "Çalışıyor · \(command)"
+            case .working(nil): return "Çalışıyor"
+            case .exited: return "Durdu"
+            default: return "Terminal · hazır"
+            }
+        }
+        return switch state {
         case .starting: "Başlıyor"
         case .idle: "Boşta"
         case .working(let tool?): "Çalışıyor · \(tool)"
@@ -23,7 +32,8 @@ struct StatusBadge: View {
     }
 
     private var symbol: String {
-        switch state {
+        if kind == .shell { return state == .exited ? "xmark.circle" : "terminal" }
+        return switch state {
         case .starting: "hourglass"
         case .idle: "moon.zzz"
         case .working: "keyboard"

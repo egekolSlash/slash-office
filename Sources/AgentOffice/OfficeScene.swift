@@ -8,6 +8,7 @@ struct OfficeSnapshot: Equatable {
         var placement: TilePlacement
         var title: String
         var state: AgentState
+        var kind: SessionKind = .claude
     }
     var tiles: [Tile]
     var focused: String?
@@ -75,11 +76,14 @@ enum OfficeScene {
         entity.addChild(box(width: 0.7, height: 0.05, depth: 0.38, y: 0.42, z: -0.18, color: .init(white: 0.85, alpha: 1)))
         entity.addChild(box(width: 0.08, height: 0.4, depth: 0.08, y: 0.22, x: -0.3, z: -0.18, color: .init(white: 0.6, alpha: 1)))
         entity.addChild(box(width: 0.08, height: 0.4, depth: 0.08, y: 0.22, x: 0.3, z: -0.18, color: .init(white: 0.6, alpha: 1)))
-        entity.addChild(box(width: 0.3, height: 0.05, depth: 0.3, y: 0.25, z: 0.2, color: .init(white: 0.3, alpha: 1)))
+        if tile.kind == .claude {
+            // Sandalye: shell karosunda NPC olmadığı için sandalye de yok.
+            entity.addChild(box(width: 0.3, height: 0.05, depth: 0.3, y: 0.25, z: 0.2, color: .init(white: 0.3, alpha: 1)))
+        }
         entity.addChild(box(width: 0.34, height: 0.22, depth: 0.03, y: 0.58, z: -0.3,
                             color: monitorColor(tile.state), unlit: true))
 
-        if !exited { entity.addChild(makeNPC(state: tile.state)) }
+        if !exited, tile.kind == .claude { entity.addChild(makeNPC(state: tile.state)) }
         // Etiketler ve `?` balonu SwiftUI ile sahnenin üstüne çizilir (OfficeView); 3D metin geometrinin arkasında kalıyordu.
         return entity
     }

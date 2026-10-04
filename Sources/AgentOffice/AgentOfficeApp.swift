@@ -54,8 +54,10 @@ struct AgentOfficeApp: App {
         }
         .commands {
             CommandMenu("Ajanlar") {
-                Button("Yeni Claude oturumu") { delegate.model.chooseFolderAndStart() }
+                Button("Yeni Claude oturumu") { delegate.model.chooseFolderAndStart(.claude) }
                     .keyboardShortcut("n")
+                Button("Yeni terminal") { delegate.model.chooseFolderAndStart(.shell) }
+                    .keyboardShortcut("t")
                 Divider()
                 Button("Ofis") { delegate.model.mode = .office }.keyboardShortcut("1")
                 Button("Çalışma") { delegate.model.mode = .work }.keyboardShortcut("2")
