@@ -18,10 +18,12 @@ struct TerminalGrid: View {
                     HStack(spacing: 2) {
                         ForEach(ids[start..<min(start + columns, ids.count)], id: \.self) { id in
                             TerminalPane(model: model, id: id, requestRemove: requestRemove)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

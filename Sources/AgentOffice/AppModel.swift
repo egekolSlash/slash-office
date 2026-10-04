@@ -50,6 +50,10 @@ final class AppModel {
         } catch {
             errorMessage = "Hook sunucusu başlatılamadı: \(error)"
         }
+        if ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO"] == "1" {
+            loadDemoSessions()
+            return
+        }
         // Önceki oturumlar durmuş olarak geri gelir; her claude süreci ayrı bellek tuttuğu için otomatik başlatılmaz.
         for record in SessionStore.load(from: recordsURL).sorted(by: { $0.createdAt < $1.createdAt }) {
             records[record.id] = record
@@ -242,5 +246,29 @@ extension AppModel {
     func focusTerminalView() {
         guard let id = layout.focused, let terminal = terminals[id] else { return }
         DispatchQueue.main.async { terminal.window?.makeFirstResponder(terminal) }
+    }
+}
+
+extension AppModel {
+    /// `AGENT_OFFICE_DEMO=1`: sahneyi her durumla görmek için sahte oturumlar (ekran görüntüsü ve geliştirme için).
+    func loadDemoSessions() {
+        let demo: [(String, String, [AgentEvent])] = [
+            ("juice-merge", "/demo/juice-merge", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Edit", summary: nil)]),
+            ("juice-merge", "/demo/juice-merge", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .needsInput(.question("Hangi renk?"))]),
+            ("api", "/demo/api", [.sessionStarted(providerSessionID: nil)]),
+            ("api", "/demo/api", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Bash", summary: nil)]),
+            ("agent-office", "/demo/agent-office", [.sessionEnded]),
+        ]
+        for (index, item) in demo.enumerated() {
+            let id = "demo-\(index)"
+            store.register(id: id, title: item.0, cwd: item.1)
+            store.apply(item.2, to: id)
+        }
+        layout.show("demo-0")
+        switch ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_MODE"] {
+        case "office": mode = .office
+        case "focus": mode = .focus
+        default: break
+        }
     }
 }

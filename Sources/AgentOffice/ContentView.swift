@@ -14,15 +14,16 @@ struct ContentView: View {
         Group {
             switch model.mode {
             case .office:
-                office
+                office.frame(maxWidth: .infinity, maxHeight: .infinity)
             case .work:
                 HSplitView {
-                    TerminalGrid(model: model, requestRemove: requestRemove).frame(minWidth: 500)
+                    TerminalGrid(model: model, requestRemove: requestRemove)
+                        .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                     VSplitView {
-                        office.frame(minHeight: 220)
-                        SessionList(model: model, requestRemove: requestRemove).frame(minHeight: 120)
+                        office.frame(minHeight: 220, maxHeight: .infinity)
+                        SessionList(model: model, requestRemove: requestRemove).frame(minHeight: 120, maxHeight: .infinity)
                     }
-                    .frame(minWidth: 240, idealWidth: 320, maxWidth: 480)
+                    .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, maxHeight: .infinity)
                 }
             case .focus:
                 HStack(spacing: 0) {
@@ -31,6 +32,7 @@ struct ContentView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
             Picker("Mod", selection: $model.mode) {
                 Text("Ofis").tag(WorkspaceMode.office)
@@ -55,8 +57,7 @@ struct ContentView: View {
     }
 
     private var office: some View {
-        // Task 6'da OfficeView ile değiştirilecek.
-        ContentUnavailableView("Ofis", systemImage: "building.2")
+        OfficeView(model: model)
     }
 }
 

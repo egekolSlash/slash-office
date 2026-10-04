@@ -11,7 +11,7 @@ struct TerminalPane: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            content
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .overlay(RoundedRectangle(cornerRadius: 4).stroke(isFocused ? Color.accentColor : .clear, lineWidth: 2))
     }
