@@ -59,4 +59,13 @@ import Testing
         #expect(store.session("a")?.state == .idle)
         #expect(store.session("a")?.providerSessionID == "new")
     }
+
+    @Test func setStateChangesOnlyKnownSessions() {
+        let store = AgentStore()
+        store.register(id: "s", title: "t", cwd: "/", state: .idle)
+        store.setState(.working(tool: "make"), for: "s")
+        #expect(store.session("s")?.state == .working(tool: "make"))
+        store.setState(.idle, for: "ghost")
+        #expect(store.sessions.count == 1)
+    }
 }

@@ -48,6 +48,12 @@ public final class AgentStore {
         sessions[index] = session
     }
 
+    /// Hook'u olmayan oturumlar (shell) için durumu doğrudan ayarlar; değişmediyse yazmaz.
+    public func setState(_ state: AgentState, for id: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].state != state else { return }
+        sessions[index].state = state
+    }
+
     public func markExited(_ id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].state = .exited

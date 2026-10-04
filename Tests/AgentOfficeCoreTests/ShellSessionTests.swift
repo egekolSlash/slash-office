@@ -14,4 +14,22 @@ import Testing
         #expect(command.environment["AGENT_OFFICE_SESSION"] == "s1")
         #expect(command.environment["TERM"] == "xterm-256color" && command.environment["PATH"] == "/a")
     }
+
+    @Test func shellIsIdleWhenShellOwnsForeground() {
+        #expect(ShellActivity.state(shellPID: 100, foregroundGroup: 100, commandName: "zsh") == .idle)
+    }
+
+    @Test func shellIsWorkingWhenAnotherGroupOwnsForeground() {
+        #expect(ShellActivity.state(shellPID: 100, foregroundGroup: 200, commandName: "npm") == .working(tool: "npm"))
+    }
+
+    @Test func unreadableForegroundCountsAsIdle() {
+        #expect(ShellActivity.state(shellPID: 100, foregroundGroup: nil, commandName: nil) == .idle)
+        #expect(ShellActivity.foregroundGroup(ptyFD: -1) == nil)
+    }
+
+    @Test func processNameOfSelf() {
+        #expect(ShellActivity.processName(getpid())?.isEmpty == false)
+        #expect(ShellActivity.processName(-1) == nil)
+    }
 }
