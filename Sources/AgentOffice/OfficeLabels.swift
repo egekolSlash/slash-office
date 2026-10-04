@@ -9,11 +9,10 @@ struct OfficeLabels: View {
         GeometryReader { geometry in
             let size = (width: Double(geometry.size.width), height: Double(geometry.size.height))
             let camera = OfficeScene.camera(for: snapshot.grid)
-            // Yazı boyutu sahne ölçeğiyle büyüyüp küçülür: küçük ofiste kalabalık yapmasın.
-            let fontSize = min(max(size.height / (2 * Double(camera.scale)) * 0.13, 9), 15)
+            let fontSize = Self.fontSize(viewHeight: size.height, camera: camera)
             ForEach(snapshot.tiles, id: \.placement.id) { tile in
                 let origin = OfficeScene.tileOrigin(tile.placement)
-                let anchor = camera.project(origin + [0, 1.05, 0], viewSize: size)
+                let anchor = camera.project(origin + [0, IsoCamera.labelHeight, 0], viewSize: size)
                 TileLabel(tile: tile, fontSize: fontSize)
                     .position(x: anchor.x, y: anchor.y)
                 if case .waiting = tile.state {
@@ -24,6 +23,17 @@ struct OfficeLabels: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    /// Yazı boyutu sahne ölçeğiyle büyüyüp küçülür: küçük ofiste kalabalık yapmasın.
+    static func fontSize(viewHeight: Double, camera: IsoCamera) -> Double {
+        min(max(viewHeight / (2 * Double(camera.scale)) * 0.13, 9), 15)
+    }
+
+    /// Tıklama için başlık kutusunun yaklaşık boyutu (iki satır: başlık ve durum).
+    static func labelBox(viewHeight: Double, camera: IsoCamera) -> (width: Double, height: Double) {
+        let font = fontSize(viewHeight: viewHeight, camera: camera)
+        return (font * 7, font * 2.8)
     }
 }
 

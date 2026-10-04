@@ -8,6 +8,9 @@ public struct IsoCamera: Equatable, Sendable {
     public static let screenRight = simd_normalize(simd_cross(-direction, SIMD3<Float>(0, 1, 0)))
     public static let screenUp = simd_normalize(simd_cross(screenRight, -direction))
 
+    /// Karo başlığının (SwiftUI etiketi) karonun üstündeki yüksekliği.
+    public static let labelHeight: Float = 1.05
+
     public var center: SIMD3<Float>
     /// Görünür yüksekliğin yarısı (dünya birimi), `OrthographicCameraComponent.scale` ile aynı.
     public var scale: Float
@@ -52,7 +55,17 @@ public struct IsoCamera: Equatable, Sendable {
     /// Ekrandaki tıklamanın denk geldiği karo. Önce masa ve NPC yüksekliğinde, sonra zeminde aranır:
     /// izometrik görünümde öndeki karonun mobilyası arkadaki karonun zeminini örter.
     public func tile(atX x: Double, y: Double, viewSize: (width: Double, height: Double),
-                     tiles: [TilePlacement], tileSize: Float) -> String? {
+                     tiles: [TilePlacement], tileSize: Float, labelBox: (width: Double, height: Double)? = nil) -> String? {
+        // Başlıklar karonun yukarısında, ekranda arkadaki karonun alanına düşer; önce başlık kutularına bakılır.
+        // Örtüşen kutularda öndeki (ekranda daha aşağıdaki) başlık kazanır.
+        if let box = labelBox {
+            let hits = tiles.compactMap { tile -> (id: String, y: Double)? in
+                let anchor = project([Float(tile.column) * tileSize, Self.labelHeight, Float(tile.row) * tileSize], viewSize: viewSize)
+                let inside = abs(x - anchor.x) <= box.width / 2 && abs(y - anchor.y) <= box.height / 2
+                return inside ? (tile.id, anchor.y) : nil
+            }
+            if let front = hits.max(by: { $0.y < $1.y }) { return front.id }
+        }
         for height: Float in [0.45, 0.02] {
             let point = unproject(x: x, y: y, viewSize: viewSize, height: height)
             let column = Int((point.x / tileSize).rounded())

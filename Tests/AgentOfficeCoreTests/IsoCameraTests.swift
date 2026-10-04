@@ -57,4 +57,17 @@ import simd
         // Boş alana tıklama hiçbir şey seçmez.
         #expect(camera.tile(atX: 2, y: 2, viewSize: size, tiles: tiles, tileSize: 1.2) == nil)
     }
+
+    @Test func clickOnTitleLabelSelectsItsTile() {
+        // Önde (row 1) ve arkada (row 0) iki karo: öndekinin başlığı ekranda arkadakinin alanına düşer.
+        let tiles = [TilePlacement(id: "back", column: 0, row: 0, project: "/p"), TilePlacement(id: "front", column: 0, row: 1, project: "/p")]
+        let camera = IsoCamera.fitting(columns: 1, rows: 2, tileSize: 1.2)
+        let label = camera.project([0, IsoCamera.labelHeight, 1.2], viewSize: size)
+        let labelBox = (width: 60.0, height: 30.0)
+        #expect(camera.tile(atX: label.x, y: label.y, viewSize: size, tiles: tiles, tileSize: 1.2, labelBox: labelBox) == "front")
+        #expect(camera.tile(atX: label.x + 25, y: label.y - 12, viewSize: size, tiles: tiles, tileSize: 1.2, labelBox: labelBox) == "front")
+        // Başlık kutusunun dışı eskisi gibi geometriye göre seçilir.
+        let backDesk = camera.project([0, 0.45, 0], viewSize: size)
+        #expect(camera.tile(atX: backDesk.x, y: backDesk.y, viewSize: size, tiles: tiles, tileSize: 1.2, labelBox: labelBox) == "back")
+    }
 }

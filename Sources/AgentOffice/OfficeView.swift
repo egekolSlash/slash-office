@@ -36,7 +36,8 @@ struct OfficeView: View {
             ClickCatcher { location, size, shift in
                 let camera = OfficeScene.camera(for: snapshot.grid)
                 let id = camera.tile(atX: location.x, y: location.y, viewSize: (Double(size.width), Double(size.height)),
-                                     tiles: snapshot.tiles.map(\.placement), tileSize: OfficeScene.tileSize)
+                                     tiles: snapshot.tiles.map(\.placement), tileSize: OfficeScene.tileSize,
+                                     labelBox: OfficeLabels.labelBox(viewHeight: Double(size.height), camera: camera))
                 DebugLog.write("office click \(location) in \(size) -> \(id ?? "nil")")
                 guard let id else { return }
                 if shift { model.addTerminal(id) } else { model.showTerminal(id) }
