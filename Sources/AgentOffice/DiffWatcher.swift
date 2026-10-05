@@ -2,11 +2,29 @@ import AgentOfficeCore
 import Foundation
 import Observation
 
+/// Değişiklikler panelinin kapsamı.
+enum ChangesScope: Hashable, CaseIterable {
+    /// Commit edilmemiş her şey (hazırlanmış + hazırlanmamış + yeni dosyalar). Commit edilince listeden düşer.
+    case uncommitted
+    /// Kullanıcının son isteğinden (shell'de son komuttan) beri olanlar.
+    case lastTurn
+    /// Oturum açıldığından beri olanlar (ajanın commit'leri dahil).
+    case session
+}
+
+struct ChangeGroup: Equatable, Identifiable {
+    var title: String
+    var files: [FileDiff]
+    var id: String { title }
+}
+
 enum DiffState: Equatable {
     case loading
-    case ready(files: [FileDiff], branch: String?)
-    /// Git deposu değil ya da hiç commit yok: dokunulan dosyalar gösterilir.
+    case ready(groups: [ChangeGroup], branch: String?)
+    /// Git deposu değil: dokunulan dosyalar gösterilir.
     case noRepository
+    /// Bu kapsam için başlangıç noktası yok (ör. henüz bir istek gönderilmedi).
+    case unavailable(String)
 }
 
 /// Oturumların diff'ini arka planda hesaplar. Art arda gelen olaylarda `git` her seferinde çalışmasın diye
@@ -17,42 +35,66 @@ final class DiffWatcher {
     private(set) var states: [String: DiffState] = [:]
     @ObservationIgnored private var pending: [String: Task<Void, Never>] = [:]
 
-    /// Dosya başına gösterilecek en fazla satır; daha büyük diff'ler kesilir.
-    nonisolated static let maxLinesPerFile = 400
     /// Bu boyutun üstündeki diff'lerde satırlar atılır, sadece dosya listesi kalır.
     nonisolated static let maxPatchBytes = 2_000_000
 
-    func refresh(id: String, cwd: String, baseline: String?, delay: Duration = .milliseconds(500)) {
-        pending[id]?.cancel()
-        if states[id] == nil { states[id] = .loading }
-        pending[id] = Task { [weak self] in
+    static func key(_ id: String, _ scope: ChangesScope) -> String { "\(id)|\(scope)" }
+
+    func state(_ id: String, _ scope: ChangesScope) -> DiffState? { states[Self.key(id, scope)] }
+
+    func refresh(id: String, scope: ChangesScope, cwd: String, baseline: String?, turnTree: String?,
+                 delay: Duration = .milliseconds(500)) {
+        let key = Self.key(id, scope)
+        pending[key]?.cancel()
+        if states[key] == nil { states[key] = .loading }
+        pending[key] = Task { [weak self] in
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
-            let result = await Task.detached(priority: .utility) { DiffWatcher.compute(cwd: cwd, baseline: baseline) }.value
+            let result = await Task.detached(priority: .utility) {
+                DiffWatcher.compute(scope: scope, cwd: cwd, baseline: baseline, turnTree: turnTree)
+            }.value
             guard !Task.isCancelled else { return }
-            DebugLog.write("diff \(id): \(result.summary)")
-            self?.states[id] = result
+            DebugLog.write("diff \(key): \(result.summary)")
+            self?.states[key] = result
         }
     }
 
     /// Odakta olmayan oturumun diff'i eskidi: bir sonraki odakta yeniden hesaplanır.
     func markStale(_ id: String) {
-        pending[id]?.cancel()
-        pending[id] = nil
-        states[id] = nil
+        for scope in ChangesScope.allCases {
+            let key = Self.key(id, scope)
+            pending[key]?.cancel()
+            pending[key] = nil
+            states[key] = nil
+        }
     }
 
     func forget(_ id: String) { markStale(id) }
 
-    nonisolated static func compute(cwd: String, baseline: String?) -> DiffState {
+    nonisolated static func compute(scope: ChangesScope, cwd: String, baseline: String?, turnTree: String?) -> DiffState {
         let workspace = GitWorkspace(directory: cwd)
-        guard let base = baseline ?? workspace.head() else { return .noRepository }
-        let patch = workspace.diff(since: base)
-        var files = DiffParser.parse(patch)
-        if patch.utf8.count > maxPatchBytes {
-            files = files.map { var file = $0; file.hunks = []; return file }
+        guard workspace.isRepository else { return .noRepository }
+        let branch = workspace.branch()
+        switch scope {
+        case .uncommitted:
+            let groups = [ChangeGroup(title: "Hazırlanmış", files: parse(workspace.diff(.staged))),
+                          ChangeGroup(title: "Değişiklikler", files: parse(workspace.diff(.unstaged)))]
+            return .ready(groups: groups.filter { !$0.files.isEmpty }, branch: branch)
+        case .lastTurn:
+            guard let turnTree else { return .unavailable("Henüz bir istek gönderilmedi. İlk istekten sonra o turda değişenler burada görünecek.") }
+            return .ready(groups: [ChangeGroup(title: "Son tur", files: parse(workspace.diff(.since(tree: turnTree))))]
+                .filter { !$0.files.isEmpty }, branch: branch)
+        case .session:
+            guard let base = baseline else { return .unavailable("Bu oturumun başlangıç noktası bilinmiyor (git deposu açılmadan önce başlamış).") }
+            return .ready(groups: [ChangeGroup(title: "Oturum boyunca", files: parse(workspace.diff(since: base)))]
+                .filter { !$0.files.isEmpty }, branch: branch)
         }
-        return .ready(files: files, branch: workspace.branch())
+    }
+
+    nonisolated private static func parse(_ patch: String) -> [FileDiff] {
+        let files = DiffParser.parse(patch)
+        guard patch.utf8.count > maxPatchBytes else { return files }
+        return files.map { var file = $0; file.hunks = []; return file }
     }
 }
 
@@ -61,7 +103,8 @@ private extension DiffState {
         switch self {
         case .loading: "loading"
         case .noRepository: "no repository"
-        case .ready(let files, let branch): "\(files.count) files on \(branch ?? "-")"
+        case .unavailable(let reason): "unavailable: \(reason)"
+        case .ready(let groups, let branch): "\(groups.map { "\($0.title):\($0.files.count)" }) on \(branch ?? "-")"
         }
     }
 }

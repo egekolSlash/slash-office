@@ -1,42 +1,54 @@
 import AgentOfficeCore
+import AppKit
 import SwiftUI
 
 enum InspectorTab: Hashable {
-    case sessions, diff, todo
+    case sessions, changes, todo
 }
 
-/// Odaktaki oturumun diff'i: oturum başından beri çalışma alanında değişenler (spec §3, §4).
-struct DiffInspector: View {
+/// Cursor/VS Code'daki "Changes" görünümü gibi: gruplu dosya listesi, altında seçili dosyanın diff'i.
+struct ChangesInspector: View {
     @Bindable var model: AppModel
+    @State private var selection: String?
 
     var body: some View {
         if let id = model.layout.focused, let session = model.store.session(id) {
-            VStack(alignment: .leading, spacing: 0) {
-                header(session: session, state: model.diffWatcher.states[id])
+            let state = model.diffWatcher.state(id, model.changesScope)
+            VStack(spacing: 0) {
+                header(session: session, state: state)
+                Picker("Kapsam", selection: $model.changesScope) {
+                    Text("Commit edilmemiş").tag(ChangesScope.uncommitted)
+                    Text("Son tur").tag(ChangesScope.lastTurn)
+                    Text("Oturum").tag(ChangesScope.session)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding(.horizontal, 8)
+                .padding(.bottom, 6)
                 Divider()
-                content(session: session, state: model.diffWatcher.states[id])
+                content(session: session, state: state)
             }
             .onAppear { model.requestDiff(id, immediately: true) }
             .onChange(of: id) { _, newID in model.requestDiff(newID, immediately: true) }
+            .onChange(of: model.changesScope) { _, _ in model.requestDiff(id, immediately: true) }
         } else {
             ContentUnavailableView("Oturum seçili değil", systemImage: "doc.text.magnifyingglass")
         }
     }
 
     private func header(session: AgentStore.Session, state: DiffState?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(session.title).font(.headline)
-                if case .ready(_, let branch?) = state {
-                    Label(branch, systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button { model.requestDiff(session.id, immediately: true) } label: { Image(systemName: "arrow.clockwise") }
-                    .buttonStyle(.plain)
-                    .help("Diff'i yenile")
+        HStack(spacing: 6) {
+            Text(session.title).font(.headline)
+            if case .ready(_, let branch?) = state {
+                Label(branch, systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.secondary)
             }
-            Text("Oturum başından beri çalışma alanındaki değişiklikler")
-                .font(.caption2).foregroundStyle(.secondary)
+            Spacer()
+            if case .ready(let groups, _) = state {
+                Text("\(groups.reduce(0) { $0 + $1.files.count }) dosya").font(.caption).foregroundStyle(.secondary)
+            }
+            Button { model.requestDiff(session.id, immediately: true) } label: { Image(systemName: "arrow.clockwise") }
+                .buttonStyle(.plain)
+                .help("Yenile")
         }
         .padding(8)
     }
@@ -46,115 +58,154 @@ struct DiffInspector: View {
         switch state {
         case nil, .loading?:
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .unavailable(let reason)?:
+            ContentUnavailableView("Gösterilecek değişiklik yok", systemImage: "clock", description: Text(reason))
         case .noRepository?:
             if session.touchedFiles.isEmpty {
                 ContentUnavailableView("Git deposu değil", systemImage: "folder",
-                                       description: Text("Dokunulan dosyalar burada listelenecek."))
+                                       description: Text("Ajanın dokunduğu dosyalar burada listelenecek."))
             } else {
                 List(session.touchedFiles, id: \.self) { path in
-                    Label((path as NSString).lastPathComponent, systemImage: "doc").help(path)
+                    FileRow(path: path, detail: nil)
                 }
             }
-        case .ready(let files, _)?:
-            if files.isEmpty {
-                ContentUnavailableView("Henüz değişiklik yok", systemImage: "checkmark.circle")
+        case .ready(let groups, _)?:
+            if groups.isEmpty {
+                ContentUnavailableView("Değişiklik yok", systemImage: "checkmark.circle",
+                                       description: Text(model.changesScope == .uncommitted ? "Her şey commit edilmiş." : ""))
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(files) { file in FileDiffView(file: file) }
+                let selected = selectedFile(in: groups)
+                VSplitView {
+                    List(selection: $selection) {
+                        ForEach(groups) { group in
+                            Section("\(group.title) · \(group.files.count)") {
+                                ForEach(group.files) { file in
+                                    FileRow(path: file.path, detail: file).tag(Self.tag(group, file))
+                                }
+                            }
+                        }
                     }
-                    .padding(8)
+                    .frame(minHeight: 80)
+                    DiffTextView(file: selected?.file)
+                        .frame(minHeight: 80)
                 }
             }
+        }
+    }
+
+    private static func tag(_ group: ChangeGroup, _ file: FileDiff) -> String { "\(group.title)|\(file.path)" }
+
+    /// Seçili dosya; seçim yoksa ya da artık listede değilse ilk dosya.
+    private func selectedFile(in groups: [ChangeGroup]) -> (tag: String, file: FileDiff)? {
+        let all = groups.flatMap { group in group.files.map { (Self.tag(group, $0), $0) } }
+        return all.first { $0.0 == selection } ?? all.first
+    }
+}
+
+/// Dosya satırı: ikon, kalın ad, soluk klasör yolu, +/- sayıları ve renkli durum harfi.
+private struct FileRow: View {
+    let path: String
+    let detail: FileDiff?
+
+    var body: some View {
+        let name = (path as NSString).lastPathComponent
+        let folder = (path as NSString).deletingLastPathComponent
+        HStack(spacing: 6) {
+            Image(nsImage: NSWorkspace.shared.icon(for: .init(filenameExtension: (name as NSString).pathExtension) ?? .data))
+                .resizable().frame(width: 14, height: 14)
+            Text(name).fontWeight(.medium).lineLimit(1)
+            Text(folder).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+            Spacer(minLength: 4)
+            if let detail {
+                if detail.additions > 0 { Text("+\(detail.additions)").font(.caption.monospaced()).foregroundStyle(.green) }
+                if detail.deletions > 0 { Text("−\(detail.deletions)").font(.caption.monospaced()).foregroundStyle(.red) }
+                Text(letter(detail.change)).font(.caption.bold().monospaced()).foregroundStyle(color(detail.change))
+                    .frame(width: 12)
+            }
+        }
+        .help(path)
+        .contentShape(Rectangle())
+    }
+
+    private func letter(_ change: FileDiff.Change) -> String {
+        switch change {
+        case .modified: "M"
+        case .added: "A"
+        case .deleted: "D"
+        case .renamed: "R"
+        }
+    }
+
+    private func color(_ change: FileDiff.Change) -> Color {
+        switch change {
+        case .modified: .orange
+        case .added: .green
+        case .deleted: .red
+        case .renamed: .purple
         }
     }
 }
 
-private struct FileDiffView: View {
-    let file: FileDiff
-    @State private var isExpanded = true
+/// Seçili dosyanın diff'i: tek bir NSTextView ve attributed string; binlerce satırda da hızlı, seçilebilir.
+struct DiffTextView: NSViewRepresentable {
+    let file: FileDiff?
 
-    var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            if file.isBinary {
-                Text("binary dosya").font(.caption).foregroundStyle(.secondary)
-            } else {
-                lines
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSTextView.scrollableTextView()
+        if let text = scroll.documentView as? NSTextView {
+            text.isEditable = false
+            text.isSelectable = true
+            text.drawsBackground = false
+            text.textContainerInset = NSSize(width: 6, height: 6)
+            text.isHorizontallyResizable = true
+            text.textContainer?.widthTracksTextView = false
+            text.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        }
+        scroll.hasHorizontalScroller = true
+        scroll.drawsBackground = false
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let text = scroll.documentView as? NSTextView else { return }
+        let signature = file.map { "\($0.path)#\($0.hunks.count)#\($0.additions)#\($0.deletions)" }
+        guard context.coordinator.signature != signature else { return }
+        context.coordinator.signature = signature
+        text.textStorage?.setAttributedString(Self.render(file))
+        text.scrollToBeginningOfDocument(nil)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var signature: String?
+    }
+
+    static func render(_ file: FileDiff?) -> NSAttributedString {
+        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        let output = NSMutableAttributedString()
+        func append(_ line: String, color: NSColor, background: NSColor? = nil) {
+            var attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+            if let background { attributes[.backgroundColor] = background }
+            output.append(NSAttributedString(string: line + "\n", attributes: attributes))
+        }
+        guard let file else {
+            append("Bir dosya seç.", color: .secondaryLabelColor)
+            return output
+        }
+        if file.isBinary { append("binary dosya", color: .secondaryLabelColor); return output }
+        if file.hunks.isEmpty { append("İçerik yok ya da diff çok büyük.", color: .secondaryLabelColor); return output }
+        for hunk in file.hunks {
+            append(hunk.header, color: .secondaryLabelColor)
+            for line in hunk.lines {
+                switch line.kind {
+                case .added: append("+" + line.text, color: .systemGreen, background: .systemGreen.withAlphaComponent(0.1))
+                case .removed: append("-" + line.text, color: .systemRed, background: .systemRed.withAlphaComponent(0.1))
+                case .context: append(" " + line.text, color: .labelColor)
+                }
             }
-        } label: {
-            HStack(spacing: 6) {
-                Text(changeLabel).font(.caption2.bold()).foregroundStyle(changeColor)
-                Text(file.path).font(.caption.monospaced()).lineLimit(1).truncationMode(.head)
-                Spacer()
-                Text("+\(file.additions)").font(.caption.monospaced()).foregroundStyle(.green)
-                Text("−\(file.deletions)").font(.caption.monospaced()).foregroundStyle(.red)
-            }
         }
-    }
-
-    private var lines: some View {
-        let all = file.hunks.flatMap { hunk in [(hunk.header, DiffLine.Kind?.none)] + hunk.lines.map { ($0.text, Optional($0.kind)) } }
-        let shown = all.prefix(DiffWatcher.maxLinesPerFile)
-        return VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(shown.enumerated()), id: \.offset) { _, line in
-                Text(prefix(line.1) + line.0)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(color(line.1))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(background(line.1))
-                    .lineLimit(1)
-            }
-            if all.count > shown.count {
-                Text("… \(all.count - shown.count) satır daha").font(.caption2).foregroundStyle(.secondary)
-            } else if file.hunks.isEmpty, !file.isBinary {
-                Text("içerik gösterilmiyor (diff çok büyük)").font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .textSelection(.enabled)
-    }
-
-    private var changeLabel: String {
-        switch file.change {
-        case .modified: "D"
-        case .added: "Y"
-        case .deleted: "S"
-        case .renamed: "A"
-        }
-    }
-
-    private var changeColor: Color {
-        switch file.change {
-        case .added: .green
-        case .deleted: .red
-        case .renamed: .purple
-        case .modified: .orange
-        }
-    }
-
-    private func prefix(_ kind: DiffLine.Kind?) -> String {
-        switch kind {
-        case .added?: "+"
-        case .removed?: "−"
-        case .context?: " "
-        case nil: ""
-        }
-    }
-
-    private func color(_ kind: DiffLine.Kind?) -> Color {
-        switch kind {
-        case .added?: .green
-        case .removed?: .red
-        case .context?: .primary
-        case nil: .secondary
-        }
-    }
-
-    private func background(_ kind: DiffLine.Kind?) -> Color {
-        switch kind {
-        case .added?: .green.opacity(0.08)
-        case .removed?: .red.opacity(0.08)
-        default: .clear
-        }
+        return output
     }
 }
 

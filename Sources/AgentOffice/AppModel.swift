@@ -9,6 +9,7 @@ import SwiftTerm
 final class AppModel {
     let store = AgentStore()
     let diffWatcher = DiffWatcher()
+    var changesScope: ChangesScope = .uncommitted
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work
     var errorMessage: String?
@@ -89,6 +90,9 @@ final class AppModel {
             records[envelope.session] = record
             saveRecords()
         }
+        if events.contains(where: { if case .promptSubmitted = $0 { true } else { false } }) {
+            takeTurnSnapshot(envelope.session)
+        }
         if events.contains(where: Self.changesFiles) { diffChanged(envelope.session) }
     }
 
@@ -107,15 +111,34 @@ final class AppModel {
     }
 
     func requestDiff(_ id: String, immediately: Bool = false) {
-        guard var record = records[id] else { return }
-        if record.baseline == nil, let head = GitWorkspace(directory: record.cwd).head() {
-            // Baseline özelliğinden önce açılmış oturum: diff bu andan itibaren başlar.
+        guard let record = records[id] else { return }
+        diffWatcher.refresh(id: id, scope: changesScope, cwd: record.cwd, baseline: record.baseline,
+                            turnTree: record.turnTree, delay: immediately ? .zero : .milliseconds(500))
+    }
+
+    /// Oturumun başlangıç commit'ini arka planda okuyup kaydeder (git ana thread'de çalışmaz).
+    private func captureBaseline(_ id: String, cwd: String) {
+        Task { [weak self] in
+            let head = await Task.detached(priority: .utility) { GitWorkspace(directory: cwd).head() }.value
+            guard let self, let head, var record = self.records[id], record.baseline == nil else { return }
             record.baseline = head
-            records[id] = record
-            saveRecords()
+            self.records[id] = record
+            self.saveRecords()
         }
-        diffWatcher.refresh(id: id, cwd: record.cwd, baseline: record.baseline,
-                            delay: immediately ? .zero : .milliseconds(500))
+    }
+
+    /// Kullanıcının isteği (ya da shell'de komut) başlarken çalışma alanının fotoğrafı: "Son tur" diff'i buna göre.
+    func takeTurnSnapshot(_ id: String) {
+        guard let cwd = records[id]?.cwd else { return }
+        Task { [weak self] in
+            let tree = await Task.detached(priority: .userInitiated) { GitWorkspace(directory: cwd).snapshotTree() }.value
+            guard let self, let tree, var record = self.records[id] else { return }
+            record.turnTree = tree
+            self.records[id] = record
+            self.saveRecords()
+            DebugLog.write("turn snapshot \(id): \(tree)")
+            self.diffChanged(id)
+        }
     }
 
     private func saveRecords() {
@@ -132,24 +155,24 @@ final class AppModel {
 
     func newClaudeSession(cwd: URL) {
         let id = UUID().uuidString.lowercased()
-        var record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: id, createdAt: .now)
-        record.baseline = GitWorkspace(directory: cwd.path).head()
+        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: id, createdAt: .now)
         guard launch(record: record, claudeSessionID: id, resume: false) else { return }
         records[id] = record
         saveRecords()
         store.register(id: id, title: record.title, cwd: record.cwd)
+        captureBaseline(id, cwd: record.cwd)
         showTerminal(id)
     }
 
     func newShellSession(cwd: URL) {
         let id = UUID().uuidString.lowercased()
-        var record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
+        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
                                    createdAt: .now, kind: .shell)
-        record.baseline = GitWorkspace(directory: cwd.path).head()
         guard launchShell(record: record) else { return }
         records[id] = record
         saveRecords()
         store.register(id: id, title: record.title, cwd: record.cwd, state: .idle)
+        captureBaseline(id, cwd: record.cwd)
         showTerminal(id)
     }
 
@@ -302,6 +325,7 @@ final class AppModel {
             if previous != state { DebugLog.write("shell \(id) -> \(state)") }
             store.setState(state, for: id)
             if case .working = previous, state == .idle { diffChanged(id) }
+            if previous == .idle, case .working = state { takeTurnSnapshot(id) }
         }
     }
 }

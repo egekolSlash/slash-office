@@ -5,7 +5,7 @@ struct ContentView: View {
     @Bindable var model: AppModel
     @State private var pendingRemoval: String?
     @State private var inspectorTab: InspectorTab =
-        ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .diff : .sessions
+        ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
 
     /// Çalışan bir ajanı kaldırmadan önce onay ister.
     private func requestRemove(_ id: String) {
@@ -66,7 +66,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             Picker("Inspector", selection: $inspectorTab) {
                 Text("Oturumlar").tag(InspectorTab.sessions)
-                Text("Diff").tag(InspectorTab.diff)
+                Text("Değişiklikler").tag(InspectorTab.changes)
                 Text("Todo").tag(InspectorTab.todo)
             }
             .pickerStyle(.segmented)
@@ -74,7 +74,7 @@ struct ContentView: View {
             .padding(6)
             switch inspectorTab {
             case .sessions: SessionList(model: model, requestRemove: requestRemove)
-            case .diff: DiffInspector(model: model)
+            case .changes: ChangesInspector(model: model)
             case .todo: TodoInspector(model: model)
             }
         }

@@ -6,6 +6,8 @@ import SwiftUI
 struct OfficeView: View {
     @Bindable var model: AppModel
     @State private var root = Entity()
+    /// Son kurulan sahnenin snapshot'ı: her hook olayında (ör. sadece zaman damgası değişince) sahne yeniden kurulmasın.
+    @State private var built = BuiltSnapshot()
     @State private var viewSize = CGSize(width: 800, height: 500)
 
     private var snapshot: OfficeSnapshot {
@@ -26,6 +28,8 @@ struct OfficeView: View {
             content.add(OfficeScene.light())
             content.add(root)
         } update: { _ in
+            guard built.snapshot != snapshot else { return }
+            built.snapshot = snapshot
             root.children.removeAll()
             root.addChild(OfficeScene.build(snapshot))
         }
@@ -81,4 +85,9 @@ struct ClickCatcher: NSViewRepresentable {
             onClick?(point, bounds.size, event.modifierFlags.contains(.shift))
         }
     }
+}
+
+/// Değişmeyen sahneyi yeniden kurmamak için son snapshot'ı tutan referans kutu (update kapanışından yazılabilir).
+final class BuiltSnapshot {
+    var snapshot: OfficeSnapshot?
 }
