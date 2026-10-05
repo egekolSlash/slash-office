@@ -52,10 +52,12 @@ struct AgentOfficeApp: App {
         }
         .commands {
             CommandMenu("Ajanlar") {
-                Button("Yeni Claude oturumu") { delegate.model.chooseFolderAndStart(.claude) }
+                Button("Yeni Claude oturumu") { delegate.model.openLauncher(beside: false, claude: true) }
                     .keyboardShortcut("n")
-                Button("Yeni terminal") { delegate.model.chooseFolderAndStart(.shell) }
+                Button("Yeni panel") { delegate.model.openLauncher(beside: false) }
                     .keyboardShortcut("t")
+                Button("Yanına yeni panel") { delegate.model.openLauncher(beside: true) }
+                    .keyboardShortcut("d")
                 Button("İzinler…") { delegate.model.showPermissions = true }
                 Divider()
                 Button("Ofis") { delegate.model.mode = .office }.keyboardShortcut("1")

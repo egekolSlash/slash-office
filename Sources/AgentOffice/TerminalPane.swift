@@ -18,7 +18,7 @@ struct TerminalPane: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text(model.store.session(id)?.title ?? "?").font(.caption.bold())
+            Text(TerminalLayout.isLauncher(id) ? "Yeni" : model.store.session(id)?.title ?? "?").font(.caption.bold())
             if let state = model.store.session(id)?.state { StatusBadge(state: state, kind: model.kind(of: id)) }
             Spacer()
             Button { model.closePane(id) } label: { Image(systemName: "xmark") }
@@ -33,7 +33,9 @@ struct TerminalPane: View {
     }
 
     @ViewBuilder private var content: some View {
-        if let session = model.store.session(id), session.state == .exited, model.terminals[id] == nil {
+        if TerminalLayout.isLauncher(id) {
+            LauncherPane(model: model, id: id)
+        } else if let session = model.store.session(id), session.state == .exited, model.terminals[id] == nil {
             StoppedSessionView(session: session, onResume: { model.resume(id) }, onRemove: { model.remove(id) })
         } else if let terminal = model.terminals[id] {
             VStack(spacing: 0) {

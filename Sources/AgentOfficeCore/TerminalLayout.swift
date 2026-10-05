@@ -36,6 +36,22 @@ public struct TerminalLayout: Equatable, Sendable {
         }
     }
 
+    /// Paneldeki oturumu yerinde değiştirir (ör. "yeni" paneli açılan oturuma dönüşür) ve odaklar.
+    public mutating func replace(_ old: String, with new: String) {
+        guard let index = visible.firstIndex(of: old) else { show(new); return }
+        if let existing = visible.firstIndex(of: new), existing != index {
+            visible.remove(at: index)
+            focused = new
+            return
+        }
+        visible[index] = new
+        focused = new
+    }
+
+    /// ⌘T / ⌘D ile açılan, henüz oturumu olmayan "yeni" paneli.
+    public static let launcherPrefix = "launcher-"
+    public static func isLauncher(_ id: String) -> Bool { id.hasPrefix(launcherPrefix) }
+
     public mutating func cycle() {
         guard let current = focused, let index = visible.firstIndex(of: current), visible.count > 1 else { return }
         focused = visible[(index + 1) % visible.count]

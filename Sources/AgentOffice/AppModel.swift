@@ -15,6 +15,8 @@ final class AppModel {
     var errorMessage: String?
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
     var showPermissions = !UserDefaults.standard.bool(forKey: "permissionsShown")
+    /// "Yeni" panelde gösterilen son projeler (en yenisi başta).
+    private(set) var recentProjects: [String] = UserDefaults.standard.stringArray(forKey: "recentProjects") ?? []
     /// Ghostty'nin config'i ve teması; uygulama açılırken okunur.
     private(set) var appearance = GhosttyConfig.load()
     /// ⌘= / ⌘- ile değişir, tüm terminallere uygulanır ve hatırlanır; ⌘0 Ghostty'deki boyuta döner.
@@ -83,6 +85,10 @@ final class AppModel {
             store.register(id: record.id, title: record.title, cwd: record.cwd, state: .exited)
         }
         if let first = store.sessions.first?.id { layout.show(first) }
+        // Kayıtlı oturumların klasörleri de son projelere girer (eskisi sona).
+        for record in records.values.sorted(by: { $0.createdAt < $1.createdAt }) where record.cwd != NSHomeDirectory() {
+            if !recentProjects.contains(record.cwd) { recentProjects.append(record.cwd) }
+        }
     }
 
     func stop() {
@@ -174,7 +180,8 @@ final class AppModel {
         supportDirectory.appendingPathComponent("sessions/\(id).settings.json")
     }
 
-    func newClaudeSession(cwd: URL) {
+    /// `replacing`: oturum bu paneli ("yeni" panel) yerinde doldurur; yoksa odaktaki panelde açılır.
+    func newClaudeSession(cwd: URL, replacing: String? = nil) {
         let id = UUID().uuidString.lowercased()
         let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: id, createdAt: .now)
         guard launch(record: record, claudeSessionID: id, resume: false) else { return }
@@ -182,10 +189,11 @@ final class AppModel {
         saveRecords()
         store.register(id: id, title: record.title, cwd: record.cwd)
         captureBaseline(id, cwd: record.cwd)
-        showTerminal(id)
+        noteRecentProject(record.cwd)
+        present(id, replacing: replacing)
     }
 
-    func newShellSession(cwd: URL) {
+    func newShellSession(cwd: URL, replacing: String? = nil) {
         let id = UUID().uuidString.lowercased()
         let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
                                    createdAt: .now, kind: .shell)
@@ -194,7 +202,15 @@ final class AppModel {
         saveRecords()
         store.register(id: id, title: record.title, cwd: record.cwd, state: .idle)
         captureBaseline(id, cwd: record.cwd)
-        showTerminal(id)
+        if record.cwd != NSHomeDirectory() { noteRecentProject(record.cwd) }
+        present(id, replacing: replacing)
+    }
+
+    private func present(_ id: String, replacing launcher: String?) {
+        guard let launcher, layout.visible.contains(launcher) else { showTerminal(id); return }
+        layout.replace(launcher, with: id)
+        if mode == .office { mode = .work }
+        focusTerminalView()
     }
 
     func kind(of id: String) -> SessionKind {
@@ -356,15 +372,15 @@ final class AppModel {
                               environment: command.environmentList, currentDirectory: command.currentDirectory)
     }
 
-    func chooseFolderAndStart(_ kind: SessionKind = .claude) {
+    func chooseFolderAndStart(_ kind: SessionKind = .claude, replacing: String? = nil) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.prompt = kind == .shell ? "Terminali aç" : "Ajanı başlat"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         switch kind {
-        case .claude: newClaudeSession(cwd: url)
-        case .shell: newShellSession(cwd: url)
+        case .claude: newClaudeSession(cwd: url, replacing: replacing)
+        case .shell: newShellSession(cwd: url, replacing: replacing)
         }
     }
 
@@ -464,13 +480,30 @@ extension AppModel {
     }
 
     /// Yeni yerleşen terminal pencereye girince klavyeyi kapmasın.
-    private func releaseTerminalKeyboard() {
+    func releaseTerminalKeyboard() {
         for terminal in terminals.values { terminal.wantsKeyboard = false }
     }
 
     func closePane(_ id: String) {
         layout.close(id)
         focusTerminalView()
+    }
+
+    func noteRecentProject(_ path: String) {
+        recentProjects = RecentProjects.adding(path, to: recentProjects)
+        UserDefaults.standard.set(recentProjects, forKey: "recentProjects")
+    }
+
+    /// ⌘T: odaktaki panelin yerine, ⌘D: yanına boş "yeni" panel açar; orada terminal ya da Claude seçilir.
+    func openLauncher(beside: Bool, claude: Bool = false) {
+        let id = TerminalLayout.launcherPrefix + (claude ? "claude-" : "") + UUID().uuidString.lowercased()
+        if beside { layout.add(id) } else { layout.show(id) }
+        if mode == .office { mode = .work }
+        releaseTerminalKeyboard()
+    }
+
+    static func launcherStartsWithClaude(_ id: String) -> Bool {
+        id.hasPrefix(TerminalLayout.launcherPrefix + "claude-")
     }
 
     func finishPermissions() {

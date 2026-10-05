@@ -49,8 +49,9 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             Menu("Yeni", systemImage: "plus") {
-                Button("Claude oturumu") { model.chooseFolderAndStart(.claude) }
-                Button("Terminal") { model.chooseFolderAndStart(.shell) }
+                Button("Claude oturumu") { model.openLauncher(beside: false, claude: true) }
+                Button("Terminal") { model.newShellSession(cwd: URL(fileURLWithPath: NSHomeDirectory())) }
+                Button("Klasörde terminal…") { model.chooseFolderAndStart(.shell) }
             }
         }
         .confirmationDialog("Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır.",

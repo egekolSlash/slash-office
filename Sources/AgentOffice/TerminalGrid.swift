@@ -10,7 +10,7 @@ struct TerminalGrid: View {
         let ids = model.layout.visible
         if ids.isEmpty {
             ContentUnavailableView("Terminal açık değil", systemImage: "terminal",
-                                   description: Text("Ofisten bir ajana tıkla ya da ⌘N ile yeni oturum başlat."))
+                                   description: Text("Ofisten bir ajana tıkla ya da ⌘T ile yeni panel aç."))
         } else {
             let columns = model.layout.columns
             VStack(spacing: 2) {

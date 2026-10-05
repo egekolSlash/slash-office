@@ -36,6 +36,22 @@ import Testing
         #expect(layout.visible.isEmpty && layout.focused == nil)
     }
 
+    @Test func replaceKeepsSlotAndFocuses() {
+        var layout = TerminalLayout()
+        layout.add("a")
+        layout.add("launcher-1")
+        layout.add("c")
+        layout.replace("launcher-1", with: "b")
+        #expect(layout.visible == ["a", "b", "c"])
+        #expect(layout.focused == "b")
+        // Zaten görünen bir oturuma dönüşürse boş panel kapanır.
+        layout.add("launcher-2")
+        layout.replace("launcher-2", with: "a")
+        #expect(layout.visible == ["a", "b", "c"])
+        #expect(layout.focused == "a")
+        #expect(TerminalLayout.isLauncher("launcher-2") && !TerminalLayout.isLauncher("a"))
+    }
+
     @Test func cycleWraps() {
         var layout = TerminalLayout()
         for id in ["a", "b", "c"] { layout.add(id) }
