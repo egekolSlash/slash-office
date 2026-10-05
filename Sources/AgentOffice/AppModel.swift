@@ -28,6 +28,13 @@ final class AppModel {
     }
     /// Proje klasörü → ikon (resim ya da proje türü sembolü); arka planda bir kez bulunur.
     private(set) var projectIcons: [String: LoadedProjectIcon] = [:]
+    /// Proje klasörü → oda anahtarı (ana depo; worktree'ler aynı odada). Arka planda bir kez bulunur.
+    private(set) var roomKeys: [String: String] = [:]
+    @ObservationIgnored private var roomKeyLookups: Set<String> = []
+    /// Masa yerleri: oturum kalkınca diğerleri yer değiştirmesin diye hatırlanır (spec §3).
+    @ObservationIgnored private var deskSlots: [String: OfficePlan.DeskSlot] = [:]
+    /// ⌘J ofis modunda: kamera bu masaya gider (OfficeView okuyup sıfırlar).
+    var officeFocusRequest: String?
     @ObservationIgnored private var iconLookups: Set<String> = []
     @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
@@ -429,6 +436,26 @@ final class AppModel {
 }
 
 extension AppModel {
+    /// Henüz bakılmamış klasörlerin oda anahtarını arka planda bulur (git ana thread'de çalışmaz).
+    func loadRoomKeys(_ directories: [String]) {
+        for directory in directories where !roomKeyLookups.contains(directory) {
+            roomKeyLookups.insert(directory)
+            Task { [weak self] in
+                let key = await Task.detached(priority: .utility) { RepoIdentity.roomKey(for: directory) }.value
+                self?.roomKeys[directory] = key
+            }
+        }
+    }
+
+    func roomKey(for cwd: String) -> String { roomKeys[cwd] ?? cwd }
+
+    /// Ofisin kat planı; masa yerleri önceki plandan korunur.
+    func officePlan() -> OfficePlan {
+        let members = store.sessions.map { OfficePlan.Member(id: $0.id, roomKey: roomKey(for: $0.cwd)) }
+        deskSlots = OfficePlan.assignSlots(members, previous: deskSlots)
+        return OfficePlan.make(members, slots: deskSlots)
+    }
+
     /// Henüz bakılmamış proje klasörlerinin ikonunu arka planda bulur.
     func loadProjectIcons(_ directories: [String]) {
         for directory in directories where !iconLookups.contains(directory) {
@@ -553,7 +580,14 @@ extension AppModel {
         let next = WaitingNavigator.next(after: layout.focused, ids: ids) { id in
             if case .waiting = self.store.session(id)?.state { true } else { false }
         }
-        if let next { showTerminal(next) }
+        guard let next else { return }
+        // Ofis modunda önce kamera masaya gider; tıklayınca terminal açılır.
+        if mode == .office {
+            layout.show(next)
+            officeFocusRequest = next
+        } else {
+            showTerminal(next)
+        }
     }
 
     /// Odaktaki terminal klavyeyi alır; panel yeni açıldıysa pencereye yerleştiği anda alır.
@@ -577,9 +611,10 @@ extension AppModel {
     func loadDemoSessions() {
         let demo: [(String, String, [AgentEvent])] = [
             ("juice-merge", "/demo/juice-merge", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Edit", summary: nil)]),
-            ("juice-merge", "/demo/juice-merge", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .needsInput(.question("Hangi renk?"))]),
+            ("juice-merge-worktree1", "/demo/juice-merge-worktree1", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .needsInput(.question("Hangi renk?"))]),
+            ("juice-merge-worktree2", "/demo/juice-merge-worktree2", [.sessionStarted(providerSessionID: nil)]),
+            ("room-logic", "/demo/room-logic", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Bash", summary: nil)]),
             ("api", "/demo/api", [.sessionStarted(providerSessionID: nil)]),
-            ("api", "/demo/api", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Bash", summary: nil)]),
             ("agent-office", "/demo/agent-office", [.sessionEnded]),
         ]
         for (index, item) in demo.enumerated() {
@@ -591,6 +626,11 @@ extension AppModel {
             let id = "demo-shell-\(index)"
             records[id] = SessionRecord(id: id, title: "api", cwd: "/demo/api", claudeSessionID: nil, createdAt: .now, kind: .shell)
             store.register(id: id, title: "api", cwd: "/demo/api", state: state)
+        }
+        // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
+        for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
+            roomKeys[worktree] = "/demo/juice-merge"
+            roomKeyLookups.insert(worktree)
         }
         // AGENT_OFFICE_DEMO_REPO + AGENT_OFFICE_DEMO_BASE: ilk demo oturumunun diff'i gerçek bir depodan gelsin.
         let env = ProcessInfo.processInfo.environment
