@@ -70,8 +70,8 @@ enum OfficeScene {
             entity.addChild(box(width: size * 0.99, height: 0.02, depth: size * 0.99, y: 0.0,
                                 color: waiting ? .systemOrange : .white, unlit: true))
         }
-        entity.addChild(box(width: size * 0.92, height: 0.04, depth: size * 0.92, y: 0.02,
-                            color: exited ? .systemGray : projectColor(tile.placement.project)))
+        // Zemin durumu gösterir; proje rengi başlık kutusunda.
+        entity.addChild(box(width: size * 0.92, height: 0.04, depth: size * 0.92, y: 0.02, color: floorColor(tile.state)))
         // Masa, sandalye, monitör.
         entity.addChild(box(width: 0.7, height: 0.05, depth: 0.38, y: 0.42, z: -0.18, color: .init(white: 0.85, alpha: 1)))
         entity.addChild(box(width: 0.08, height: 0.4, depth: 0.08, y: 0.22, x: -0.3, z: -0.18, color: .init(white: 0.6, alpha: 1)))
@@ -135,9 +135,14 @@ enum OfficeScene {
         return entity
     }
 
-    private static func projectColor(_ project: String) -> NSColor {
-        let c = ProjectPalette.colors[ProjectPalette.index(for: project)]
-        return NSColor(red: c.red, green: c.green, blue: c.blue, alpha: 1)
+    /// Listede ve rozetlerde kullanılan durum renkleri: çalışıyor mavi, bekliyor turuncu, boşta gri, durdu koyu.
+    private static func floorColor(_ state: AgentState) -> NSColor {
+        switch state {
+        case .working: .init(red: 0.25, green: 0.52, blue: 0.95, alpha: 1)
+        case .waiting: .init(red: 0.98, green: 0.58, blue: 0.18, alpha: 1)
+        case .idle, .starting: .init(white: 0.62, alpha: 1)
+        case .exited: .init(white: 0.32, alpha: 1)
+        }
     }
 
     private static func monitorColor(_ state: AgentState) -> NSColor {

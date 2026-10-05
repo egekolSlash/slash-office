@@ -22,9 +22,12 @@ struct SessionList: View {
             }
         )) {
             ForEach(model.store.sessions) { session in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(session.title).font(.headline)
-                    StatusBadge(state: session.state, kind: model.kind(of: session.id))
+                HStack(spacing: 8) {
+                    ProjectIconView(icon: model.projectIcons[session.cwd], size: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(session.title).font(.headline)
+                        StatusBadge(state: session.state, kind: model.kind(of: session.id))
+                    }
                 }
                 .tag(session.id)
             }
@@ -37,6 +40,7 @@ struct SessionList: View {
         } primaryAction: { ids in
             if let id = ids.first { model.showTerminal(id) }
         }
+        .task(id: model.store.sessions.map(\.cwd)) { model.loadProjectIcons(model.store.sessions.map(\.cwd)) }
         .onKeyPress(.return) {
             guard let id = model.layout.focused else { return .ignored }
             model.showTerminal(id)

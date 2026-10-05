@@ -35,7 +35,8 @@ struct OfficeView: View {
         }
         .realityViewCameraControls(.none)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { viewSize = $0 }
-        .overlay { OfficeLabels(snapshot: snapshot) }
+        .overlay { OfficeLabels(snapshot: snapshot, icons: model.projectIcons) }
+        .task(id: snapshot.tiles.map(\.placement.project)) { model.loadProjectIcons(snapshot.tiles.map(\.placement.project)) }
         .overlay {
             // RealityView bir AppKit görünümü olarak SwiftUI katmanının üstünde durur ve fare olaylarını alır;
             // SwiftUI tıklaması ona hiç ulaşmaz. Üste konan küçük bir AppKit görünümü tıklamayı yakalar,

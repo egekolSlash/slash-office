@@ -22,6 +22,9 @@ final class AppModel {
             for terminal in terminals.values { terminal.apply(appearance, fontSize: terminalFontSize) }
         }
     }
+    /// Proje klasörü → ikon (resim ya da proje türü sembolü); arka planda bir kez bulunur.
+    private(set) var projectIcons: [String: LoadedProjectIcon] = [:]
+    @ObservationIgnored private var iconLookups: Set<String> = []
     @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
@@ -345,6 +348,42 @@ final class AppModel {
             store.setState(state, for: id)
             if case .working = previous, state == .idle { diffChanged(id) }
             if previous == .idle, case .working = state { takeTurnSnapshot(id) }
+        }
+    }
+}
+
+extension AppModel {
+    /// Henüz bakılmamış proje klasörlerinin ikonunu arka planda bulur.
+    func loadProjectIcons(_ directories: [String]) {
+        for directory in directories where !iconLookups.contains(directory) {
+            iconLookups.insert(directory)
+            Task { [weak self] in
+                let icon = await Task.detached(priority: .utility) { () -> LoadedProjectIcon in
+                    switch ProjectIconLocator.locate(directory: directory) {
+                    case .image(let path):
+                        if let image = NSImage(contentsOfFile: path) { return .image(image) }
+                        return .symbol(LoadedProjectIcon.symbol(for: .generic))
+                    case .kind(let kind):
+                        return .symbol(LoadedProjectIcon.symbol(for: kind))
+                    }
+                }.value
+                self?.projectIcons[directory] = icon
+            }
+        }
+    }
+}
+
+enum LoadedProjectIcon: @unchecked Sendable {
+    case image(NSImage)
+    case symbol(String)
+
+    static func symbol(for kind: ProjectKind) -> String {
+        switch kind {
+        case .unity: "cube.fill"
+        case .swift: "swift"
+        case .web: "globe"
+        case .android: "iphone"
+        case .generic: "folder.fill"
         }
     }
 }

@@ -4,6 +4,8 @@ import SwiftUI
 /// Karoların başlıkları, tool adları ve `?` balonu: sahnenin üstüne SwiftUI ile çizilir, hiçbir zaman örtülmez.
 struct OfficeLabels: View {
     let snapshot: OfficeSnapshot
+    /// Proje klasörü → ikon.
+    let icons: [String: LoadedProjectIcon]
 
     var body: some View {
         GeometryReader { geometry in
@@ -13,7 +15,7 @@ struct OfficeLabels: View {
             ForEach(snapshot.tiles, id: \.placement.id) { tile in
                 let origin = OfficeScene.tileOrigin(tile.placement)
                 let anchor = camera.project(origin + [0, IsoCamera.labelHeight, 0], viewSize: size)
-                TileLabel(tile: tile, fontSize: fontSize)
+                TileLabel(tile: tile, icon: icons[tile.placement.project], fontSize: fontSize)
                     .position(x: anchor.x, y: anchor.y)
                 if case .waiting = tile.state {
                     // Başlığın hemen üstünde, ekran uzayında: başlığı örtmesin.
@@ -30,40 +32,81 @@ struct OfficeLabels: View {
         min(max(viewHeight / (2 * Double(camera.scale)) * 0.13, 9), 15)
     }
 
-    /// Tıklama için başlık kutusunun yaklaşık boyutu (iki satır: başlık ve durum).
+    /// Tıklama için başlık kutusunun yaklaşık boyutu (ikon + iki satır: başlık ve durum).
     static func labelBox(viewHeight: Double, camera: IsoCamera) -> (width: Double, height: Double) {
         let font = fontSize(viewHeight: viewHeight, camera: camera)
-        return (font * 7, font * 2.8)
+        return (font * 9, font * 3)
     }
 }
 
+/// Başlık kutusu: proje ikonu, adı ve durumu; arka planı proje rengi (zemin durumu gösterir).
 private struct TileLabel: View {
     let tile: OfficeSnapshot.Tile
+    let icon: LoadedProjectIcon?
     let fontSize: Double
 
     var body: some View {
-        VStack(spacing: 1) {
-            Text(tile.title)
-                .font(.system(size: fontSize, weight: .semibold))
-                .foregroundStyle(tile.state == .exited ? .secondary : .primary)
-            switch tile.state {
-            case .idle where tile.kind == .shell, .starting where tile.kind == .shell:
-                Text("terminal").font(.system(size: fontSize * 0.8)).foregroundStyle(.secondary)
-            case .working(let tool?):
-                Text(tool).font(.system(size: fontSize * 0.8, weight: .medium)).foregroundStyle(.cyan)
-            case .idle:
-                Text("z z").font(.system(size: fontSize * 0.8)).foregroundStyle(.secondary)
-            case .exited:
-                Text("durdu").font(.system(size: fontSize * 0.8)).foregroundStyle(.secondary)
-            default:
-                EmptyView()
+        HStack(spacing: fontSize * 0.4) {
+            ProjectIconView(icon: icon, size: fontSize * 2.1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(tile.title)
+                    .font(.system(size: fontSize, weight: .semibold))
+                    .foregroundStyle(.white)
+                if let status {
+                    Text(status).font(.system(size: fontSize * 0.8, weight: .medium)).foregroundStyle(.white.opacity(0.8))
+                }
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 5))
+        .padding(.leading, fontSize * 0.25)
+        .padding(.trailing, 7)
+        .padding(.vertical, fontSize * 0.25)
+        .background(ProjectPalette.color(for: tile.placement.project).opacity(tile.state == .exited ? 0.5 : 0.92),
+                    in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(.black.opacity(0.25), lineWidth: 0.5))
         .lineLimit(1)
         .fixedSize()
+    }
+
+    private var status: String? {
+        switch tile.state {
+        case .idle where tile.kind == .shell, .starting where tile.kind == .shell: "terminal"
+        case .working(let tool?): tool
+        case .idle: "z z"
+        case .exited: "durdu"
+        default: nil
+        }
+    }
+}
+
+/// Projenin ikonu (resim) ya da proje türünün sembolü, yuvarlatılmış kare içinde.
+struct ProjectIconView: View {
+    let icon: LoadedProjectIcon?
+    let size: Double
+
+    var body: some View {
+        Group {
+            switch icon {
+            case .image(let image):
+                Image(nsImage: image).resizable().interpolation(.high).scaledToFill()
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: size * 0.5, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.black.opacity(0.3))
+            case nil:
+                Color.black.opacity(0.2)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+    }
+}
+
+extension ProjectPalette {
+    static func color(for project: String) -> Color {
+        let c = colors[index(for: project)]
+        return Color(red: c.red, green: c.green, blue: c.blue)
     }
 }
 
