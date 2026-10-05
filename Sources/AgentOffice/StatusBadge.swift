@@ -12,14 +12,7 @@ struct StatusBadge: View {
     }
 
     private var text: String {
-        if kind == .shell {
-            switch state {
-            case .working(let command?): return "Çalışıyor · \(command)"
-            case .working(nil): return "Çalışıyor"
-            case .exited: return "Durdu"
-            default: return "Terminal · hazır"
-            }
-        }
+        if kind == .shell, state == .idle || state == .starting { return "Terminal · hazır" }
         return switch state {
         case .starting: "Başlıyor"
         case .idle: "Boşta"
@@ -32,7 +25,7 @@ struct StatusBadge: View {
     }
 
     private var symbol: String {
-        if kind == .shell { return state == .exited ? "xmark.circle" : "terminal" }
+        if kind == .shell, state == .idle || state == .starting { return "terminal" }
         return switch state {
         case .starting: "hourglass"
         case .idle: "moon.zzz"

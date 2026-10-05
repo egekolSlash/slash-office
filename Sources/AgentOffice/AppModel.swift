@@ -52,6 +52,8 @@ final class AppModel {
     let claudeProjectsDirectory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/projects")
 
     @ObservationIgnored private var shellTimer: Timer?
+    /// İçinde hook gönderen bir claude çalışan shell oturumları.
+    @ObservationIgnored private var shellsWithClaudeHooks: Set<String> = []
 
     func start() {
         guard server == nil else { return }
@@ -91,7 +93,12 @@ final class AppModel {
     private func handle(_ envelope: HookEnvelope) {
         guard envelope.provider == "claude" else { return }
         let wasWaiting: Bool = if case .waiting = store.session(envelope.session)?.state { true } else { false }
-        let events = ClaudeNormalizer.events(from: envelope.payload)
+        var events = ClaudeNormalizer.events(from: envelope.payload)
+        if kind(of: envelope.session) == .shell {
+            // Claude kapanınca terminal açık kalır: durumu yine shell yoklaması belirler.
+            events.removeAll { if case .sessionEnded = $0 { true } else { false } }
+            if !events.isEmpty { shellsWithClaudeHooks.insert(envelope.session) }
+        }
         store.apply(events, to: envelope.session)
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: session.title, reason: reason)
@@ -99,7 +106,7 @@ final class AppModel {
         Notifier.updateBadge(waiting: store.waitingCount)
         // /clear sonrası Claude'un oturum kimliği değişir; resume için en sonuncusunu sakla.
         if let claudeID = store.session(envelope.session)?.providerSessionID,
-           var record = records[envelope.session], record.claudeSessionID != claudeID {
+           var record = records[envelope.session], record.kind == .claude, record.claudeSessionID != claudeID {
             record.noteClaudeSession(claudeID)
             records[envelope.session] = record
             saveRecords()
@@ -282,14 +289,7 @@ final class AppModel {
             errorMessage = "Hook yardımcısı bulunamadı: \(hookBinaryPath)\nÖnce `swift build` çalıştır (sadece `swift run AgentOffice` onu derlemez)."
             return false
         }
-        let settings = settingsURL(for: record.id)
-        let hookCommand = "\(ClaudeLaunch.shellQuote(hookBinaryPath)) claude"
-        do {
-            try ClaudeLaunch.settingsJSON(hookCommand: hookCommand).write(to: settings)
-        } catch {
-            errorMessage = "Ayar dosyası yazılamadı: \(error)"
-            return false
-        }
+        guard let settings = writeHookSettings(record.id) else { return false }
         let command = ClaudeLaunch.command(claudePath: claude, sessionID: claudeSessionID, resume: resume,
                                            settingsPath: settings.path, cwd: record.cwd, socketPath: socketPath,
                                            baseEnvironment: env, tag: record.id)
@@ -297,15 +297,46 @@ final class AppModel {
         return true
     }
 
-    /// Düz terminal: kullanıcının login shell'i, hook ve claude araması yok.
+    /// Bu oturumun hook'larını ekleyen `--settings` dosyası.
+    private func writeHookSettings(_ id: String) -> URL? {
+        let settings = settingsURL(for: id)
+        let hookCommand = "\(ClaudeLaunch.shellQuote(hookBinaryPath)) claude"
+        do {
+            try ClaudeLaunch.settingsJSON(hookCommand: hookCommand).write(to: settings)
+            return settings
+        } catch {
+            errorMessage = "Ayar dosyası yazılamadı: \(error)"
+            return nil
+        }
+    }
+
+    /// Düz terminal: kullanıcının login shell'i. Terminalde elle açılan `claude` bir sarmalayıcıyla bu oturumun
+    /// hook'larını alır; claude ya da hook yardımcısı yoksa terminal entegrasyonsuz açılır.
     @discardableResult
     private func launchShell(record: SessionRecord) -> Bool {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = launchPATH
         let shell = env["SHELL"].flatMap { FileManager.default.isExecutableFile(atPath: $0) ? $0 : nil } ?? "/bin/zsh"
-        startTerminal(record: record, command: ShellLaunch.command(shellPath: shell, cwd: record.cwd,
-                                                                   sessionID: record.id, baseEnvironment: env))
+        startTerminal(record: record, command: ShellLaunch.command(shellPath: shell, cwd: record.cwd, sessionID: record.id,
+                                                                   baseEnvironment: env, integration: shellIntegration(record.id)))
         return true
+    }
+
+    private func shellIntegration(_ id: String) -> ShellIntegration? {
+        let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
+        guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs),
+              FileManager.default.isExecutableFile(atPath: hookBinaryPath),
+              let settings = writeHookSettings(id) else { return nil }
+        let integration = ShellIntegration(binDirectory: supportDirectory.appendingPathComponent("bin").path,
+                                           zdotDirectory: supportDirectory.appendingPathComponent("zdotdir").path,
+                                           claudePath: claude, settingsPath: settings.path, socketPath: socketPath)
+        do {
+            try integration.install()
+            return integration
+        } catch {
+            DebugLog.write("shell integration install failed: \(error)")
+            return nil
+        }
     }
 
     private func startTerminal(record: SessionRecord, command: LaunchCommand) {
@@ -343,9 +374,12 @@ final class AppModel {
             guard let terminal = terminals[id], terminal.process.running else { continue }
             let pid = terminal.process.shellPid
             let group = ShellActivity.foregroundGroup(ptyFD: terminal.process.childfd)
-            let state = ShellActivity.state(shellPID: pid, foregroundGroup: group,
-                                            commandName: group.flatMap(ShellActivity.processName))
+            let command = group.flatMap(ShellActivity.processName)
+            let state = ShellActivity.state(shellPID: pid, foregroundGroup: group, commandName: command)
             let previous = store.session(id)?.state
+            // Terminalde açılan claude hook gönderiyorsa durumu (çalışıyor, soru soruyor, boşta) hook belirler.
+            if command == "claude", shellsWithClaudeHooks.contains(id) { continue }
+            shellsWithClaudeHooks.remove(id)
             if previous != state { DebugLog.write("shell \(id) -> \(state)") }
             store.setState(state, for: id)
             if case .working = previous, state == .idle { diffChanged(id) }
