@@ -12,9 +12,23 @@ struct OfficeView: View {
     var body: some View {
         let plan = model.officePlan()
         let desks = deskInfos(plan)
-        OfficeSpriteView(scene: scene) { x, y, clickCount, shift in
-            handleClick(x: x, y: y, clickCount: clickCount, shift: shift, plan: plan)
-        }
+        OfficeSpriteView(scene: scene, interactive: interactive,
+                         onClick: { x, y, clickCount, shift in
+                             handleClick(x: x, y: y, clickCount: clickCount, shift: shift, plan: plan)
+                         },
+                         onPan: { dx, dy in
+                             let camera = scene.officeCamera
+                             camera.target = nil
+                             camera.userMoved = true
+                             camera.viewport.pan(dx: dx, dy: dy)
+                         },
+                         onZoom: { factor, x, y in
+                             let camera = scene.officeCamera
+                             camera.target = nil
+                             camera.userMoved = true
+                             camera.viewport.zoom(by: factor, anchorX: x, anchorY: y, viewSize: camera.viewSize, limits: camera.limits)
+                         },
+                         onResetKey: { scene.officeCamera.resetToFit() })
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
             scene.officeCamera.viewSize = (Double(size.width), Double(size.height))
             scene.officeCamera.fit(plan)
@@ -28,6 +42,11 @@ struct OfficeView: View {
             let cwds = model.store.sessions.map(\.cwd)
             model.loadRoomKeys(cwds)
             model.loadProjectIcons(cwds + plan.rooms.map(\.key))
+        }
+        .onChange(of: model.officeFocusRequest) {
+            guard interactive, let id = model.officeFocusRequest else { return }
+            model.officeFocusRequest = nil
+            focusCamera(on: id, plan: plan)
         }
         .overlay {
             if plan.rooms.isEmpty {
@@ -52,8 +71,25 @@ struct OfficeView: View {
 
     private func handleClick(x: Double, y: Double, clickCount: Int, shift: Bool, plan: OfficePlan) {
         let camera = scene.officeCamera
-        guard let id = plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize) else { return }
-        DebugLog.write("office click (\(Int(x)),\(Int(y))) -> \(id)")
-        if shift { model.addTerminal(id) } else { model.showTerminal(id) }
+        if let id = plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize) {
+            DebugLog.write("office click (\(Int(x)),\(Int(y))) -> \(id)")
+            if shift { model.addTerminal(id) } else { model.showTerminal(id) }
+            return
+        }
+        // Boş zemine çift tık: kamera o odaya yaklaşır (sadece ofis modunda).
+        guard interactive, clickCount == 2 else { return }
+        let ground = camera.viewport.point(atX: x, y: y, height: 0, viewSize: camera.viewSize)
+        guard let room = plan.room(atX: ground.x, z: ground.z) else { return }
+        camera.userMoved = true
+        camera.target = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
+    }
+
+    /// ⌘J: kamera bekleyen masaya yaklaşır (yakın detay seviyesinde).
+    private func focusCamera(on id: String, plan: OfficePlan) {
+        guard let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == id }) else { return }
+        let camera = scene.officeCamera
+        let point = OfficeViewport.screenPlane(x: desk.x, y: 0.5, z: desk.z)
+        camera.userMoved = true
+        camera.target = OfficeViewport(centerX: point.x, centerY: point.y, zoom: min(max(camera.viewport.zoom, 130), camera.limits.upperBound))
     }
 }
