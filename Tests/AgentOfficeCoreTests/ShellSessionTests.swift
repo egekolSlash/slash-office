@@ -28,6 +28,12 @@ import Testing
         #expect(ShellActivity.foregroundGroup(ptyFD: -1) == nil)
     }
 
+    @Test func claudeVersionBinaryShownAsClaude() {
+        #expect(ShellActivity.displayName("2.1.289", executablePath: "/Users/x/.local/share/claude/versions/2.1.289") == "claude")
+        #expect(ShellActivity.displayName("npm", executablePath: "/opt/homebrew/bin/npm") == "npm")
+        #expect(ShellActivity.displayName("vim", executablePath: nil) == "vim")
+    }
+
     @Test func processNameOfSelf() {
         #expect(ShellActivity.processName(getpid())?.isEmpty == false)
         #expect(ShellActivity.processName(-1) == nil)

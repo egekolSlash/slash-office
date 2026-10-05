@@ -20,6 +20,21 @@ public enum ShellActivity {
         var buffer = [CChar](repeating: 0, count: 256)
         let length = proc_name(pid, &buffer, UInt32(buffer.count))
         guard length > 0 else { return nil }
+        let name = String(decoding: buffer.prefix(Int(length)).map { UInt8(bitPattern: $0) }, as: UTF8.self)
+        return displayName(name, executablePath: executablePath(pid))
+    }
+
+    /// Claude'un yerel kurulumu `~/.local/share/claude/versions/2.1.289` gibi bir dosyadır; süreç adı sürüm
+    /// numarası olur. Böyle süreçler "claude" olarak gösterilir.
+    public static func displayName(_ name: String, executablePath: String?) -> String {
+        if let path = executablePath, path.contains("/claude/versions/") { return "claude" }
+        return name
+    }
+
+    static func executablePath(_ pid: Int32) -> String? {
+        var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
+        let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))
+        guard length > 0 else { return nil }
         return String(decoding: buffer.prefix(Int(length)).map { UInt8(bitPattern: $0) }, as: UTF8.self)
     }
 }

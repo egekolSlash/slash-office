@@ -13,6 +13,8 @@ final class AppModel {
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work
     var errorMessage: String?
+    /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
+    var showPermissions = !UserDefaults.standard.bool(forKey: "permissionsShown")
     /// Ghostty'nin config'i ve teması; uygulama açılırken okunur.
     private(set) var appearance = GhosttyConfig.load()
     /// ⌘= / ⌘- ile değişir, tüm terminallere uygulanır ve hatırlanır; ⌘0 Ghostty'deki boyuta döner.
@@ -435,6 +437,11 @@ extension AppModel {
     func closePane(_ id: String) {
         layout.close(id)
         focusTerminalView()
+    }
+
+    func finishPermissions() {
+        UserDefaults.standard.set(true, forKey: "permissionsShown")
+        showPermissions = false
     }
 
     func zoom(by step: Double) {

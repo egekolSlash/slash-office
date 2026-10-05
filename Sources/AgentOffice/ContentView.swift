@@ -61,6 +61,9 @@ struct ContentView: View {
             }
             .keyboardShortcut(.defaultAction)
         }
+        .sheet(isPresented: $model.showPermissions) {
+            PermissionsView { model.finishPermissions() }
+        }
         .alert("Hata", isPresented: .constant(model.errorMessage != nil)) {
             Button("Tamam") { model.errorMessage = nil }
         } message: {

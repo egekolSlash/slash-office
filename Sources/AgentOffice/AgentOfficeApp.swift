@@ -10,10 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `swift run` ile bundle'sız çalışırken Dock'ta görünmesi ve klavye odağı alması için.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()
-        if Notifier.canNotify {
-            UNUserNotificationCenter.current().delegate = self
-            Notifier.requestAuthorization()
-        }
+        // Bildirim izni ilk açılıştaki izin ekranında istenir.
+        if Notifier.canNotify { UNUserNotificationCenter.current().delegate = self }
         model.start()
     }
 
@@ -58,6 +56,7 @@ struct AgentOfficeApp: App {
                     .keyboardShortcut("n")
                 Button("Yeni terminal") { delegate.model.chooseFolderAndStart(.shell) }
                     .keyboardShortcut("t")
+                Button("İzinler…") { delegate.model.showPermissions = true }
                 Divider()
                 Button("Ofis") { delegate.model.mode = .office }.keyboardShortcut("1")
                 Button("Çalışma") { delegate.model.mode = .work }.keyboardShortcut("2")

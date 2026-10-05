@@ -12,11 +12,6 @@ enum Notifier {
     /// Paketsiz (`swift run`) süreçte UNUserNotificationCenter kullanılamaz; sadece .app içinde çalışır.
     static var canNotify: Bool { Bundle.main.bundleIdentifier != nil }
 
-    static func requestAuthorization() {
-        guard canNotify else { return }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
-    }
-
     static func notifyWaiting(sessionID: String, title: String, reason: InputReason) {
         guard canNotify, !NSApp.isActive else { return }
         let content = UNMutableNotificationContent()
