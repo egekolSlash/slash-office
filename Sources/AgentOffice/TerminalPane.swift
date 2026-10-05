@@ -49,6 +49,9 @@ struct TerminalPane: View {
                     .background(.bar)
                 }
                 TerminalHost(terminal: terminal).id(ObjectIdentifier(terminal))
+                    .padding(.horizontal, model.appearance.paddingX)
+                    .padding(.vertical, model.appearance.paddingY)
+                    .background(Color(nsColor: model.appearance.background.nsColor))
             }
         } else {
             ContentUnavailableView("Oturum bulunamadı", systemImage: "questionmark")

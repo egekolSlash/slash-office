@@ -1,3 +1,4 @@
+import AgentOfficeCore
 import AppKit
 import SwiftTerm
 import SwiftUI
@@ -30,6 +31,54 @@ final class AgentTerminalView: LocalProcessTerminalView {
         super.mouseDown(with: event)
     }
 
+    /// Ghostty'nin macOS kısayolları: SwiftTerm ⌘⌫'yu yutuyor, ⌘←/→'yu kelime atlamaya çeviriyor; Option Meta
+    /// değilken ⌥⌫ ve ⌥←/→ hiçbir şey göndermiyor. Readline/Claude karşılıkları ham bayt olarak gönderilir.
+    /// SwiftTerm `keyDown`'ı ezmeye izin vermiyor; tuşlar önce `performKeyEquivalent`'ten geçtiği için burada yakalanır.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.numericPad, .function])
+        if event.type == .keyDown, window?.firstResponder === self,
+           let bytes = Self.shortcutBytes(flags: flags, keyCode: event.keyCode) {
+            send(bytes)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    private static func shortcutBytes(flags: NSEvent.ModifierFlags, keyCode: UInt16) -> [UInt8]? {
+        switch (flags, keyCode) {
+        case (.command, 51): [0x15] // ⌘⌫: satırın başına kadar sil (Ctrl-U)
+        case (.command, 117): [0x0b] // ⌘⌦: satırın sonuna kadar sil (Ctrl-K)
+        case (.command, 123): [0x01] // ⌘←: satır başı (Ctrl-A)
+        case (.command, 124): [0x05] // ⌘→: satır sonu (Ctrl-E)
+        case (.option, 51): [0x1b, 0x7f] // ⌥⌫: önceki kelimeyi sil
+        case (.option, 123): [0x1b, 0x62] // ⌥←: kelime geri (ESC b)
+        case (.option, 124): [0x1b, 0x66] // ⌥→: kelime ileri (ESC f)
+        default: nil
+        }
+    }
+
+    /// Ghostty'den okunan font, renkler ve Option davranışı.
+    func apply(_ appearance: TerminalAppearance, fontSize: Double) {
+        font = Self.font(family: appearance.fontFamily, size: fontSize)
+        nativeBackgroundColor = appearance.background.nsColor
+        nativeForegroundColor = appearance.foreground.nsColor
+        installColors(appearance.palette.map { SwiftTerm.Color(red8: UInt16($0.red), green8: UInt16($0.green), blue8: UInt16($0.blue)) })
+        if let cursor = appearance.cursor { caretColor = cursor.nsColor }
+        caretTextColor = appearance.cursorText?.nsColor
+        if let selection = appearance.selectionBackground { selectedTextBackgroundColor = selection.nsColor }
+        optionAsMetaKey = appearance.optionAsAlt
+        // Ghostty'de bold-is-bright varsayılan kapalı.
+        useBrightColors = false
+    }
+
+    /// Ghostty'nin font-family'si, yoksa Ghostty'nin varsayılanı JetBrains Mono, o da kurulu değilse SF Mono.
+    private static func font(family: String?, size: Double) -> NSFont {
+        for name in [family, "JetBrains Mono"].compactMap({ $0 }) {
+            if let font = NSFontManager.shared.font(withFamily: name, traits: [], weight: 5, size: size) { return font }
+        }
+        return .monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
     func takeKeyboard() {
         guard let window, window.firstResponder !== self else { return }
         window.makeFirstResponder(self)
@@ -42,4 +91,10 @@ struct TerminalHost: NSViewRepresentable {
 
     func makeNSView(context: Context) -> AgentTerminalView { terminal }
     func updateNSView(_ nsView: AgentTerminalView, context: Context) {}
+}
+
+extension RGB {
+    var nsColor: NSColor {
+        NSColor(srgbRed: CGFloat(red) / 255, green: CGFloat(green) / 255, blue: CGFloat(blue) / 255, alpha: 1)
+    }
 }

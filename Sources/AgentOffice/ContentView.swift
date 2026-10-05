@@ -3,13 +3,19 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: AppModel
-    @State private var pendingRemoval: String?
+    @State private var pendingRemoval: (id: String, keepListFocus: Bool)?
     @State private var inspectorTab: InspectorTab =
         ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
 
     /// Çalışan bir ajanı kaldırmadan önce onay ister.
-    private func requestRemove(_ id: String) {
-        if model.isRunning(id) { pendingRemoval = id } else { model.remove(id) }
+    private func requestRemove(_ id: String) { requestRemove(id, keepListFocus: false) }
+
+    private func requestRemove(_ id: String, keepListFocus: Bool) {
+        if model.isRunning(id) {
+            pendingRemoval = (id, keepListFocus)
+        } else {
+            model.remove(id, keepListFocus: keepListFocus)
+        }
     }
 
     var body: some View {
@@ -50,9 +56,10 @@ struct ContentView: View {
         .confirmationDialog("Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır.",
                             isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } })) {
             Button("Kapat ve kaldır", role: .destructive) {
-                if let id = pendingRemoval { model.remove(id) }
+                if let pendingRemoval { model.remove(pendingRemoval.id, keepListFocus: pendingRemoval.keepListFocus) }
                 pendingRemoval = nil
             }
+            .keyboardShortcut(.defaultAction)
         }
         .alert("Hata", isPresented: .constant(model.errorMessage != nil)) {
             Button("Tamam") { model.errorMessage = nil }
@@ -73,7 +80,7 @@ struct ContentView: View {
             .labelsHidden()
             .padding(6)
             switch inspectorTab {
-            case .sessions: SessionList(model: model, requestRemove: requestRemove)
+            case .sessions: SessionList(model: model, requestRemove: { requestRemove($0, keepListFocus: true) })
             case .changes: ChangesInspector(model: model)
             case .todo: TodoInspector(model: model)
             }

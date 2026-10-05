@@ -13,6 +13,15 @@ final class AppModel {
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work
     var errorMessage: String?
+    /// Ghostty'nin config'i ve teması; uygulama açılırken okunur.
+    private(set) var appearance = GhosttyConfig.load()
+    /// ⌘= / ⌘- ile değişir, tüm terminallere uygulanır ve hatırlanır; ⌘0 Ghostty'deki boyuta döner.
+    var terminalFontSize: Double = UserDefaults.standard.object(forKey: "terminalFontSize") as? Double ?? GhosttyConfig.load().fontSize {
+        didSet {
+            UserDefaults.standard.set(terminalFontSize, forKey: "terminalFontSize")
+            for terminal in terminals.values { terminal.apply(appearance, fontSize: terminalFontSize) }
+        }
+    }
     @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
@@ -232,7 +241,12 @@ final class AppModel {
         terminals[id]?.process.running == true
     }
 
-    func remove(_ id: String) {
+    /// `keepListFocus`: listeden silinince klavye listede kalır ve seçim komşu oturuma geçer (art arda ⌘⌫ için).
+    func remove(_ id: String, keepListFocus: Bool = false) {
+        let order = store.sessions.map(\.id)
+        let neighbor = order.firstIndex(of: id).flatMap { index in
+            index + 1 < order.count ? order[index + 1] : (index > 0 ? order[index - 1] : nil)
+        }
         terminals[id]?.terminate()
         terminals[id] = nil
         coordinators[id] = nil
@@ -243,7 +257,11 @@ final class AppModel {
         layout.close(id)
         diffWatcher.forget(id)
         Notifier.updateBadge(waiting: store.waitingCount)
-        focusTerminalView()
+        if keepListFocus, let neighbor {
+            showTerminal(neighbor, takeKeyboard: false)
+        } else {
+            focusTerminalView()
+        }
     }
 
     @discardableResult
@@ -287,6 +305,7 @@ final class AppModel {
 
     private func startTerminal(record: SessionRecord, command: LaunchCommand) {
         let terminal = AgentTerminalView(frame: .init(x: 0, y: 0, width: 800, height: 600))
+        terminal.apply(appearance, fontSize: terminalFontSize)
         // Kullanıcı terminale tıklayıp yazmaya başlayınca odak vurgusu o panele geçsin.
         let id = record.id
         terminal.onFocus = { [weak self] in self?.noteKeyboardFocus(id) }
@@ -353,24 +372,38 @@ enum WorkspaceMode: Equatable {
 }
 
 extension AppModel {
-    func showTerminal(_ id: String) {
+    /// `takeKeyboard: false`: terminal gösterilir ama klavye yerinde kalır (listede ok tuşlarıyla gezinirken).
+    func showTerminal(_ id: String, takeKeyboard: Bool = true) {
         // Kaldırılmış bir oturumun eski bildirimine tıklanırsa boş panel açılmasın.
         guard store.session(id) != nil else { return }
         layout.show(id)
         if mode == .office { mode = .work }
-        focusTerminalView()
+        if takeKeyboard { focusTerminalView() } else { releaseTerminalKeyboard() }
     }
 
-    func addTerminal(_ id: String) {
+    func addTerminal(_ id: String, takeKeyboard: Bool = true) {
         guard store.session(id) != nil else { return }
         layout.add(id)
         if mode == .office { mode = .work }
-        focusTerminalView()
+        if takeKeyboard { focusTerminalView() } else { releaseTerminalKeyboard() }
+    }
+
+    /// Yeni yerleşen terminal pencereye girince klavyeyi kapmasın.
+    private func releaseTerminalKeyboard() {
+        for terminal in terminals.values { terminal.wantsKeyboard = false }
     }
 
     func closePane(_ id: String) {
         layout.close(id)
         focusTerminalView()
+    }
+
+    func zoom(by step: Double) {
+        terminalFontSize = min(max(terminalFontSize + step, 8), 36)
+    }
+
+    func resetZoom() {
+        terminalFontSize = appearance.fontSize
     }
 
     func cycleFocus() {

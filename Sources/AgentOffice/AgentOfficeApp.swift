@@ -63,6 +63,10 @@ struct AgentOfficeApp: App {
                 Button("Çalışma") { delegate.model.mode = .work }.keyboardShortcut("2")
                 Button("Odak") { delegate.model.mode = .focus }.keyboardShortcut("3")
                 Divider()
+                Button("Yazıyı büyüt") { delegate.model.zoom(by: 1) }.keyboardShortcut("=")
+                Button("Yazıyı küçült") { delegate.model.zoom(by: -1) }.keyboardShortcut("-")
+                Button("Gerçek boyut") { delegate.model.resetZoom() }.keyboardShortcut("0")
+                Divider()
                 Button("Bekleyen ajana atla") { delegate.model.jumpToWaiting() }.keyboardShortcut("j")
                 Button("Sonraki terminal") { delegate.model.cycleFocus() }.keyboardShortcut(.tab, modifiers: .control)
                 Button("Paneli kapat") {
