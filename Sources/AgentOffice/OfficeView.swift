@@ -49,6 +49,9 @@ struct OfficeView: View {
             focusCamera(on: id, plan: plan)
         }
         .overlay {
+            OfficeCards(plan: plan, desks: desks, camera: scene.officeCamera, icons: model.projectIcons, interactive: interactive)
+        }
+        .overlay {
             if plan.rooms.isEmpty {
                 ContentUnavailableView("Ofis boş", systemImage: "building.2", description: Text("⌘T ile yeni panel aç."))
             }
