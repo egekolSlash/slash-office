@@ -47,7 +47,7 @@ private struct TileLabel: View {
 
     var body: some View {
         HStack(spacing: fontSize * 0.4) {
-            ProjectIconView(icon: icon, size: fontSize * 2.1)
+            ProjectIconView(icon: icon, size: fontSize * 2.1, isShell: tile.kind == .shell)
             VStack(alignment: .leading, spacing: 1) {
                 Text(tile.title)
                     .font(.system(size: fontSize, weight: .semibold))
@@ -79,9 +79,11 @@ private struct TileLabel: View {
 }
 
 /// Projenin ikonu (resim) ya da proje türünün sembolü, yuvarlatılmış kare içinde.
+/// Terminal oturumlarında sağ alt köşede terminal rozeti olur.
 struct ProjectIconView: View {
     let icon: LoadedProjectIcon?
     let size: Double
+    var isShell = false
 
     var body: some View {
         Group {
@@ -100,6 +102,17 @@ struct ProjectIconView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+        .overlay(alignment: .bottomTrailing) {
+            if isShell {
+                Image(systemName: "apple.terminal.fill")
+                    .font(.system(size: size * 0.3, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: size * 0.5, height: size * 0.5)
+                    .background(.black, in: RoundedRectangle(cornerRadius: size * 0.12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: size * 0.12, style: .continuous).stroke(.white.opacity(0.8), lineWidth: 1))
+                    .offset(x: size * 0.15, y: size * 0.15)
+            }
+        }
     }
 }
 

@@ -23,7 +23,7 @@ struct SessionList: View {
         )) {
             ForEach(model.store.sessions) { session in
                 HStack(spacing: 8) {
-                    ProjectIconView(icon: model.projectIcons[session.cwd], size: 28)
+                    ProjectIconView(icon: model.projectIcons[session.cwd], size: 28, isShell: model.kind(of: session.id) == .shell)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.title).font(.headline)
                         StatusBadge(state: session.state, kind: model.kind(of: session.id))
