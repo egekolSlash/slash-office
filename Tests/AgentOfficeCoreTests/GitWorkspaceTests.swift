@@ -64,4 +64,71 @@ import Testing
         // Ajan commit etse de oturum başından beri olan değişiklik görünmeli.
         #expect(DiffParser.parse(workspace.diff(since: baseline)).first?.path == "a.txt")
     }
+
+    func committedRepo() throws -> (URL, GitWorkspace) {
+        let dir = try tempDir()
+        try git(dir, "init", "-q", "-b", "main")
+        try "one\n".write(to: dir.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        try "keep\n".write(to: dir.appendingPathComponent("b.txt"), atomically: true, encoding: .utf8)
+        try git(dir, "add", ".")
+        try git(dir, "commit", "-q", "-m", "init")
+        return (dir, GitWorkspace(directory: dir.path))
+    }
+
+    @Test func statusSeparatesStagedUnstagedAndUntracked() throws {
+        let (dir, workspace) = try committedRepo()
+        try "one\ntwo\n".write(to: dir.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        try git(dir, "add", "a.txt")
+        try "one\ntwo\nthree\n".write(to: dir.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        try FileManager.default.removeItem(at: dir.appendingPathComponent("b.txt"))
+        try "new\n".write(to: dir.appendingPathComponent("Yeni Dosya ş.txt"), atomically: true, encoding: .utf8)
+        let status = Dictionary(uniqueKeysWithValues: workspace.status().map { ($0.path, $0) })
+        #expect(status["a.txt"]?.staged == .modified && status["a.txt"]?.unstaged == .modified)
+        #expect(status["b.txt"]?.staged == nil && status["b.txt"]?.unstaged == .deleted)
+        #expect(status["Yeni Dosya ş.txt"]?.unstaged == .untracked)
+    }
+
+    @Test func unstagedAndStagedDiffsAreSeparateAndEmptyAfterCommit() throws {
+        let (dir, workspace) = try committedRepo()
+        try "one\ntwo\n".write(to: dir.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        try git(dir, "add", "a.txt")
+        try "x\n".write(to: dir.appendingPathComponent("c.txt"), atomically: true, encoding: .utf8)
+        #expect(DiffParser.parse(workspace.diff(.staged)).map(\.path) == ["a.txt"])
+        #expect(DiffParser.parse(workspace.diff(.unstaged)).map(\.path) == ["c.txt"])
+        try git(dir, "add", ".")
+        try git(dir, "commit", "-q", "-m", "second")
+        #expect(DiffParser.parse(workspace.diff(.staged)).isEmpty)
+        #expect(DiffParser.parse(workspace.diff(.unstaged)).isEmpty)
+        #expect(workspace.status().isEmpty)
+    }
+
+    @Test func snapshotDiffShowsOnlyLaterChangesAndKeepsIndex() throws {
+        let (dir, workspace) = try committedRepo()
+        try "earlier\n".write(to: dir.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        try git(dir, "add", "a.txt")
+        let stagedBefore = workspace.diff(.staged)
+        let tree = try #require(workspace.snapshotTree())
+        #expect(workspace.diff(.staged) == stagedBefore)   // kullanıcının index'i değişmedi
+        try "later\n".write(to: dir.appendingPathComponent("b.txt"), atomically: true, encoding: .utf8)
+        try "brand new\n".write(to: dir.appendingPathComponent("n.txt"), atomically: true, encoding: .utf8)
+        let paths = Set(DiffParser.parse(workspace.diff(.since(tree: tree))).map(\.path))
+        #expect(paths == ["b.txt", "n.txt"])
+    }
+
+    @Test func freshRepositoryWithoutCommitsStillReportsStatus() throws {
+        let dir = try tempDir()
+        try git(dir, "init", "-q", "-b", "main")
+        try "x\n".write(to: dir.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        let workspace = GitWorkspace(directory: dir.path)
+        #expect(workspace.status().first?.unstaged == .untracked)
+        #expect(DiffParser.parse(workspace.diff(.unstaged)).first?.path == "a.txt")
+        #expect(workspace.snapshotTree() != nil)
+    }
+
+    @Test func notARepositoryHasNoStatusOrSnapshot() throws {
+        let workspace = GitWorkspace(directory: try tempDir().path)
+        #expect(workspace.status().isEmpty)
+        #expect(workspace.snapshotTree() == nil)
+        #expect(workspace.isRepository == false)
+    }
 }
