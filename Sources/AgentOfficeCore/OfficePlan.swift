@@ -96,6 +96,15 @@ public struct OfficePlan: Equatable, Sendable {
         return result
     }
 
+    /// Odaların sırası: projenin ofise ilk girdiği an (spec §3). Önceki sıradaki odalar yerini korur, odası
+    /// boşalanlar çıkar, yeni projeler ilk görüldükleri sırayla sona eklenir.
+    public static func roomOrder(_ members: [Member], previous: [String]) -> [String] {
+        let present = Set(members.map(\.roomKey))
+        var order = previous.filter(present.contains)
+        for member in members where !order.contains(member.roomKey) { order.append(member.roomKey) }
+        return order
+    }
+
     /// 1–2 masa 2×2, 3–4 masa 3×2, daha fazlası 3×3 (spec §3).
     static func roomSize(slotCount: Int) -> (width: Int, depth: Int) {
         switch slotCount {
@@ -114,13 +123,11 @@ public struct OfficePlan: Equatable, Sendable {
         return (x, 0.5 + Double(row) * (Double(depth) - 1) / Double(rows - 1))
     }
 
-    public static func make(_ members: [Member], slots: [String: DeskSlot]) -> OfficePlan {
-        var order: [String] = []
+    /// `order`: `roomOrder` sonucu; verilmezse odalar oturum listesinde ilk görüldükleri sırayla dizilir.
+    public static func make(_ members: [Member], slots: [String: DeskSlot], order: [String]? = nil) -> OfficePlan {
         var groups: [String: [Member]] = [:]
-        for member in members {
-            if groups[member.roomKey] == nil { order.append(member.roomKey) }
-            groups[member.roomKey, default: []].append(member)
-        }
+        for member in members { groups[member.roomKey, default: []].append(member) }
+        let order = roomOrder(members, previous: order ?? [])
         var rooms: [Room] = []
         var cursor: [Side: Double] = [.left: 0, .right: 0]
         for (position, key) in order.enumerated() {

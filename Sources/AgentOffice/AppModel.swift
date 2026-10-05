@@ -33,6 +33,8 @@ final class AppModel {
     @ObservationIgnored private var roomKeyLookups: Set<String> = []
     /// Masa yerleri: oturum kalkınca diğerleri yer değiştirmesin diye hatırlanır (spec §3).
     @ObservationIgnored private var deskSlots: [String: OfficePlan.DeskSlot] = [:]
+    /// Odaların sırası: proje ofise ilk girdiğinde sona eklenir, odası boşalınca çıkar.
+    @ObservationIgnored private var roomOrder: [String] = []
     /// ⌘J ofis modunda: kamera bu masaya gider (OfficeView okuyup sıfırlar).
     var officeFocusRequest: String?
     @ObservationIgnored private var iconLookups: Set<String> = []
@@ -455,7 +457,8 @@ extension AppModel {
     func officePlan() -> OfficePlan {
         let members = store.sessions.map { OfficePlan.Member(id: $0.id, roomKey: roomKey(for: $0.cwd)) }
         deskSlots = OfficePlan.assignSlots(members, previous: deskSlots)
-        return OfficePlan.make(members, slots: deskSlots)
+        roomOrder = OfficePlan.roomOrder(members, previous: roomOrder)
+        return OfficePlan.make(members, slots: deskSlots, order: roomOrder)
     }
 
     /// Henüz bakılmamış proje klasörlerinin ikonunu arka planda bulur.

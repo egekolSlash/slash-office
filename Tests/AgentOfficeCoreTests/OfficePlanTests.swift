@@ -83,4 +83,19 @@ import Testing
         #expect(p.rooms[0].doorX == OfficePlan.corridorX)
         #expect(p.rooms[1].doorX == OfficePlan.corridorX + OfficePlan.corridorWidth)
     }
+
+    @Test func closingFirstSessionKeepsRoomOrder() {
+        let first = members([("A1", "/a"), ("B1", "/b"), ("A2", "/a")])
+        let order = OfficePlan.roomOrder(first, previous: [])
+        #expect(order == ["/a", "/b"])
+        let second = members([("B1", "/b"), ("A2", "/a")])
+        let next = OfficePlan.roomOrder(second, previous: order)
+        #expect(next == ["/a", "/b"])
+        let plan = OfficePlan.make(second, slots: OfficePlan.assignSlots(second, previous: [:]), order: next)
+        #expect(plan.rooms.map(\.key) == ["/a", "/b"])
+        #expect(plan.rooms.map(\.side) == [.left, .right])
+        // Odası boşalan proje kalkar, yeni proje sona eklenir.
+        let third = members([("A2", "/a"), ("C1", "/c")])
+        #expect(OfficePlan.roomOrder(third, previous: next) == ["/a", "/c"])
+    }
 }
