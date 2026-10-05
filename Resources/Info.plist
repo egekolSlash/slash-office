@@ -10,5 +10,6 @@
     <key>CFBundleVersion</key><string>2</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSMicrophoneUsageDescription</key><string>Agent Office içinde çalışan Claude Code'un ses modu mikrofonu kullanır.</string>
 </dict>
 </plist>
