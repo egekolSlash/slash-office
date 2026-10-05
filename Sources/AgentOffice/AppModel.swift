@@ -195,8 +195,8 @@ final class AppModel {
 
     func newShellSession(cwd: URL, replacing: String? = nil) {
         let id = UUID().uuidString.lowercased()
-        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil,
-                                   createdAt: .now, kind: .shell)
+        let title = cwd.path == NSHomeDirectory() ? "~" : cwd.lastPathComponent
+        let record = SessionRecord(id: id, title: title, cwd: cwd.path, claudeSessionID: nil, createdAt: .now, kind: .shell)
         guard launchShell(record: record) else { return }
         records[id] = record
         saveRecords()
@@ -384,12 +384,36 @@ final class AppModel {
         }
     }
 
+    /// Shell oturumu `cd` ile başka klasöre geçti: ofisteki proje, başlık, ikon ve diff yeni klasöre taşınır.
+    private func relocateShell(_ id: String, to cwd: String) {
+        guard var record = records[id] else { return }
+        let title = cwd == NSHomeDirectory() ? "~" : (cwd as NSString).lastPathComponent
+        DebugLog.write("shell \(id) cwd -> \(cwd)")
+        record.cwd = cwd
+        record.title = title
+        record.baseline = nil
+        record.turnTree = nil
+        records[id] = record
+        saveRecords()
+        store.relocate(id, cwd: cwd, title: title)
+        diffWatcher.forget(id)
+        captureBaseline(id, cwd: cwd)
+        if cwd != NSHomeDirectory() { noteRecentProject(cwd) }
+        diffChanged(id)
+    }
+
     /// Shell oturumlarında hook yok: ön plandaki komut saniyede bir okunur.
     func pollShells() {
         for (id, record) in records where record.kind == .shell {
             guard let terminal = terminals[id], terminal.process.running else { continue }
             let pid = terminal.process.shellPid
             let group = ShellActivity.foregroundGroup(ptyFD: terminal.process.childfd)
+            // Ön planda bir program (ör. başka projede açılan claude) varsa onun klasörü, yoksa shell'inki.
+            let foregroundPID = group.flatMap { $0 != pid ? $0 : nil }
+            if let cwd = foregroundPID.flatMap(ShellActivity.workingDirectory) ?? ShellActivity.workingDirectory(pid),
+               cwd != record.cwd {
+                relocateShell(id, to: cwd)
+            }
             let command = group.flatMap(ShellActivity.processName)
             let state = ShellActivity.state(shellPID: pid, foregroundGroup: group, commandName: command)
             let previous = store.session(id)?.state

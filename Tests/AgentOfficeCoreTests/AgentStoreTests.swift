@@ -76,4 +76,14 @@ import Testing
         store.apply([.toolFinished(name: "Write", touchedFiles: ["/a/x"]), .toolFinished(name: "Bash", touchedFiles: [])], to: "a")
         #expect(store.session("a")?.touchedFiles == ["/a/x", "/a/y"])
     }
+
+    @Test @MainActor func relocateMovesSessionToNewProject() {
+        let store = AgentStore()
+        store.register(id: "s", title: "old", cwd: "/old", state: .idle)
+        store.apply([.toolFinished(name: "Edit", touchedFiles: ["/old/a.swift"])], to: "s")
+        store.relocate("s", cwd: "/git/new", title: "new")
+        #expect(store.session("s")?.cwd == "/git/new")
+        #expect(store.session("s")?.title == "new")
+        #expect(store.session("s")?.touchedFiles == [])
+    }
 }

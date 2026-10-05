@@ -65,6 +65,12 @@ import Testing
         #expect(ShellActivity.displayName("vim", executablePath: nil) == "vim")
     }
 
+    @Test func workingDirectoryOfSelf() {
+        let expected = String(cString: realpath(FileManager.default.currentDirectoryPath, nil))
+        #expect(ShellActivity.workingDirectory(getpid()) == expected)
+        #expect(ShellActivity.workingDirectory(-1) == nil)
+    }
+
     @Test func processNameOfSelf() {
         #expect(ShellActivity.processName(getpid())?.isEmpty == false)
         #expect(ShellActivity.processName(-1) == nil)

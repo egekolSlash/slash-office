@@ -58,6 +58,15 @@ public final class AgentStore {
         sessions[index].state = state
     }
 
+    /// Shell oturumu başka klasöre geçti (`cd`): proje, başlık ve o projeye ait izler güncellenir.
+    public func relocate(_ id: String, cwd: String, title: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].cwd != cwd else { return }
+        sessions[index].cwd = cwd
+        sessions[index].title = title
+        sessions[index].touchedFiles = []
+        sessions[index].todos = []
+    }
+
     public func markExited(_ id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].state = .exited
