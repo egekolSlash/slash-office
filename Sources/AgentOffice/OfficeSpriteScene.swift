@@ -20,7 +20,7 @@ final class OfficeSpriteScene: SKScene {
     let officeCamera = OfficeCamera()
     private let world = SKNode()
     private var roomNodes: [String: (room: OfficePlan.Room, node: SKNode)] = [:]
-    private var deskNodes: [String: (desk: OfficePlan.Desk, info: OfficeDeskInfo, node: SKNode)] = [:]
+    private var deskNodes: [String: (desk: OfficePlan.Desk, room: OfficePlan.Room, info: OfficeDeskInfo, node: SKNode)] = [:]
     private var corridorNode: SKNode?
     private var corridorRect: PlanRect?
 
@@ -71,16 +71,16 @@ final class OfficeSpriteScene: SKScene {
             world.addChild(node)
             roomNodes[room.key] = (room, node)
         }
-        let placed = Dictionary(uniqueKeysWithValues: plan.rooms.flatMap(\.desks).map { ($0.id, $0) })
-        for (id, entry) in deskNodes where placed[id] != entry.desk || desks[id] != entry.info {
+        let placed = Dictionary(uniqueKeysWithValues: plan.rooms.flatMap { room in room.desks.map { ($0.id, (desk: $0, room: room)) } })
+        for (id, entry) in deskNodes where placed[id]?.desk != entry.desk || placed[id]?.room != entry.room || desks[id] != entry.info {
             entry.node.removeFromParent()
             deskNodes[id] = nil
         }
-        for (id, desk) in placed where deskNodes[id] == nil {
+        for (id, place) in placed where deskNodes[id] == nil {
             guard let info = desks[id] else { continue }
-            let node = Self.deskNode(desk, info: info)
+            let node = Self.deskNode(place.desk, in: place.room, info: info)
             world.addChild(node)
-            deskNodes[id] = (desk, info, node)
+            deskNodes[id] = (place.desk, place.room, info, node)
         }
         applyCamera()
     }
@@ -114,11 +114,6 @@ final class OfficeSpriteScene: SKScene {
         polygon([point(a.0, 0, a.1), point(b.0, 0, b.1), point(b.0, height, b.1), point(a.0, height, a.1)], fill: color)
     }
 
-    /// Derinlik: küçük x+z arkada. Arka plan katmanı < oda < masa.
-    static func depth(_ x: Double, _ z: Double, layer: Double = 0) -> CGFloat {
-        CGFloat((x + z) * 10 + layer)
-    }
-
     static func projectColor(_ key: String) -> NSColor {
         let c = ProjectPalette.colors[ProjectPalette.index(for: key)]
         return NSColor(red: c.red, green: c.green, blue: c.blue, alpha: 1)
@@ -129,28 +124,27 @@ final class OfficeSpriteScene: SKScene {
         let rect = room.rect
         let tint = projectColor(room.key)
         let floor = floor(rect, color: NSColor(red: 0.22, green: 0.23, blue: 0.32, alpha: 1).blended(withFraction: 0.12, of: tint) ?? .darkGray)
-        floor.zPosition = -900
+        floor.zPosition = CGFloat(OfficeDepth.floor(room))
         node.addChild(floor)
-        let h = OfficePlan.wallHeight
+        let heights = room.backWallHeights
+        let low = OfficePlan.lowWallHeight
         let back = NSColor(red: 0.30, green: 0.32, blue: 0.44, alpha: 1)
         let side = NSColor(red: 0.25, green: 0.27, blue: 0.38, alpha: 1)
-        // Arka iki duvar tam boy, ön iki duvar alçak (spec §3).
-        let walls: [SKShapeNode] = [
-            wall(from: (rect.minX, rect.minZ), to: (rect.maxX, rect.minZ), height: h, color: back),
-            wall(from: (rect.minX, rect.minZ), to: (rect.minX, rect.maxZ), height: h, color: side),
-            wall(from: (rect.minX, rect.maxZ), to: (rect.maxX, rect.maxZ), height: 0.25, color: side.withAlphaComponent(0.9)),
-            wall(from: (rect.maxX, rect.minZ), to: (rect.maxX, rect.maxZ), height: 0.25, color: back.withAlphaComponent(0.9)),
+        // Arka duvarlar: dış kenarda tam boy, içeride alçak; ön duvarlar hep alçak (spec §3, kesit görünüm).
+        let backWalls = [
+            wall(from: (rect.minX, rect.minZ), to: (rect.maxX, rect.minZ), height: heights.z, color: back),
+            wall(from: (rect.minX, rect.minZ), to: (rect.minX, rect.maxZ), height: heights.x, color: side),
         ]
-        walls[0].zPosition = depth(rect.minX, rect.minZ, layer: -500)
-        walls[1].zPosition = depth(rect.minX, rect.minZ, layer: -499)
-        walls[2].zPosition = depth(rect.maxX, rect.maxZ, layer: 5)
-        walls[3].zPosition = depth(rect.maxX, rect.maxZ, layer: 6)
-        walls.forEach(node.addChild)
-        // Kapı: koridora bakan duvarda, proje renginde bir çerçeve.
-        let doorHeight = room.side == .left ? 0.25 : 1.1
-        let door = wall(from: (room.doorX, room.doorZ - 0.35), to: (room.doorX, room.doorZ + 0.35), height: doorHeight,
-                        color: tint.withAlphaComponent(0.85))
-        door.zPosition = room.side == .left ? depth(rect.maxX, rect.maxZ, layer: 7) : depth(rect.minX, rect.minZ, layer: -498)
+        let frontWalls = [
+            wall(from: (rect.minX, rect.maxZ), to: (rect.maxX, rect.maxZ), height: low, color: side.withAlphaComponent(0.9)),
+            wall(from: (rect.maxX, rect.minZ), to: (rect.maxX, rect.maxZ), height: low, color: back.withAlphaComponent(0.9)),
+        ]
+        for wall in backWalls { wall.zPosition = CGFloat(OfficeDepth.backWalls(room)); node.addChild(wall) }
+        for wall in frontWalls { wall.zPosition = CGFloat(OfficeDepth.frontWalls(room)); node.addChild(wall) }
+        // Kapı: koridora bakan (alçak) duvarda, proje renginde bir eşik.
+        let door = wall(from: (room.doorX, room.doorZ - 0.35), to: (room.doorX, room.doorZ + 0.35), height: low + 0.02,
+                        color: tint.withAlphaComponent(0.9))
+        door.zPosition = CGFloat(room.side == .left ? OfficeDepth.frontWalls(room) : OfficeDepth.backWalls(room)) + 0.5
         node.addChild(door)
         return node
     }
@@ -164,9 +158,9 @@ final class OfficeSpriteScene: SKScene {
         }
     }
 
-    static func deskNode(_ desk: OfficePlan.Desk, info: OfficeDeskInfo) -> SKNode {
+    static func deskNode(_ desk: OfficePlan.Desk, in room: OfficePlan.Room, info: OfficeDeskInfo) -> SKNode {
         let node = SKNode()
-        node.zPosition = depth(desk.x, desk.z)
+        node.zPosition = CGFloat(OfficeDepth.desk(desk, in: room))
         // Durum renginde zemin ışığı.
         let glow = floor(PlanRect(minX: desk.x - 0.45, minZ: desk.z - 0.45, maxX: desk.x + 0.45, maxZ: desk.z + 0.45),
                          color: stateColor(info.state).withAlphaComponent(info.focused ? 0.75 : 0.5))

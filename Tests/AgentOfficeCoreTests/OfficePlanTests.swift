@@ -98,4 +98,19 @@ import Testing
         let third = members([("A2", "/a"), ("C1", "/c")])
         #expect(OfficePlan.roomOrder(third, previous: next) == ["/a", "/c"])
     }
+
+    @Test func roomInFrontDrawsAboveRoomBehindAndOnlyOuterWallsAreTall() {
+        let p = plan([("1", "/a"), ("2", "/b"), ("3", "/c"), ("4", "/c")])
+        let back = p.rooms[0], front = p.rooms[2]
+        #expect(front.side == back.side && front.z > back.z)
+        // Öndeki odanın en arka masası, arkadaki odanın ön duvarının üstüne çizilir.
+        let frontDesk = front.desks.min { $0.x + $0.z < $1.x + $1.z }!
+        #expect(OfficeDepth.desk(frontDesk, in: front) > OfficeDepth.frontWalls(back))
+        #expect(OfficeDepth.floor(front) > OfficeDepth.frontWalls(back))
+        // Tam boy duvar sadece binanın dış arka kenarlarında: arkadaki odayı örtmesin.
+        #expect(back.backWallHeights == (z: OfficePlan.wallHeight, x: OfficePlan.wallHeight))
+        #expect(front.backWallHeights.z == OfficePlan.lowWallHeight)
+        #expect(front.backWallHeights.x == OfficePlan.wallHeight)
+        #expect(p.rooms[1].backWallHeights.x == OfficePlan.lowWallHeight)
+    }
 }

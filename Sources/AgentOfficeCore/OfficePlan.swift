@@ -25,6 +25,8 @@ public struct OfficePlan: Equatable, Sendable {
     public static let corridorX = 3.0
     public static let corridorWidth = 1.5
     public static let wallHeight = 1.6
+    /// İç ve ön duvarlar alçak (Sims tarzı kesit): arkadaki odayı ve masaları örtmez.
+    public static let lowWallHeight = 0.25
 
     public struct Member: Equatable, Sendable {
         public var id: String
@@ -71,6 +73,12 @@ public struct OfficePlan: Equatable, Sendable {
         /// Kapı koridora bakan duvarın ortasında.
         public var doorX: Double { side == .left ? x + Double(width) : x }
         public var doorZ: Double { z + Double(depth) / 2 }
+        /// Arka duvarların yüksekliği: tam boy sadece binanın dış arka kenarında (koridorun ilk odaları ve sol
+        /// taraftaki dış duvar); iç duvarlar alçak, yoksa öndeki odanın duvarı arkadakinin zeminini örter.
+        public var backWallHeights: (z: Double, x: Double) {
+            (z == 0 ? OfficePlan.wallHeight : OfficePlan.lowWallHeight,
+             side == .left ? OfficePlan.wallHeight : OfficePlan.lowWallHeight)
+        }
     }
 
     public var rooms: [Room]
@@ -163,4 +171,16 @@ public struct OfficePlan: Equatable, Sendable {
     public func room(atX x: Double, z: Double) -> Room? {
         rooms.first { $0.rect.contains(x: x, z: z) }
     }
+}
+
+/// Sahnedeki çizim sırası (SpriteKit `zPosition`). Aynı taraftaki odalar arka arkaya dizildiği için önce oda sırası,
+/// oda içinde zemin < arka duvarlar < masalar (önden arkaya) < ön duvarlar. Sol ve sağ odalar ekranda örtüşmez.
+public enum OfficeDepth {
+    static func base(_ room: OfficePlan.Room) -> Double { room.z * 100 }
+    public static func floor(_ room: OfficePlan.Room) -> Double { base(room) }
+    public static func backWalls(_ room: OfficePlan.Room) -> Double { base(room) + 1 }
+    public static func desk(_ desk: OfficePlan.Desk, in room: OfficePlan.Room) -> Double {
+        base(room) + 10 + (desk.x - room.x + desk.z - room.z) * 10
+    }
+    public static func frontWalls(_ room: OfficePlan.Room) -> Double { base(room) + 90 }
 }
