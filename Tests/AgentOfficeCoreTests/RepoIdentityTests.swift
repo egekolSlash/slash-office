@@ -36,9 +36,9 @@ import Testing
         #expect(RepoIdentity.roomKey(for: main.path) == main.path)
         #expect(RepoIdentity.roomKey(for: worktree.path) == main.path)
         #expect(RepoIdentity.roomKey(for: sub.path) == main.path)
-        #expect(RepoIdentity.worktreeName(directory: worktree.path, roomKey: main.path) == "juice-merge-worktree1")
-        #expect(RepoIdentity.worktreeName(directory: main.path, roomKey: main.path) == nil)
-        #expect(RepoIdentity.worktreeName(directory: sub.path, roomKey: main.path) == nil)
+        #expect(RepoIdentity.locate(worktree.path).worktree == "juice-merge-worktree1")
+        #expect(RepoIdentity.locate(main.path).worktree == nil)
+        #expect(RepoIdentity.locate(sub.path).worktree == nil)
     }
 
     @Test func nonRepositoryIsItsOwnRoom() throws {
@@ -48,5 +48,30 @@ import Testing
 
     @Test func missingDirectoryIsItsOwnRoom() {
         #expect(RepoIdentity.roomKey(for: "/nope/does-not-exist") == "/nope/does-not-exist")
+    }
+
+    @Test func worktreeNestedInsideRepositoryIsLabelled() throws {
+        let root = try tempDir()
+        let main = root.appendingPathComponent("juice-merge")
+        try FileManager.default.createDirectory(at: main, withIntermediateDirectories: true)
+        try git(main, "init", "-q")
+        try git(main, "commit", "-q", "--allow-empty", "-m", "init")
+        let nested = main.appendingPathComponent(".claude/worktrees/foo")
+        #expect(try git(main, "worktree", "add", "-q", nested.path) == 0)
+        let identity = RepoIdentity.locate(nested.path)
+        #expect(identity.roomKey == main.path)
+        #expect(identity.worktree == "foo")
+        #expect(RepoIdentity.locate(main.appendingPathComponent("Assets").path).worktree == nil)
+        #expect(RepoIdentity.locate(main.path) == RepoIdentity.Identity(roomKey: main.path, worktree: nil))
+    }
+
+    @Test func symlinkedMainRepositoryIsNotAWorktree() throws {
+        let root = try tempDir()
+        let main = root.appendingPathComponent("real")
+        try FileManager.default.createDirectory(at: main, withIntermediateDirectories: true)
+        try git(main, "init", "-q")
+        let link = root.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: main)
+        #expect(RepoIdentity.locate(link.path).worktree == nil)
     }
 }

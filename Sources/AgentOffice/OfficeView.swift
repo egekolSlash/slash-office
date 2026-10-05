@@ -65,7 +65,7 @@ struct OfficeView: View {
                 guard let session = model.store.session(desk.id) else { continue }
                 result[desk.id] = OfficeDeskInfo(
                     id: desk.id, title: session.title, state: session.state, kind: model.kind(of: desk.id),
-                    roomKey: room.key, worktree: RepoIdentity.worktreeName(directory: session.cwd, roomKey: room.key),
+                    roomKey: room.key, worktree: model.worktree(for: session.cwd),
                     focused: model.layout.focused == desk.id)
             }
         }

@@ -28,8 +28,8 @@ final class AppModel {
     }
     /// Proje klasörü → ikon (resim ya da proje türü sembolü); arka planda bir kez bulunur.
     private(set) var projectIcons: [String: LoadedProjectIcon] = [:]
-    /// Proje klasörü → oda anahtarı (ana depo; worktree'ler aynı odada). Arka planda bir kez bulunur.
-    private(set) var roomKeys: [String: String] = [:]
+    /// Proje klasörü → oda anahtarı (ana depo; worktree'ler aynı odada) ve worktree adı. Arka planda bir kez bulunur.
+    private(set) var roomIdentities: [String: RepoIdentity.Identity] = [:]
     @ObservationIgnored private var roomKeyLookups: Set<String> = []
     /// Masa yerleri: oturum kalkınca diğerleri yer değiştirmesin diye hatırlanır (spec §3).
     @ObservationIgnored private var deskSlots: [String: OfficePlan.DeskSlot] = [:]
@@ -441,13 +441,15 @@ extension AppModel {
         for directory in directories where !roomKeyLookups.contains(directory) {
             roomKeyLookups.insert(directory)
             Task { [weak self] in
-                let key = await Task.detached(priority: .utility) { RepoIdentity.roomKey(for: directory) }.value
-                self?.roomKeys[directory] = key
+                let identity = await Task.detached(priority: .utility) { RepoIdentity.locate(directory) }.value
+                self?.roomIdentities[directory] = identity
             }
         }
     }
 
-    func roomKey(for cwd: String) -> String { roomKeys[cwd] ?? cwd }
+    func roomKey(for cwd: String) -> String { roomIdentities[cwd]?.roomKey ?? cwd }
+
+    func worktree(for cwd: String) -> String? { roomIdentities[cwd]?.worktree }
 
     /// Ofisin kat planı; masa yerleri önceki plandan korunur.
     func officePlan() -> OfficePlan {
@@ -629,7 +631,7 @@ extension AppModel {
         }
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
-            roomKeys[worktree] = "/demo/juice-merge"
+            roomIdentities[worktree] = RepoIdentity.Identity(roomKey: "/demo/juice-merge", worktree: (worktree as NSString).lastPathComponent)
             roomKeyLookups.insert(worktree)
         }
         // AGENT_OFFICE_DEMO_REPO + AGENT_OFFICE_DEMO_BASE: ilk demo oturumunun diff'i gerçek bir depodan gelsin.

@@ -32,6 +32,13 @@ public struct GitWorkspace: Sendable {
         run(["rev-parse", "--is-inside-work-tree"]).status == 0
     }
 
+    /// Çalışma ağacının kök klasörü (worktree'de worktree'nin kendisi); depo değilse nil.
+    public func topLevel() -> String? {
+        let result = run(["rev-parse", "--show-toplevel"])
+        let path = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return result.status == 0 && !path.isEmpty ? path : nil
+    }
+
     /// Deponun ortak `.git` klasörü (worktree'lerde ana deponunki); depo değilse nil.
     public func commonDirectory() -> String? {
         let result = run(["rev-parse", "--path-format=absolute", "--git-common-dir"])
