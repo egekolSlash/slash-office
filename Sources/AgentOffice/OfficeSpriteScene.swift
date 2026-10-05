@@ -171,6 +171,10 @@ final class OfficeSpriteScene: SKScene {
         let glow = floor(PlanRect(minX: desk.x - 0.45, minZ: desk.z - 0.45, maxX: desk.x + 0.45, maxZ: desk.z + 0.45),
                          color: stateColor(info.state).withAlphaComponent(info.focused ? 0.75 : 0.5))
         glow.zPosition = -1
+        if case .waiting = info.state {
+            // Bekleyen masa yanıp söner; ofisin tek sürekli animasyonu bu.
+            glow.run(.repeatForever(.sequence([.fadeAlpha(to: 0.35, duration: 0.6), .fadeAlpha(to: 1, duration: 0.6)])))
+        }
         node.addChild(glow)
         // Masa üstü (yükseklik 0.45) ve monitör (masanın arka kenarında).
         let top = polygon([point(desk.x - 0.35, 0.45, desk.z - 0.3), point(desk.x + 0.35, 0.45, desk.z - 0.3),

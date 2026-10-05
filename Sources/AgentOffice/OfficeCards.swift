@@ -79,10 +79,10 @@ private struct DeskCard: View {
     }
 }
 
-/// Cevap bekleyen ajanın üstündeki turuncu, nabız gibi atan balon.
+/// Cevap bekleyen ajanın üstündeki turuncu balon. Sabit: SwiftUI'de sürekli animasyon boştaki ofiste ~%6 CPU
+/// harcıyordu; titreşimi sahnedeki zemin ışığı (SpriteKit) yapar.
 struct QuestionBubble: View {
     let size: Double
-    @State private var pulse = false
 
     var body: some View {
         Text("?")
@@ -90,8 +90,5 @@ struct QuestionBubble: View {
             .foregroundStyle(.white)
             .frame(width: size, height: size)
             .background(Circle().fill(.orange))
-            .scaleEffect(pulse ? 1.12 : 0.92)
-            .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: pulse)
-            .onAppear { pulse = true }
     }
 }
