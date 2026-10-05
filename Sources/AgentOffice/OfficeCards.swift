@@ -22,14 +22,14 @@ struct OfficeCards: View {
             }
             ForEach(plan.rooms.flatMap(\.desks), id: \.id) { desk in
                 if let info = desks[desk.id] {
-                    let anchor = viewport.project(x: desk.x, y: 1.1, z: desk.z, viewSize: size)
+                    let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size)
                     if detail != .far {
                         DeskCard(info: info, near: detail == .near)
-                            .position(x: anchor.x, y: anchor.y - 18)
+                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.cardOffset)
                     }
                     if case .waiting = info.state {
-                        QuestionBubble(size: max(18, min(viewport.zoom * 0.35, 34)))
-                            .position(x: anchor.x, y: anchor.y - (detail == .far ? 6 : 52))
+                        QuestionBubble(size: OfficeOverlay.bubbleSize(zoom: viewport.zoom))
+                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail))
                     }
                 }
             }

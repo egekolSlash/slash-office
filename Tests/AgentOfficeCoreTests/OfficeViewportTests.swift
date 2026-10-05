@@ -96,4 +96,19 @@ import Testing
         viewport.zoom(by: 1.05, anchorX: width / 2, anchorY: height / 2, viewSize: view, limits: limits)
         #expect(viewport.zoom > fit.zoom)
     }
+
+    @Test(arguments: [60.0, 130.0])
+    func clickingBubbleOrCardOpensItsDesk(zoom: Double) {
+        let members = [OfficePlan.Member(id: "a", roomKey: "/a"), OfficePlan.Member(id: "b", roomKey: "/a")]
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let desk = plan.rooms[0].desks[1]
+        let point = OfficeViewport.screenPlane(x: desk.x, y: 0.5, z: desk.z)
+        let viewport = OfficeViewport(centerX: point.x, centerY: point.y, zoom: zoom)
+        let detail = OfficeDetail.level(zoom: zoom)
+        let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size)
+        let bubbleY = anchor.y - OfficeOverlay.bubbleOffset(detail)
+        #expect(plan.desk(atViewX: anchor.x, y: bubbleY, viewport: viewport, viewSize: size, detail: detail, waiting: ["b"]) == "b")
+        let cardY = anchor.y - OfficeOverlay.cardOffset
+        #expect(plan.desk(atViewX: anchor.x + 20, y: cardY, viewport: viewport, viewSize: size, detail: detail, waiting: []) == "b")
+    }
 }

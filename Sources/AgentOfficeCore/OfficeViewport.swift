@@ -107,3 +107,50 @@ extension OfficePlan {
         return nil
     }
 }
+
+/// Sahnenin üstündeki kart ve `?` balonunun yerleşimi. SwiftUI katmanı çizerken, tıklama testi bulurken
+/// aynı değerleri kullanır (katman tıklamaları sahneye bırakır).
+public enum OfficeOverlay {
+    /// Kart ve balonun asıldığı nokta: masanın üstünde, karakterin başı hizasında.
+    public static let anchorHeight = 1.1
+    public static let cardOffset = 18.0
+    /// Kartın tıklanabilir yaklaşık boyutu (başlık + durum satırı).
+    public static let cardSize = (width: 130.0, height: 34.0)
+
+    public static func anchor(_ desk: OfficePlan.Desk, viewport: OfficeViewport,
+                              viewSize: OfficeViewport.ViewSize) -> (x: Double, y: Double) {
+        viewport.project(x: desk.x, y: anchorHeight, z: desk.z, viewSize: viewSize)
+    }
+
+    public static func bubbleSize(zoom: Double) -> Double { max(18, min(zoom * 0.35, 34)) }
+
+    public static func bubbleOffset(_ detail: OfficeDetail) -> Double { detail == .far ? 6 : 52 }
+}
+
+extension OfficePlan {
+    /// Tıklama: önce bekleyenlerin `?` balonu, sonra (uzak seviye değilse) masa kartı, sonra sahnedeki masa.
+    /// Örtüşen balon ya da kartlarda öndeki (ekranda daha aşağıdaki) kazanır.
+    public func desk(atViewX x: Double, y: Double, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
+                     detail: OfficeDetail, waiting: Set<String>) -> String? {
+        let desks = rooms.flatMap(\.desks)
+        let radius = OfficeOverlay.bubbleSize(zoom: viewport.zoom) / 2
+        func front(_ hits: [(id: String, y: Double)]) -> String? { hits.max { $0.y < $1.y }?.id }
+        let bubbles = desks.compactMap { desk -> (id: String, y: Double)? in
+            guard waiting.contains(desk.id) else { return nil }
+            let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize)
+            let center = anchor.y - OfficeOverlay.bubbleOffset(detail)
+            return hypot(x - anchor.x, y - center) <= radius + 4 ? (desk.id, anchor.y) : nil
+        }
+        if let id = front(bubbles) { return id }
+        if detail != .far {
+            let cards = desks.compactMap { desk -> (id: String, y: Double)? in
+                let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize)
+                let inside = abs(x - anchor.x) <= OfficeOverlay.cardSize.width / 2
+                    && abs(y - (anchor.y - OfficeOverlay.cardOffset)) <= OfficeOverlay.cardSize.height / 2
+                return inside ? (desk.id, anchor.y) : nil
+            }
+            if let id = front(cards) { return id }
+        }
+        return desk(atViewX: x, y: y, viewport: viewport, viewSize: viewSize)
+    }
+}

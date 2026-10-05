@@ -74,7 +74,12 @@ struct OfficeView: View {
 
     private func handleClick(x: Double, y: Double, clickCount: Int, shift: Bool, plan: OfficePlan) {
         let camera = scene.officeCamera
-        if let id = plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize) {
+        let detail = interactive ? OfficeDetail.level(zoom: camera.viewport.zoom) : .far
+        let waiting = Set(plan.rooms.flatMap(\.desks).map(\.id).filter { id in
+            if case .waiting = model.store.session(id)?.state { true } else { false }
+        })
+        if let id = plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize,
+                              detail: detail, waiting: waiting) {
             DebugLog.write("office click (\(Int(x)),\(Int(y))) -> \(id)")
             if shift { model.addTerminal(id) } else { model.showTerminal(id) }
             return
