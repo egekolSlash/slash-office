@@ -70,4 +70,16 @@ import Testing
         try Data(#"[{"id":"a","title":"t","cwd":"/p","createdAt":"2026-10-05T10:00:00Z"}]"#.utf8).write(to: old)
         #expect(SessionStore.load(from: old).first?.baseline == nil)
     }
+
+    @Test func turnTreeRoundTripsAndIsOptional() throws {
+        let url = tempURL()
+        var record = SessionRecord(id: "s", title: "p", cwd: "/p", claudeSessionID: nil, createdAt: Date(timeIntervalSince1970: 0))
+        record.turnTree = "deadbeef"
+        try SessionStore.save([record], to: url)
+        #expect(SessionStore.load(from: url).first?.turnTree == "deadbeef")
+        let old = tempURL()
+        try FileManager.default.createDirectory(at: old.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"[{"id":"a","title":"t","cwd":"/p","createdAt":"2026-10-05T10:00:00Z"}]"#.utf8).write(to: old)
+        #expect(SessionStore.load(from: old).first?.turnTree == nil)
+    }
 }

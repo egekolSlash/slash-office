@@ -17,6 +17,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var kind: SessionKind = .claude
     /// Oturum açıldığında klasörün `HEAD`'i; diff bunun üzerinden alınır. Git deposu değilse nil.
     public var baseline: String?
+    /// Kullanıcının son isteği (ya da shell'de son komut) anındaki çalışma alanı fotoğrafı; "Son tur" diff'i buna göre.
+    public var turnTree: String?
 
     public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date, kind: SessionKind = .claude) {
         self.id = id
@@ -38,6 +40,7 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         // Tür alanından önceki kayıtlar Claude oturumudur.
         kind = try container.decodeIfPresent(SessionKind.self, forKey: .kind) ?? .claude
         baseline = try container.decodeIfPresent(String.self, forKey: .baseline)
+        turnTree = try container.decodeIfPresent(String.self, forKey: .turnTree)
     }
 }
 
