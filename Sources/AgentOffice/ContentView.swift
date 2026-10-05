@@ -22,13 +22,13 @@ struct ContentView: View {
         Group {
             switch model.mode {
             case .office:
-                office.frame(maxWidth: .infinity, maxHeight: .infinity)
+                OfficeView(model: model, interactive: true).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .work:
                 HSplitView {
                     TerminalGrid(model: model, requestRemove: requestRemove)
                         .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                     VSplitView {
-                        office.frame(minHeight: 220, maxHeight: .infinity)
+                        OfficeView(model: model).frame(minHeight: 220, maxHeight: .infinity)
                         inspector.frame(minHeight: 160, maxHeight: .infinity)
                     }
                     .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, maxHeight: .infinity)
@@ -89,10 +89,6 @@ struct ContentView: View {
             case .todo: TodoInspector(model: model)
             }
         }
-    }
-
-    private var office: some View {
-        OfficeView(model: model)
     }
 }
 
