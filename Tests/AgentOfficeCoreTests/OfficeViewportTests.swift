@@ -83,4 +83,17 @@ import Testing
         #expect(OfficeDetail.level(zoom: 70) == .medium)
         #expect(OfficeDetail.level(zoom: 150) == .near)
     }
+
+    @Test(arguments: [(1440.0, 900.0), (2560.0, 1440.0)])
+    func pinchInNeverZoomsOutFromFit(width: Double, height: Double) {
+        let members = [OfficePlan.Member(id: "a", roomKey: "/a")]
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let view = (width: width, height: height)
+        let fit = OfficeViewport.fitting(plan.bounds, height: OfficePlan.wallHeight, viewSize: view)
+        let limits = OfficeViewport.zoomLimits(fit: fit)
+        #expect(limits.contains(fit.zoom))
+        var viewport = fit
+        viewport.zoom(by: 1.05, anchorX: width / 2, anchorY: height / 2, viewSize: view, limits: limits)
+        #expect(viewport.zoom > fit.zoom)
+    }
 }

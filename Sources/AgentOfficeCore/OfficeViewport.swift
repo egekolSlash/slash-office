@@ -55,14 +55,19 @@ public struct OfficeViewport: Equatable, Sendable {
         }
         let usableWidth = max(viewSize.width - 2 * margin, 1)
         let usableHeight = max(viewSize.height - 2 * margin, 1)
-        let zoom = max(min(usableWidth / (maxX - minX), usableHeight / (maxY - minY)), 1)
+        // Tek odalı küçük bir ofis büyük pencerede devleşmesin; yakınlaştırma sınırının altında kalır.
+        let zoom = min(max(min(usableWidth / (maxX - minX), usableHeight / (maxY - minY)), 1), maxFitZoom)
         return OfficeViewport(centerX: (minX + maxX) / 2, centerY: (minY + maxY) / 2, zoom: zoom)
     }
+
+    /// Sığdırılmış görünümün en büyük ölçeği; `maxZoom`'dan küçük olduğu için içeri yakınlaştırmaya hep yer kalır.
+    public static let maxFitZoom = 200.0
+    public static let maxZoom = 260.0
 
     /// Yakınlaştırma sınırları: sığdırılmış görünümden biraz uzağa, bir masanın ekranı doldurmasına kadar yakına.
     public static func zoomLimits(fit: OfficeViewport) -> ClosedRange<Double> {
         let lower = max(fit.zoom * 0.8, 1)
-        return lower...max(lower, 260)
+        return lower...max(lower, maxZoom, fit.zoom)
     }
 
     /// İçerik parmakla birlikte hareket eder (görünüm noktası cinsinden).

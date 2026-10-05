@@ -84,7 +84,9 @@ struct OfficeView: View {
         let ground = camera.viewport.point(atX: x, y: y, height: 0, viewSize: camera.viewSize)
         guard let room = plan.room(atX: ground.x, z: ground.z) else { return }
         camera.userMoved = true
-        camera.target = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
+        var target = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
+        target.zoom = min(max(target.zoom, camera.limits.lowerBound), camera.limits.upperBound)
+        camera.target = target
     }
 
     /// ⌘J: kamera bekleyen masaya yaklaşır (yakın detay seviyesinde).
