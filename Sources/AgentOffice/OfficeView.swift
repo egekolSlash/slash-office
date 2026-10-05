@@ -38,11 +38,9 @@ struct OfficeView: View {
             scene.render(plan: plan, desks: desks)
         }
         .onChange(of: desks) { scene.render(plan: plan, desks: desks) }
-        .task(id: model.store.sessions.map(\.cwd)) {
-            let cwds = model.store.sessions.map(\.cwd)
-            model.loadRoomKeys(cwds)
-            model.loadProjectIcons(cwds + plan.rooms.map(\.key))
-        }
+        .task(id: model.store.sessions.map(\.cwd)) { model.loadRoomKeys(model.store.sessions.map(\.cwd)) }
+        // Oda anahtarları arka planda geldikçe (ör. sadece worktree açıkken ana depo) tabela ikonları yüklenir.
+        .task(id: plan.rooms.map(\.key)) { model.loadProjectIcons(plan.rooms.map(\.key)) }
         .onChange(of: model.officeFocusRequest) {
             guard interactive, let id = model.officeFocusRequest else { return }
             model.officeFocusRequest = nil
