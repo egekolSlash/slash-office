@@ -32,6 +32,13 @@ public struct GitWorkspace: Sendable {
         run(["rev-parse", "--is-inside-work-tree"]).status == 0
     }
 
+    /// Deponun ortak `.git` klasörü (worktree'lerde ana deponunki); depo değilse nil.
+    public func commonDirectory() -> String? {
+        let result = run(["rev-parse", "--path-format=absolute", "--git-common-dir"])
+        let path = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return result.status == 0 && !path.isEmpty ? path : nil
+    }
+
     /// `git status --porcelain=v2 -z`: her dosya için hazırlanmış ve hazırlanmamış durum.
     public func status() -> [StatusEntry] {
         let result = run(["status", "--porcelain=v2", "-z", "--untracked-files=all"])
