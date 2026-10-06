@@ -154,3 +154,17 @@ extension OfficePlan {
         return desk(atViewX: x, y: y, viewport: viewport, viewSize: viewSize)
     }
 }
+extension OfficeViewport {
+    /// Kamera bu yönden bakar (RealityKit, Y-yukarı); izdüşüm formülüyle aynı.
+    public static let cameraDirection = (x: 1 / 3.0.squareRoot(), y: 1 / 3.0.squareRoot(), z: 1 / 3.0.squareRoot())
+
+    /// Görünümün ortasına düşen, zemin düzlemindeki (y = 0) dünya noktası: kamera buraya bakar.
+    public func cameraTarget() -> (x: Double, y: Double, z: Double) {
+        let difference = centerX * Self.root2      // x − z
+        let sum = -centerY * Self.root6            // x + z (y = 0)
+        return ((sum + difference) / 2, 0, (sum - difference) / 2)
+    }
+
+    /// RealityKit `OrthographicCameraComponent.scale`: görünür yüksekliğin yarısı (dünya birimi).
+    public func orthographicScale(viewHeight: Double) -> Double { viewHeight / (2 * zoom) }
+}
