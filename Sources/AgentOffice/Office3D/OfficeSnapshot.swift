@@ -1,8 +1,9 @@
 import AgentOfficeCore
 import AppKit
 import Metal
+import SwiftUI
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting] [--custom] [--bench <fps>]`: demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -72,8 +73,12 @@ enum OfficeSnapshot {
             }
         }
         let anchors = plan.rooms.flatMap(\.desks).map { OfficeOverlay.anchor($0, viewport: scene.camera.viewport, viewSize: scene.camera.viewSize) }
+        // SwiftUI kart katmanı (tabelalar, kartlar, ? ve ✓ balonları) da resme eklenir.
+        let cards = ImageRenderer(content: OfficeCards(plan: plan, desks: desks, camera: scene.camera, icons: model.projectIcons, interactive: true)
+            .frame(width: CGFloat(size.width), height: CGFloat(size.height)))
+        cards.scale = 1
         do {
-            try write(texture, anchors: anchors, to: url)
+            try write(texture, anchors: arguments.contains("--anchors") ? anchors : [], overlay: cards.cgImage, to: url)
             print("office snapshot: \(url.path)")
             exit(0)
         } catch {
@@ -87,19 +92,20 @@ enum OfficeSnapshot {
             for desk in room.desks {
                 guard let session = model.store.session(desk.id) else { continue }
                 result[desk.id] = OfficeDeskInfo(id: desk.id, title: session.title, state: session.state, kind: model.kind(of: desk.id),
-                                                 roomKey: room.key, worktree: model.worktree(for: session.cwd), focused: false)
+                                                 roomKey: room.key, worktree: model.worktree(for: session.cwd), focused: false, summary: session.workSummary, unseenFinish: session.unseenFinish)
             }
         }
         return result
     }
 
-    private static func write(_ texture: MTLTexture, anchors: [(x: Double, y: Double)], to url: URL) throws {
+    private static func write(_ texture: MTLTexture, anchors: [(x: Double, y: Double)], overlay: CGImage?, to url: URL) throws {
         let w = texture.width, h = texture.height, row = w * 4
         var bytes = [UInt8](repeating: 0, count: row * h)
         texture.getBytes(&bytes, bytesPerRow: row, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
         let ctx = CGContext(data: &bytes, width: w, height: h, bitsPerComponent: 8, bytesPerRow: row,
                             space: CGColorSpace(name: CGColorSpace.sRGB)!,
                             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)!
+        if let overlay { ctx.draw(overlay, in: CGRect(x: 0, y: 0, width: w, height: h)) }
         ctx.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
         for a in anchors {
             // CGContext sol alt orijinli; çapa sol üst orijinli nokta.

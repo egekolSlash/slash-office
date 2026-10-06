@@ -52,7 +52,9 @@ public final class AgentStore {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         var session = sessions[index]
         for event in events {
+            let previous = session.state
             session.state = AgentStateMachine.reduce(session.state, event)
+            Self.noteFinish(&session, from: previous, watched: watched)
             switch event {
             case .sessionStarted(let providerID?): session.providerSessionID = providerID
             case .promptSubmitted(let text): session.lastPrompt = text
@@ -63,7 +65,6 @@ public final class AgentStore {
             }
         }
         session.lastEventAt = date
-        Self.noteFinish(&session, from: sessions[index].state, watched: watched)
         sessions[index] = session
     }
 

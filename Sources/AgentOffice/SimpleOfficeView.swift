@@ -62,9 +62,17 @@ private struct DeskRow: View {
         let focused = model.layout.focused == session.id
         HStack(spacing: 6) {
             Circle().fill(Self.color(session.state)).frame(width: 9, height: 9)
-            Text(model.worktree(for: session.cwd) ?? session.title)
-                .font(.system(size: 11, weight: .medium)).foregroundStyle(.white).lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.worktree(for: session.cwd) ?? session.title)
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(.white).lineLimit(1)
+                if let summary = session.workSummary {
+                    Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7)).lineLimit(1).help(summary)
+                }
+            }
             Spacer(minLength: 4)
+            if session.unseenFinish, session.state != .exited {
+                FinishedBadge(compact: true)
+            }
             if case .waiting = session.state {
                 Text("?").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
                     .frame(width: 16, height: 16).background(Circle().fill(.orange))

@@ -9,4 +9,8 @@ struct OfficeDeskInfo: Equatable {
     var roomKey: String
     var worktree: String?
     var focused: Bool
+    /// Ne üzerinde çalışıyor (ai-title ya da son istek).
+    var summary: String? = nil
+    /// Çalışırken bitti, kullanıcı henüz görmedi.
+    var unseenFinish = false
 }

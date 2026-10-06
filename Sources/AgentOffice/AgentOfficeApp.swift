@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Bildirim izni ilk açılıştaki izin ekranında istenir.
         if Notifier.canNotify { UNUserNotificationCenter.current().delegate = self }
         model.start()
+        // Uygulamaya dönünce odaktaki oturumun "bitti, görülmedi" işareti kalkar.
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [model] _ in
+            MainActor.assumeIsolated { model.markFocusedSeen() }
+        }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
