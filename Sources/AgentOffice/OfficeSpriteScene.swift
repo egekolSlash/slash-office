@@ -2,17 +2,6 @@ import AgentOfficeCore
 import AppKit
 import SpriteKit
 
-/// Bir masanın sahnede çizilmesi için gereken her şey; değişmediyse masa yeniden çizilmez.
-struct OfficeDeskInfo: Equatable {
-    var id: String
-    var title: String
-    var state: AgentState
-    var kind: SessionKind
-    var roomKey: String
-    var worktree: String?
-    var focused: Bool
-}
-
 /// Ofis sahnesi (spec §6). Dünya düğümü ekran düzleminde (1 birim = 1 karo) çizilir; kamera onu kaydırıp ölçekler.
 /// Aşama 1: odalar, masalar ve karakterler geçici şekillerle.
 @MainActor
