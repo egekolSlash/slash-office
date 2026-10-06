@@ -69,7 +69,10 @@ struct AgentOfficeApp: App {
                 Button("Gerçek boyut") { delegate.model.resetZoom() }.keyboardShortcut("0")
                 Divider()
                 Button("Bekleyen ajana atla") { delegate.model.jumpToWaiting() }.keyboardShortcut("j")
-                Button("Sonraki terminal") { delegate.model.cycleFocus() }.keyboardShortcut(.tab, modifiers: .control)
+                Button("Önceki oturum") { delegate.model.showAdjacentSession(-1) }.keyboardShortcut("[")
+                Button("Sonraki oturum") { delegate.model.showAdjacentSession(1) }.keyboardShortcut("]")
+                Button("Önceki panel") { delegate.model.cycleFocus(backward: true) }.keyboardShortcut(";")
+                Button("Sonraki panel") { delegate.model.cycleFocus() }.keyboardShortcut("'")
                 Button("Paneli kapat") {
                     if let id = delegate.model.layout.focused { delegate.model.closePane(id) }
                 }

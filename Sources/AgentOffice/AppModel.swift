@@ -575,9 +575,17 @@ extension AppModel {
         terminalFontSize = appearance.fontSize
     }
 
-    func cycleFocus() {
-        layout.cycle()
+    func cycleFocus(backward: Bool = false) {
+        layout.cycle(backward: backward)
         focusTerminalView()
+    }
+
+    /// ⌘[ / ⌘]: listedeki önceki / sonraki oturum odaktaki panelde açılır.
+    func showAdjacentSession(_ offset: Int) {
+        let ids = store.sessions.map(\.id)
+        guard !ids.isEmpty else { return }
+        let index = layout.focused.flatMap { ids.firstIndex(of: $0) } ?? (offset > 0 ? -1 : 0)
+        showTerminal(ids[(index + offset + ids.count) % ids.count])
     }
 
     func jumpToWaiting() {

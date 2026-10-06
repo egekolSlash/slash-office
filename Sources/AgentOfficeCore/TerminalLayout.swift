@@ -52,9 +52,9 @@ public struct TerminalLayout: Equatable, Sendable {
     public static let launcherPrefix = "launcher-"
     public static func isLauncher(_ id: String) -> Bool { id.hasPrefix(launcherPrefix) }
 
-    public mutating func cycle() {
+    public mutating func cycle(backward: Bool = false) {
         guard let current = focused, let index = visible.firstIndex(of: current), visible.count > 1 else { return }
-        focused = visible[(index + 1) % visible.count]
+        focused = visible[(index + (backward ? visible.count - 1 : 1)) % visible.count]
     }
 
     public var columns: Int { visible.count <= 1 ? 1 : 2 }

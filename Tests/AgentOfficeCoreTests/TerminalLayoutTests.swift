@@ -76,4 +76,14 @@ import Testing
         layout.add("d")
         #expect((layout.columns, layout.rows) == (2, 2))
     }
+
+    @Test func cycleBackwardWraps() {
+        var layout = TerminalLayout()
+        layout.add("a"); layout.add("b"); layout.add("c")
+        layout.cycle(backward: true)
+        #expect(layout.focused == "b")
+        layout.show("a")
+        layout.cycle(backward: true)
+        #expect(layout.focused == "c")
+    }
 }
