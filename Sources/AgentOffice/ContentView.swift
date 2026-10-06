@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: AppModel
+    @AppStorage("richOffice") private var richOffice = false
     @State private var pendingRemoval: (id: String, keepListFocus: Bool)?
     @State private var inspectorTab: InspectorTab =
         ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
@@ -22,13 +23,13 @@ struct ContentView: View {
         Group {
             switch model.mode {
             case .office:
-                OfficeView(model: model, interactive: true).frame(maxWidth: .infinity, maxHeight: .infinity)
+                office(interactive: true).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .work:
                 HSplitView {
                     TerminalGrid(model: model, requestRemove: requestRemove)
                         .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                     VSplitView {
-                        OfficeView(model: model).frame(minHeight: 220, maxHeight: .infinity)
+                        office(interactive: false).frame(minHeight: 220, maxHeight: .infinity)
                         inspector.frame(minHeight: 160, maxHeight: .infinity)
                     }
                     .frame(minWidth: 240, idealWidth: 320, maxWidth: 480, maxHeight: .infinity)
@@ -88,6 +89,15 @@ struct ContentView: View {
             case .changes: ChangesInspector(model: model)
             case .todo: TodoInspector(model: model)
             }
+        }
+    }
+
+    /// Ayarlar'daki "Detaylı ofis": açıkken SpriteKit ofisi, kapalıyken sade kartlar.
+    @ViewBuilder private func office(interactive: Bool) -> some View {
+        if richOffice {
+            OfficeView(model: model, interactive: interactive)
+        } else {
+            SimpleOfficeView(model: model)
         }
     }
 }

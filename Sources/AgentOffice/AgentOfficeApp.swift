@@ -79,5 +79,6 @@ struct AgentOfficeApp: App {
                 .keyboardShortcut("w")
             }
         }
+        Settings { SettingsView() }
     }
 }
