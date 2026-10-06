@@ -83,6 +83,10 @@ struct AgentOfficeApp: App {
                 Button("Sonraki oturum") { delegate.model.showAdjacentSession(1) }.keyboardShortcut("]")
                 Button("Önceki panel") { delegate.model.cycleFocus(backward: true) }.keyboardShortcut(";")
                 Button("Sonraki panel") { delegate.model.cycleFocus() }.keyboardShortcut("'")
+                Button("Oturumu devam ettir") { delegate.model.resumeFocused() }.keyboardShortcut("r")
+                Button("Durmuş oturumu kaldır") { delegate.model.removeFocusedStopped() }.keyboardShortcut(.delete, modifiers: [.command, .shift])
+                Button("Tüm durmuş oturumları devam ettir") { delegate.model.resumeAllStopped() }.keyboardShortcut("r", modifiers: [.command, .shift])
+                Divider()
                 Button("Paneli kapat") {
                     if let id = delegate.model.layout.focused { delegate.model.closePane(id) }
                 }

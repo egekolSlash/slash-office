@@ -40,24 +40,20 @@ struct TerminalPane: View {
         if TerminalLayout.isLauncher(id) {
             LauncherPane(model: model, id: id)
         } else if let session = model.store.session(id), session.state == .exited, model.terminals[id] == nil {
-            StoppedSessionView(session: session, onResume: { model.resume(id) }, onRemove: { model.remove(id) })
+            StoppedSessionView(model: model, session: session, requestRemove: requestRemove)
         } else if let terminal = model.terminals[id] {
             VStack(spacing: 0) {
-                if model.store.session(id)?.state == .exited, model.hasEndedTerminal(id) {
-                    // Süreç bitti: terminal çıktısı (hata mesajları dahil) görünür kalır, üstte eylemler.
-                    HStack {
-                        Label("Oturum kapandı", systemImage: "pause.circle")
-                        Spacer()
-                        Button("Devam ettir") { model.resume(id) }
-                        Button("Kaldır", role: .destructive) { requestRemove(id) }
-                    }
-                    .padding(8)
-                    .background(.bar)
-                }
                 TerminalHost(terminal: terminal).id(ObjectIdentifier(terminal))
                     .padding(.horizontal, model.appearance.paddingX)
                     .padding(.vertical, model.appearance.paddingY)
                     .background(Color(nsColor: model.appearance.background.nsColor))
+            .overlay {
+                // Süreç bitti: çıktı (hata mesajları dahil) arkada okunur kalır, eylemler ortada büyük kartta.
+                if let session = model.store.session(id), session.state == .exited, model.hasEndedTerminal(id) {
+                    StoppedSessionView(model: model, session: session, requestRemove: requestRemove, overTerminal: true)
+                        .background(.black.opacity(0.25))
+                }
+            }
             }
         } else {
             ContentUnavailableView("Oturum bulunamadı", systemImage: "questionmark")

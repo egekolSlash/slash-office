@@ -10,6 +10,23 @@ struct SessionList: View {
     let requestRemove: (String) -> Void
 
     var body: some View {
+        VStack(spacing: 0) {
+            let stopped = model.stoppedSessionIDs.count
+            if stopped >= 2 {
+                Button { model.resumeAllStopped() } label: {
+                    Label("Tümünü devam ettir (\(stopped))", systemImage: "play.square.stack")
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.large)
+                .help("Bütün durmuş oturumları kaldığı yerden aç (⌘⇧R)")
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+            }
+            list
+        }
+    }
+
+    private var list: some View {
         List(selection: Binding(
             get: { model.layout.focused },
             set: { id in
