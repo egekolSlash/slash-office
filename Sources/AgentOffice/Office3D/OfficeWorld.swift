@@ -247,30 +247,16 @@ final class OfficeWorld {
         }
     }
 
-    /// Dekor: masa olmayan karelere (şeritten uzak, duvar dibine) bitki, lamba, kitaplık.
+    /// Dekor: `room.decorSpots()` (Core) — masa, şerit ve kapı sırasından uzak noktalara bitki, lamba, kitaplık.
+    /// Kitaplık sadece tam boy sol duvarın dibine (+x'e bakar).
     private func addDecor(to entity: Entity, room: OfficePlan.Room, tallX: Bool, tallZ: Bool) {
-        var occupied = Set<String>()
-        for desk in room.desks {
-            occupied.insert("\(Int(desk.x - room.x)),\(Int(desk.z - room.z))")
-        }
-        let laneColumn = room.width % 2 == 1 ? room.width / 2 : -1
-        var free: [(i: Int, j: Int)] = []
-        for j in 0..<room.depth {
-            for i in 0..<room.width where i != laneColumn && !occupied.contains("\(i),\(j)") {
-                // Ön şerit kapı ve yürüme yolu: son sıranın ön yarısına dekor konmaz, sadece duvar dibine.
-                free.append((i, j))
-            }
-        }
-        let items = ["plant", "lamp", "bookshelf"]
-        for (index, cell) in free.prefix(items.count).enumerated() {
-            let name = items[index]
-            if name == "bookshelf", !(tallX && cell.i == 0) { continue }
+        var items = ["plant", "lamp", "bookshelf"]
+        for spot in room.decorSpots() {
+            guard let name = items.first else { break }
+            if name == "bookshelf", !(tallX && spot.x - room.x < 0.5) { continue }
+            items.removeFirst()
             let prop = art.prop(name)
-            // Hücrenin odanın dış tarafına (koridordan uzak) ve arkaya yakın köşesi: kapı ve şerit boş kalır.
-            let outward = room.side == .left ? -0.28 : 0.28
-            let px = room.x + Double(cell.i) + 0.5 + outward
-            let pz = room.z + Double(cell.j) + (cell.j == 0 ? 0.25 : 0.4)
-            prop.position = [Float(px), 0, Float(pz)]
+            prop.position = [Float(spot.x), 0, Float(spot.z)]
             entity.addChild(prop)
         }
     }

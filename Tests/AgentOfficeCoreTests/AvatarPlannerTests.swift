@@ -93,4 +93,39 @@ import Testing
         #expect(AvatarClip.walk.frames == 31...54)
         #expect(AvatarClip.wave.frames == 141...164)
     }
+
+    @Test func roomShiftedOnSameSideTeleports() {
+        let r = room(4)
+        var shifted = r
+        shifted.z += 1  // önündeki oda büyüdü: aynı tarafta bir karo kaydı
+        let desk = shifted.desks.isEmpty ? r.desks[0] : r.desks[0]
+        let movedDesk = OfficePlan.Desk(id: desk.id, x: desk.x, z: desk.z + 1)
+        let waving = AvatarPose(point: r.standSpot(for: desk), roomKey: r.key, room: r.rect)
+        #expect(AvatarPlanner.plan(current: waving, activity: .waving, desk: movedDesk, room: shifted, live: true)
+                == .place(shifted.standSpot(for: movedDesk), .wave, facing: 0))
+    }
+
+    @Test func standSpotsAreUniquePerDesk() {
+        let r = room(6)
+        let spots = r.desks.map { r.standSpot(for: $0) }
+        for (i, a) in spots.enumerated() {
+            for b in spots.dropFirst(i + 1) {
+                #expect(a.distance(to: b) > 0.25, "\(a) ve \(b) çakışıyor")
+            }
+        }
+    }
+
+    @Test func decorSpotsStayOffLaneDesksAndDoorRow() {
+        for count in [1, 2, 3, 4, 5] {
+            let r = room(count)
+            for spot in r.decorSpots() {
+                #expect(abs(spot.x - r.laneX) > 0.4, "şeride yakın: \(spot)")
+                #expect(abs(spot.z - r.doorZ) > 0.4, "kapı sırasında: \(spot)")
+                for desk in r.desks {
+                    #expect(abs(spot.x - desk.x) > 0.5 || abs(spot.z - desk.z) > 0.6, "masaya yakın: \(spot)")
+                }
+                #expect(r.rect.contains(x: spot.x, z: spot.z))
+            }
+        }
+    }
 }

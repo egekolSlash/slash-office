@@ -1,4 +1,5 @@
 import AgentOfficeCore
+import AppKit
 import Foundation
 import RealityKit
 
@@ -17,6 +18,9 @@ final class AvatarController {
         var activity: AvatarActivity
         var desk: OfficePlan.Desk
         var roomKey: String
+        var room: PlanRect = .zero
+        /// Beklerken ayak altında nabız gibi atan turuncu halka (bekleyen ajan bir bakışta görünsün).
+        let ring: ModelEntity
         var point: PlanPoint
         var path: [PlanPoint] = []
         var then: AvatarClip = .idle
@@ -28,10 +32,17 @@ final class AvatarController {
              roomKey: String, point: PlanPoint) {
             self.entity = entity; self.look = look; self.color = color; self.activity = activity
             self.desk = desk; self.roomKey = roomKey; self.point = point
+            var material = UnlitMaterial(color: NSColor(red: 1.0, green: 0.6, blue: 0.15, alpha: 1))
+            material.blending = .transparent(opacity: .init(floatLiteral: 0.85))
+            ring = ModelEntity(mesh: .generateCylinder(height: 0.008, radius: 0.32), materials: [material])
+            ring.position = [0, 0.012, 0]
+            ring.isEnabled = false
+            entity.addChild(ring)
         }
     }
 
     private var avatars: [String: Avatar] = [:]
+    private var clock: Double = 0
 
     init(art: OfficeArt, appearance: AvatarAppearance) {
         self.art = art
@@ -64,7 +75,7 @@ final class AvatarController {
                         avatar.color = color
                     }
                     // Aynı etkinlik, aynı masa: yeniden planlamaya gerek yok (yürüyorsa yürümeye devam eder).
-                    if avatar.activity == activity, avatar.desk == desk, avatar.roomKey == room.key { continue }
+                    if avatar.activity == activity, avatar.desk == desk, avatar.roomKey == room.key, avatar.room == room.rect { continue }
                 } else {
                     let entity = art.villager.clone(recursive: true)
                     appearance.apply(wantedLook, projectColor: c, to: entity)
@@ -72,11 +83,13 @@ final class AvatarController {
                     avatar = Avatar(entity: entity, look: wantedLook, color: color, activity: activity, desk: desk,
                                     roomKey: room.key, point: room.doorOutside)
                 }
-                let current = existing.map { AvatarPose(point: $0.point, roomKey: $0.roomKey) }
+                let current = existing.map { AvatarPose(point: $0.point, roomKey: $0.roomKey, room: $0.room) }
                 let step = AvatarPlanner.plan(current: current, activity: activity, desk: desk, room: room, live: live)
                 avatar.activity = activity
                 avatar.desk = desk
                 avatar.roomKey = room.key
+                avatar.room = room.rect
+                avatar.ring.isEnabled = activity == .waving
                 avatars[desk.id] = avatar
                 apply(step, to: avatar, id: desk.id)
             }
@@ -111,6 +124,9 @@ final class AvatarController {
     }
 
     func tick(dt: Double) {
+        clock += dt
+        let pulse = Float(1 + 0.18 * sin(clock * 5))
+        for avatar in avatars.values where avatar.ring.isEnabled { avatar.ring.scale = [pulse, 1, pulse] }
         for (id, avatar) in avatars where !avatar.path.isEmpty {
             var budget = AvatarRoute.speed * dt
             while budget > 0, let next = avatar.path.first {

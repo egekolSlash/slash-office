@@ -37,9 +37,9 @@ final class AvatarAppearance {
             if Self.matches(key, Self.shirtKey) {
                 pbr.baseColor = .init(tint: OfficeTextures.color(shirtColor), texture: .init(textures.shirt(look.shirtPattern)))
             } else if Self.matches(key, Self.skinKey) {
-                pbr.baseColor.tint = OfficeTextures.linearColor(AvatarLook.skinTones[look.skin])
+                pbr.baseColor.tint = OfficeTextures.color(AvatarLook.skinTones[look.skin])
             } else if Self.matches(key, Self.hairKey) {
-                pbr.baseColor.tint = OfficeTextures.linearColor(AvatarLook.hairColors[look.hairColor])
+                pbr.baseColor.tint = OfficeTextures.color(AvatarLook.hairColors[look.hairColor])
             }
             return pbr
         }

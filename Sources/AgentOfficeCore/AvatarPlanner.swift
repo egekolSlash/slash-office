@@ -53,8 +53,29 @@ extension OfficePlan.Room {
     public var doorInside: PlanPoint { PlanPoint(x: side == .left ? doorX - 0.3 : doorX + 0.3, z: doorZ) }
     public var doorOutside: PlanPoint { PlanPoint(x: side == .left ? doorX + 0.6 : doorX - 0.6, z: doorZ) }
     public func seat(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: desk.x, z: desk.z - DeskGeometry.seatOffset) }
-    /// Beklerken masanın yanında, şeritte durur.
-    public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: laneX, z: desk.z + 0.1) }
+    /// Beklerken masanın yanında, şeritte durur. Aynı sıradaki iki masanın köylüsü çakışmasın diye sol sütunun
+    /// köylüsü biraz arkada, sağınki biraz önde durur.
+    public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint {
+        PlanPoint(x: laneX, z: desk.z + (desk.x < laneX ? -0.12 : 0.28))
+    }
+
+    /// Dekor noktaları (bitki, lamba, kitaplık): masa olmayan hücrelerde, şeritten uzak tarafta, kapının bulunduğu
+    /// sıra hariç (köylüler oradan girer). Arka sıralar önce.
+    public func decorSpots() -> [PlanPoint] {
+        let deskCells = Set(desks.map { "\(Int(($0.x - x).rounded(.down))),\(Int(($0.z - z).rounded(.down)))" })
+        let laneColumn = width % 2 == 1 ? width / 2 : -1
+        let doorRow = Int((doorZ - z).rounded(.down))
+        var spots: [PlanPoint] = []
+        for j in 0..<depth where j != doorRow {
+            for i in 0..<width where i != laneColumn && !deskCells.contains("\(i),\(j)") {
+                let centerX = x + Double(i) + 0.5
+                let px = centerX + (centerX < laneX ? -0.28 : 0.28)
+                let pz = z + Double(j) + (j == 0 ? 0.25 : 0.4)
+                spots.append(PlanPoint(x: px, z: pz))
+            }
+        }
+        return spots
+    }
 }
 
 public enum AvatarSpot: Equatable, Sendable { case outside, seat, stand }
@@ -104,7 +125,11 @@ public enum AvatarRoute {
 public struct AvatarPose: Equatable, Sendable {
     public var point: PlanPoint
     public var roomKey: String
-    public init(point: PlanPoint, roomKey: String) { self.point = point; self.roomKey = roomKey }
+    /// Köylünün bulunduğu odanın o anki yeri; oda kayar ya da büyürse köylü ışınlanır (duvardan yürümesin).
+    public var room: PlanRect?
+    public init(point: PlanPoint, roomKey: String, room: PlanRect? = nil) {
+        self.point = point; self.roomKey = roomKey; self.room = room
+    }
 }
 
 public enum AvatarStep: Equatable, Sendable {
@@ -132,7 +157,8 @@ public enum AvatarPlanner {
             return .walk(AvatarRoute.route(from: room.doorOutside, to: spot, desk: desk, room: room), then: clip, facing: 0, hideAtEnd: false)
         }
         // Oda değişti ya da masa çok uzaklaştı: ışınla (odalar arası yürüme yok).
-        if current.roomKey != room.key || !room.rect.insetBy(-0.7).contains(x: current.point.x, z: current.point.z) {
+        let roomMoved = current.room.map { $0 != room.rect } ?? false
+        if current.roomKey != room.key || roomMoved || !room.rect.insetBy(-0.7).contains(x: current.point.x, z: current.point.z) {
             return activity == .away ? .hide : .place(target, clip, facing: 0)
         }
         if current.point.distance(to: target) < 0.05 { return .place(target, clip, facing: 0) }
