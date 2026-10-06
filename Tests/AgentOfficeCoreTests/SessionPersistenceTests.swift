@@ -82,4 +82,14 @@ import Testing
         try Data(#"[{"id":"a","title":"t","cwd":"/p","createdAt":"2026-10-05T10:00:00Z"}]"#.utf8).write(to: old)
         #expect(SessionStore.load(from: old).first?.turnTree == nil)
     }
+
+    @Test func workTitleRoundTripsAndOldFilesStillLoad() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("s-\(UUID()).json")
+        var record = SessionRecord(id: "a", title: "juice-merge", cwd: "/h", claudeSessionID: "a", createdAt: Date(timeIntervalSince1970: 0))
+        record.workTitle = "Birleştirme animasyonu"
+        try SessionStore.save([record], to: url)
+        #expect(SessionStore.load(from: url).first?.workTitle == "Birleştirme animasyonu")
+        try #"[{"id":"b","title":"t","cwd":"/c","createdAt":"1970-01-01T00:00:00Z"}]"#.write(to: url, atomically: true, encoding: .utf8)
+        #expect(SessionStore.load(from: url).first?.workTitle == nil)
+    }
 }

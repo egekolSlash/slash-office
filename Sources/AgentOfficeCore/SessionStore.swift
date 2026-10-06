@@ -19,6 +19,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var baseline: String?
     /// Kullanıcının son isteği (ya da shell'de son komut) anındaki çalışma alanı fotoğrafı; "Son tur" diff'i buna göre.
     public var turnTree: String?
+    /// Claude'un oturuma verdiği son başlık (ai-title); yeniden açılışta "ne üzerinde çalışıyor" hemen görünsün.
+    public var workTitle: String?
 
     public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date, kind: SessionKind = .claude) {
         self.id = id
@@ -41,6 +43,7 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         kind = try container.decodeIfPresent(SessionKind.self, forKey: .kind) ?? .claude
         baseline = try container.decodeIfPresent(String.self, forKey: .baseline)
         turnTree = try container.decodeIfPresent(String.self, forKey: .turnTree)
+        workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle)
     }
 }
 

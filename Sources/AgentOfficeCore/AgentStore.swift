@@ -15,6 +15,18 @@ public final class AgentStore {
         public var lastEventAt: Date?
         /// Ajanın tool'larla dokunduğu dosyalar (git olmayan klasörlerde diff yerine gösterilir).
         public var touchedFiles: [String] = []
+        /// Claude'un oturuma verdiği başlık (ai-title).
+        public var workTitle: String?
+        /// Çalışırken işini bitirdi ve kullanıcı henüz görmedi.
+        public var unseenFinish = false
+
+        /// Ne üzerinde çalışıyor: başlık, yoksa son isteğin kısaltılmışı.
+        public var workSummary: String? {
+            if let workTitle { return workTitle }
+            guard let prompt = lastPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !prompt.isEmpty else { return nil }
+            let line = prompt.split(whereSeparator: \.isNewline).first.map(String.init) ?? prompt
+            return line.count > 80 ? String(line.prefix(79)) + "…" : line
+        }
     }
 
     public private(set) var sessions: [Session] = []
@@ -34,7 +46,9 @@ public final class AgentStore {
         sessions.append(Session(id: id, title: title, cwd: cwd, state: state))
     }
 
-    public func apply(_ events: [AgentEvent], to id: String, at date: Date = .now) {
+    /// `watched`: kullanıcı bu oturumu şu an görüyor (odaktaki panel ve uygulama önde). Görmüyorken
+    /// çalışma → boşta geçişi "bitti, görülmedi" olarak işaretlenir; yeni iş başlayınca işaret kalkar.
+    public func apply(_ events: [AgentEvent], to id: String, at date: Date = .now, watched: Bool = true) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         var session = sessions[index]
         for event in events {
@@ -49,10 +63,33 @@ public final class AgentStore {
             }
         }
         session.lastEventAt = date
+        Self.noteFinish(&session, from: sessions[index].state, watched: watched)
         sessions[index] = session
     }
 
     /// Hook'u olmayan oturumlar (shell) için durumu doğrudan ayarlar; değişmediyse yazmaz.
+    public func setState(_ state: AgentState, for id: String, watched: Bool) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].state != state else { return }
+        let previous = sessions[index].state
+        sessions[index].state = state
+        Self.noteFinish(&sessions[index], from: previous, watched: watched)
+    }
+
+    public func markSeen(_ id: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].unseenFinish else { return }
+        sessions[index].unseenFinish = false
+    }
+
+    public func setWorkTitle(_ title: String?, for id: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].workTitle != title else { return }
+        sessions[index].workTitle = title
+    }
+
+    static func noteFinish(_ session: inout Session, from previous: AgentState, watched: Bool) {
+        if case .working = session.state { session.unseenFinish = false; return }
+        if case .working = previous, session.state == .idle, !watched { session.unseenFinish = true }
+    }
+
     public func setState(_ state: AgentState, for id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].state != state else { return }
         sessions[index].state = state
