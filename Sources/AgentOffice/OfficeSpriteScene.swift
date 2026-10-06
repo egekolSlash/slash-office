@@ -11,6 +11,10 @@ struct OfficeDeskInfo: Equatable {
     var roomKey: String
     var worktree: String?
     var focused: Bool
+    /// Ne üzerinde çalışıyor (ai-title ya da son istek).
+    var summary: String? = nil
+    /// Çalışırken bitti, kullanıcı henüz görmedi.
+    var unseenFinish = false
 }
 
 /// Ofis sahnesi (spec §6). Dünya düğümü ekran düzleminde (1 birim = 1 karo) çizilir; kamera onu kaydırıp ölçekler.

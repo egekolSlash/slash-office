@@ -11,7 +11,7 @@ final class AppModel {
     let diffWatcher = DiffWatcher()
     var changesScope: ChangesScope = .uncommitted
     var layout = TerminalLayout()
-    var mode: WorkspaceMode = .work
+    var mode: WorkspaceMode = .work { didSet { markFocusedSeen() } }
     var errorMessage: String?
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
     var showPermissions = !UserDefaults.standard.bool(forKey: "permissionsShown")
@@ -63,6 +63,8 @@ final class AppModel {
     let claudeProjectsDirectory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/projects")
 
     @ObservationIgnored private var shellTimer: Timer?
+    /// Oturum başına son başlık okuma zamanı: kayıt dosyası en fazla 5 sn'de bir okunur.
+    @ObservationIgnored private var titleReads: [String: Date] = [:]
     /// İçinde hook gönderen bir claude çalışan shell oturumları.
     @ObservationIgnored private var shellsWithClaudeHooks: Set<String> = []
 
@@ -92,6 +94,7 @@ final class AppModel {
         for record in SessionStore.load(from: recordsURL).sorted(by: { $0.createdAt < $1.createdAt }) {
             records[record.id] = record
             store.register(id: record.id, title: record.title, cwd: record.cwd, state: .exited)
+            store.setWorkTitle(record.workTitle, for: record.id)
         }
         if let first = store.sessions.first?.id { layout.show(first) }
         // Kayıtlı oturumların klasörleri de son projelere girer (eskisi sona).
@@ -114,7 +117,8 @@ final class AppModel {
             events.removeAll { if case .sessionEnded = $0 { true } else { false } }
             if !events.isEmpty { shellsWithClaudeHooks.insert(envelope.session) }
         }
-        store.apply(events, to: envelope.session)
+        store.apply(events, to: envelope.session, watched: isWatched(envelope.session))
+        if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) { refreshWorkTitle(envelope.session, transcript: path) }
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: session.title, reason: reason)
         }
@@ -430,7 +434,7 @@ final class AppModel {
             if command == "claude", shellsWithClaudeHooks.contains(id) { continue }
             shellsWithClaudeHooks.remove(id)
             if previous != state { DebugLog.write("shell \(id) -> \(state)") }
-            store.setState(state, for: id)
+            store.setState(state, for: id, watched: isWatched(id))
             if case .working = previous, state == .idle { diffChanged(id) }
             if previous == .idle, case .working = state { takeTurnSnapshot(id) }
         }
@@ -496,6 +500,38 @@ enum LoadedProjectIcon: @unchecked Sendable {
     }
 }
 
+extension AppModel {
+    /// Kullanıcı bu oturumu şu an görüyor mu: odaktaki panel, çalışma ya da odak modu, uygulama önde.
+    func isWatched(_ id: String) -> Bool {
+        layout.focused == id && mode != .office && NSApp.isActive
+    }
+
+    /// Uygulamaya dönünce ya da mod değişince odaktaki oturumun "bitti" işareti kalkar.
+    func markFocusedSeen() {
+        if let id = layout.focused, isWatched(id) { store.markSeen(id) }
+    }
+
+    /// Claude'un oturum başlığını (ai-title) kayıt dosyasının sonundan arka planda okur; en fazla 5 sn'de bir.
+    func refreshWorkTitle(_ id: String, transcript path: String) {
+        let now = Date()
+        if let last = titleReads[id], now.timeIntervalSince(last) < 5 { return }
+        titleReads[id] = now
+        Task { [weak self] in
+            let title = await Task.detached(priority: .utility) { TranscriptTitle.latestTitle(in: URL(fileURLWithPath: path)) }.value
+            guard let self, let title, self.store.session(id)?.workTitle != title else { return }
+            self.store.setWorkTitle(title, for: id)
+            if var record = self.records[id] {
+                record.workTitle = title
+                self.records[id] = record
+                self.saveRecords()
+            }
+        }
+    }
+
+    /// Panel, liste ve ofiste gösterilen "ne üzerinde çalışıyor" metni.
+    func workSummary(for id: String) -> String? { store.session(id)?.workSummary }
+}
+
 final class TerminalCoordinator: LocalProcessTerminalViewDelegate {
     let sessionID: String
     let onExit: @MainActor (String) -> Void
@@ -521,6 +557,7 @@ enum WorkspaceMode: Equatable {
 extension AppModel {
     /// `takeKeyboard: false`: terminal gösterilir ama klavye yerinde kalır (listede ok tuşlarıyla gezinirken).
     func showTerminal(_ id: String, takeKeyboard: Bool = true) {
+        defer { store.markSeen(id) }
         // Kaldırılmış bir oturumun eski bildirimine tıklanırsa boş panel açılmasın.
         guard store.session(id) != nil else { return }
         layout.show(id)
@@ -529,6 +566,7 @@ extension AppModel {
     }
 
     func addTerminal(_ id: String, takeKeyboard: Bool = true) {
+        defer { store.markSeen(id) }
         guard store.session(id) != nil else { return }
         layout.add(id)
         if mode == .office { mode = .work }
@@ -610,6 +648,7 @@ extension AppModel {
 
     /// Terminal tıklanarak klavyeyi aldığında: görünür panellerdense odak vurgusunu ona taşı.
     func noteKeyboardFocus(_ id: String) {
+        store.markSeen(id)
         DebugLog.write("noteKeyboardFocus \(id) visible=\(layout.visible.contains(id)) focused=\(layout.focused ?? "-")")
         guard layout.visible.contains(id), layout.focused != id else { return }
         layout.show(id)
@@ -638,6 +677,10 @@ extension AppModel {
             records[id] = SessionRecord(id: id, title: "api", cwd: "/demo/api", claudeSessionID: nil, createdAt: .now, kind: .shell)
             store.register(id: id, title: "api", cwd: "/demo/api", state: state)
         }
+        // "Ne üzerinde çalışıyor" ve "bitti, görülmedi" demo verisi.
+        store.setWorkTitle("Birleştirme animasyonunu düzelt", for: "demo-0")
+        store.setWorkTitle("Seviye editöründe ızgara hatası", for: "demo-1")
+        store.apply([.promptSubmitted(text: "API sayfalamasını ekle"), .turnEnded], to: "demo-4", watched: false)
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
             roomIdentities[worktree] = RepoIdentity.Identity(roomKey: "/demo/juice-merge", worktree: (worktree as NSString).lastPathComponent)

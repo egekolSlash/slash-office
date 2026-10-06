@@ -19,6 +19,10 @@ struct TerminalPane: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text(TerminalLayout.isLauncher(id) ? "Yeni" : model.store.session(id)?.title ?? "?").font(.caption.bold())
+            if let summary = model.workSummary(for: id) {
+                Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail).help(summary)
+            }
+            if model.store.session(id)?.unseenFinish == true { FinishedBadge(compact: true) }
             if let state = model.store.session(id)?.state { StatusBadge(state: state, kind: model.kind(of: id)) }
             Spacer()
             Button { model.closePane(id) } label: { Image(systemName: "xmark") }

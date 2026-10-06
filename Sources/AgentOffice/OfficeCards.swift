@@ -30,6 +30,9 @@ struct OfficeCards: View {
                     if case .waiting = info.state {
                         QuestionBubble(size: OfficeOverlay.bubbleSize(zoom: viewport.zoom))
                             .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail))
+                    } else if info.unseenFinish {
+                        FinishedBubble(size: OfficeOverlay.bubbleSize(zoom: viewport.zoom))
+                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail))
                     }
                 }
             }
@@ -66,6 +69,11 @@ private struct DeskCard: View {
             HStack(spacing: 4) {
                 if info.kind == .shell { Image(systemName: "apple.terminal").font(.system(size: 9)) }
                 Text(info.worktree ?? info.title).font(.system(size: near ? 12 : 10, weight: .semibold))
+            }
+            // Yakın görünümde: ne üzerinde çalışıyor.
+            if near, let summary = info.summary {
+                Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.85))
+                    .frame(maxWidth: 220, alignment: .leading)
             }
             StatusBadge(state: info.state, kind: info.kind).font(.system(size: near ? 10 : 9))
         }

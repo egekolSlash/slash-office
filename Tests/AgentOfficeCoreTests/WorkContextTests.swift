@@ -59,6 +59,8 @@ import Testing
         #expect(store.session("s")?.unseenFinish == false)
         // Yeni tur başlayınca eski işaret kalkar.
         store.apply([.promptSubmitted(text: "z"), .turnEnded], to: "s", watched: false)
+        // Aynı pakette çalışıp biten tur da işaretlenir.
+        #expect(store.session("s")?.unseenFinish == true)
         store.apply([.promptSubmitted(text: "w")], to: "s", watched: false)
         #expect(store.session("s")?.unseenFinish == false)
     }

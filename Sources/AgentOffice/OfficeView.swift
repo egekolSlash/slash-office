@@ -64,7 +64,7 @@ struct OfficeView: View {
                 result[desk.id] = OfficeDeskInfo(
                     id: desk.id, title: session.title, state: session.state, kind: model.kind(of: desk.id),
                     roomKey: room.key, worktree: model.worktree(for: session.cwd),
-                    focused: model.layout.focused == desk.id)
+                    focused: model.layout.focused == desk.id, summary: session.workSummary, unseenFinish: session.unseenFinish)
             }
         }
         return result
@@ -73,8 +73,10 @@ struct OfficeView: View {
     private func handleClick(x: Double, y: Double, clickCount: Int, shift: Bool, plan: OfficePlan) {
         let camera = scene.officeCamera
         let detail = interactive ? OfficeDetail.level(zoom: camera.viewport.zoom) : .far
+        // Balonu olan masalar: bekleyenler (?) ve bitip görülmeyenler (✓).
         let waiting = Set(plan.rooms.flatMap(\.desks).map(\.id).filter { id in
-            if case .waiting = model.store.session(id)?.state { true } else { false }
+            if case .waiting = model.store.session(id)?.state { return true }
+            return model.store.session(id)?.unseenFinish == true
         })
         if let id = plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize,
                               detail: detail, waiting: waiting) {

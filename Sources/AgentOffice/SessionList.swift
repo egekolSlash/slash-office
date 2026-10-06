@@ -25,7 +25,14 @@ struct SessionList: View {
                 HStack(spacing: 8) {
                     ProjectIconView(icon: model.projectIcons[session.cwd], size: 28, isShell: model.kind(of: session.id) == .shell)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(session.title).font(.headline)
+                        HStack(spacing: 6) {
+                            Text(session.title).font(.headline)
+                            if session.unseenFinish { FinishedBadge() }
+                        }
+                        if let summary = session.workSummary {
+                            Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                                .help(summary)
+                        }
                         StatusBadge(state: session.state, kind: model.kind(of: session.id))
                     }
                 }
