@@ -8,11 +8,6 @@ public enum ProjectPalette {
     ]
 
     public static func index(for project: String) -> Int {
-        var hash: UInt64 = 0xcbf29ce484222325
-        for byte in project.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 0x100000001b3
-        }
-        return Int(hash % UInt64(colors.count))
+        Int(StableHash.fnv1a(project) % UInt64(colors.count))
     }
 }
