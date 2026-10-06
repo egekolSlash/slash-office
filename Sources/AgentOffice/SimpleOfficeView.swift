@@ -50,6 +50,7 @@ private struct RoomCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(ProjectPalette.color(for: room.key).opacity(0.5)))
+        .contextMenu { Button("Odayı düzenle…") { model.editingRoom = room.key } }
     }
 }
 
@@ -76,6 +77,7 @@ private struct DeskRow: View {
         .background(Self.color(session.state).opacity(focused ? 0.35 : 0.15), in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(focused ? Color.white.opacity(0.7) : .clear))
         .contentShape(Rectangle())
+        .contextMenu { Button("Görünümü düzenle…") { model.editingAvatar = session.id } }
         .onTapGesture {
             if NSEvent.modifierFlags.contains(.shift) { model.addTerminal(session.id) } else { model.showTerminal(session.id) }
         }

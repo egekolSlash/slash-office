@@ -2,7 +2,7 @@ import AgentOfficeCore
 import AppKit
 import Metal
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting]`: demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting] [--custom]`: demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -16,6 +16,11 @@ enum OfficeSnapshot {
         let zoom = arguments.firstIndex(of: "--zoom").flatMap { Double(arguments[$0 + 1]) }
         let live = arguments.contains("--live")
         model.loadDemoSessions()
+        // `--custom`: özelleştirmenin sahneye yansıdığını görmek için bir köylüye ve odaya özel görünüm.
+        if arguments.contains("--custom") {
+            model.avatarLooks["demo-0"] = AvatarLook(hairStyle: .pigtails, hairColor: 5, skin: 2, shirtPattern: .dots, shirtColor: 3, glasses: true)
+            model.roomStyles["/demo/juice-merge"] = RoomStyle(wallpaper: 2, floor: 2, rug: .plain)
+        }
         guard let resources = await Office3DResources.shared(), let scene = Office3DScene(resources: resources) else {
             print("office snapshot: varlıklar yüklenemedi"); exit(1)
         }

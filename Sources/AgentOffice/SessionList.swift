@@ -35,6 +35,7 @@ struct SessionList: View {
         .contextMenu(forSelectionType: String.self) { ids in
             if let id = ids.first {
                 if model.store.session(id)?.state == .exited { Button("Devam ettir") { model.resume(id) } }
+                Button("Görünümü düzenle…") { model.editingAvatar = id }
                 Button("Kaldır", role: .destructive) { requestRemove(id) }
             }
         } primaryAction: { ids in

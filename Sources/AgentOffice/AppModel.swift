@@ -94,6 +94,8 @@ final class AppModel {
             loadDemoSessions()
             return
         }
+        avatarLooks = StyleStore<AvatarLook>.load(from: avatarsURL)
+        roomStyles = StyleStore<RoomStyle>.load(from: roomStylesURL)
         // Önceki oturumlar durmuş olarak geri gelir; her claude süreci ayrı bellek tuttuğu için otomatik başlatılmaz.
         for record in SessionStore.load(from: recordsURL).sorted(by: { $0.createdAt < $1.createdAt }) {
             records[record.id] = record
@@ -294,6 +296,7 @@ final class AppModel {
         terminals[id] = nil
         coordinators[id] = nil
         records[id] = nil
+        if avatarLooks[id] != nil { setLook(nil, for: id) }
         store.remove(id)
         try? FileManager.default.removeItem(at: settingsURL(for: id))
         saveRecords()
@@ -460,6 +463,20 @@ extension AppModel {
     func look(for id: String) -> AvatarLook { avatarLooks[id] ?? AvatarLook.default(for: id) }
 
     func style(for roomKey: String) -> RoomStyle { roomStyles[roomKey] ?? RoomStyle.default(for: roomKey) }
+
+    var avatarsURL: URL { supportDirectory.appendingPathComponent("avatars.json") }
+    var roomStylesURL: URL { supportDirectory.appendingPathComponent("rooms.json") }
+
+    /// Varsayılandan farklıysa saklanır; `nil` ya da varsayılan görünüş kaydı siler.
+    func setLook(_ look: AvatarLook?, for id: String) {
+        avatarLooks[id] = look == AvatarLook.default(for: id) ? nil : look
+        do { try StyleStore.save(avatarLooks, to: avatarsURL) } catch { errorMessage = "Görünüş kaydedilemedi: \(error)" }
+    }
+
+    func setStyle(_ style: RoomStyle?, for roomKey: String) {
+        roomStyles[roomKey] = style == RoomStyle.default(for: roomKey) ? nil : style
+        do { try StyleStore.save(roomStyles, to: roomStylesURL) } catch { errorMessage = "Oda stili kaydedilemedi: \(error)" }
+    }
 
     func worktree(for cwd: String) -> String? { roomIdentities[cwd]?.worktree }
 
