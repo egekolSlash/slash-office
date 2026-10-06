@@ -79,6 +79,46 @@ final class AgentTerminalView: LocalProcessTerminalView {
         return .monospacedSystemFont(ofSize: size, weight: .regular)
     }
 
+    // MARK: - Sürükle-bırak (Ghostty gibi): bırakılan dosyaların yolu yazılır, Claude onları referans alır.
+
+    private var dropRegistered = false
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if !dropRegistered {
+            registerForDraggedTypes([.fileURL])
+            dropRegistered = true
+        }
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        Self.droppedPaths(sender).isEmpty ? [] : .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        Self.droppedPaths(sender).isEmpty ? [] : .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let paths = Self.droppedPaths(sender)
+        guard !paths.isEmpty else { return false }
+        let text = DropText.text(forPaths: paths)
+        // Uygulama bracketed paste istiyorsa yapıştırma olarak gönder (Claude görselleri böyle tanır).
+        if getTerminal().bracketedPasteMode {
+            send(txt: "\u{1b}[200~" + text + "\u{1b}[201~")
+        } else {
+            send(txt: text)
+        }
+        window?.makeFirstResponder(self)
+        onFocus?()
+        return true
+    }
+
+    private static func droppedPaths(_ sender: NSDraggingInfo) -> [String] {
+        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
+        return (urls ?? []).map(\.path)
+    }
+
     func takeKeyboard() {
         guard let window, window.firstResponder !== self else { return }
         window.makeFirstResponder(self)
