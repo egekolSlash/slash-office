@@ -10,6 +10,8 @@ STAGE=$(mktemp -d)/SlashOffice.app
 mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources"
 cp Resources/Info.plist "$STAGE/Contents/Info.plist"
 cp Resources/AppIcon.icns "$STAGE/Contents/Resources/AppIcon.icns"
+# Ofis v3 varlıkları (köylü + eşyalar, scripts/build-office-art.sh ile üretilir).
+cp -R Resources/OfficeArt "$STAGE/Contents/Resources/OfficeArt"
 cp "$BIN/AgentOffice" "$BIN/agent-office-hook" "$STAGE/Contents/MacOS/"
 # macOS izinleri (klasör erişimi, mikrofon) imzaya bağlı: ad-hoc imza her derlemede değişip izinleri sıfırlar.
 # Sabit bir sertifika varsa onunla imzalanır; CODESIGN_IDENTITY ile seçilebilir, yoksa ad-hoc'a düşer.

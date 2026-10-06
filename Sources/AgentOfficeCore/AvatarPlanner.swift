@@ -44,7 +44,7 @@ public struct PlanPoint: Equatable, Sendable {
 public enum DeskGeometry {
     public static let deskHalfWidth = 0.35
     public static let deskHalfDepth = 0.22
-    public static let seatOffset = 0.42
+    public static let seatOffset = 0.32
 }
 
 extension OfficePlan.Room {
