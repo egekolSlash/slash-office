@@ -2,6 +2,11 @@ import Foundation
 
 /// Claude Code hook payload'ını (stdin JSON) ortak olaylara çevirir.
 public enum ClaudeNormalizer {
+    /// Oturumun kayıt dosyası (ai-title buradan okunur); her hook olayında gelir.
+    public static func transcriptPath(from payload: JSONValue) -> String? {
+        payload["transcript_path"]?.string.flatMap { $0.isEmpty ? nil : $0 }
+    }
+
     public static func events(from payload: JSONValue) -> [AgentEvent] {
         switch payload["hook_event_name"]?.string {
         case "SessionStart":
