@@ -3,13 +3,15 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key><string>dev.agentoffice.app</string>
-    <key>CFBundleName</key><string>Agent Office</string>
+    <key>CFBundleName</key><string>Slash Office</string>
+    <key>CFBundleDisplayName</key><string>Slash Office</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleExecutable</key><string>AgentOffice</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.2</string>
     <key>CFBundleVersion</key><string>2</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSMicrophoneUsageDescription</key><string>Agent Office içinde çalışan Claude Code'un ses modu mikrofonu kullanır.</string>
+    <key>NSMicrophoneUsageDescription</key><string>Slash Office içinde çalışan Claude Code'un ses modu mikrofonu kullanır.</string>
 </dict>
 </plist>

@@ -19,7 +19,7 @@ struct PermissionsView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             PermissionRow(title: "Tam Disk Erişimi", symbol: "internaldrive",
-                          detail: "Belgeler, Masaüstü, İndirilenler ve diğer uygulamaların verileri için tekrar tekrar çıkan dosya erişimi pencerelerini kaldırır. Ayarlar'da Agent Office'i aç; sonra uygulamayı yeniden başlat.",
+                          detail: "Belgeler, Masaüstü, İndirilenler ve diğer uygulamaların verileri için tekrar tekrar çıkan dosya erişimi pencerelerini kaldırır. Ayarlar'da Slash Office'i aç; sonra uygulamayı yeniden başlat.",
                           status: fullDisk, action: "Ayarlar'ı aç") {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
             }

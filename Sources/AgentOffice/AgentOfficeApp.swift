@@ -46,7 +46,7 @@ struct AgentOfficeApp: App {
 
     var body: some Scene {
         // Tek pencere: pencereyi kapatıp açmak yeni model ya da ikinci hook sunucusu oluşturmaz.
-        Window("Agent Office", id: "main") {
+        Window("Slash Office", id: "main") {
             ContentView(model: delegate.model)
                 .frame(minWidth: 900, minHeight: 560)
         }

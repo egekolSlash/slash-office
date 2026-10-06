@@ -80,7 +80,7 @@ final class AppModel {
             try server.start()
             self.server = server
         } catch HookServerError.alreadyRunning {
-            errorMessage = "Agent Office zaten açık. Durumlar diğer pencerede güncelleniyor; bu kopyayı kapat."
+            errorMessage = "Slash Office zaten açık. Durumlar diğer pencerede güncelleniyor; bu kopyayı kapat."
         } catch {
             errorMessage = "Hook sunucusu başlatılamadı: \(error)"
         }
