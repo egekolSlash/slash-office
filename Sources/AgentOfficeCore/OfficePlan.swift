@@ -70,9 +70,10 @@ public struct OfficePlan: Equatable, Sendable {
 
         public var title: String { (key as NSString).lastPathComponent }
         public var rect: PlanRect { PlanRect(minX: x, minZ: z, maxX: x + Double(width), maxZ: z + Double(depth)) }
-        /// Kapı koridora bakan duvarın ortasında.
+        /// Kapı koridora bakan duvarda, odanın ön kenarına yakın: masa sıraları ve tabureler arkada kaldığı için
+        /// ön şerit her oda boyutunda boştur (köylüler buradan girip şeride geçer).
         public var doorX: Double { side == .left ? x + Double(width) : x }
-        public var doorZ: Double { z + Double(depth) / 2 }
+        public var doorZ: Double { z + Double(depth) - 0.18 }
         /// Arka duvarların yüksekliği: tam boy sadece binanın dış arka kenarında (koridorun ilk odaları ve sol
         /// taraftaki dış duvar); iç duvarlar alçak, yoksa öndeki odanın duvarı arkadakinin zeminini örter.
         public var backWallHeights: (z: Double, x: Double) {
