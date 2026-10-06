@@ -4,8 +4,8 @@ import Testing
 
 @Suite struct FramePacingTests {
     @Test func paces() {
-        #expect(FramePacing.fps(moving: true, interacting: false, visible: true, mini: false) == 30)
-        #expect(FramePacing.fps(moving: false, interacting: true, visible: true, mini: false) == 30)
+        #expect(FramePacing.fps(moving: true, interacting: false, visible: true, mini: false) == 24)
+        #expect(FramePacing.fps(moving: false, interacting: true, visible: true, mini: false) == 24)
         #expect(FramePacing.fps(moving: false, interacting: false, visible: true, mini: false) == 12)
         #expect(FramePacing.fps(moving: true, interacting: false, visible: true, mini: true) == 12)
         #expect(FramePacing.fps(moving: true, interacting: true, visible: false, mini: false) == 0)

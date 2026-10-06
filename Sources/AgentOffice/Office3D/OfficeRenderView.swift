@@ -83,6 +83,7 @@ final class OfficeRenderView: NSView {
         let fps = scene == nil ? 0 : FramePacing.fps(moving: scene?.wantsFastFrames ?? false, interacting: false,
                                                      visible: visible, mini: mini)
         guard fps != currentFPS else { return }
+        DebugLog.write("office fps \(currentFPS) -> \(fps) (visible: \(visible), mini: \(mini))")
         currentFPS = fps
         timer?.invalidate()
         timer = nil

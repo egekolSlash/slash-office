@@ -2,7 +2,7 @@ import AgentOfficeCore
 import AppKit
 import Metal
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting] [--custom]`: demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting] [--custom] [--bench <fps>]`: demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -49,6 +49,21 @@ enum OfficeSnapshot {
         descriptor.usage = [.renderTarget, .shaderRead]
         descriptor.storageMode = .shared
         let texture = device.makeTexture(descriptor: descriptor)!
+        // `--bench <fps>`: ölçüm için ekran dışında bu kare hızında 20 sn çizer (pencere başka Space'teyken de çalışır).
+        if let i = arguments.firstIndex(of: "--bench"), let fps = Double(arguments[i + 1]) {
+            print("office bench: \(fps) fps, 20 sn")
+            let end = Date().addingTimeInterval(20)
+            while Date() < end {
+                let start = Date()
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    do { try scene.renderFrame(to: texture, dt: 1 / fps) { continuation.resume() } }
+                    catch { continuation.resume() }
+                }
+                let wait = 1 / fps - Date().timeIntervalSince(start)
+                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+            }
+            exit(0)
+        }
         for frame in 0..<45 {
             if frame % 15 == 0 { print("office snapshot: kare \(frame)") }
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
