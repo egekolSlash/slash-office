@@ -48,6 +48,19 @@ public struct TerminalLayout: Equatable, Sendable {
         focused = new
     }
 
+    /// ⌘[ / ⌘]: odaktaki panelde gösterilecek önceki / sonraki oturum. Başka bir panelde zaten açık olanlar atlanır
+    /// (odak oraya kaymasın, değişiklik hep odaktaki panelde olsun). Gösterilecek başka oturum yoksa nil.
+    public func adjacent(in ids: [String], offset: Int) -> String? {
+        let elsewhere = Set(visible.filter { $0 != focused })
+        let candidates = ids.filter { !elsewhere.contains($0) }
+        guard !candidates.isEmpty else { return nil }
+        guard let current = focused, let index = candidates.firstIndex(of: current) else {
+            return offset >= 0 ? candidates.first : candidates.last
+        }
+        let next = candidates[(index + offset % candidates.count + candidates.count) % candidates.count]
+        return next == current ? nil : next
+    }
+
     /// ⌘T / ⌘D ile açılan, henüz oturumu olmayan "yeni" paneli.
     public static let launcherPrefix = "launcher-"
     public static func isLauncher(_ id: String) -> Bool { id.hasPrefix(launcherPrefix) }

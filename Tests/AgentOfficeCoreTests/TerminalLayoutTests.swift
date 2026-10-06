@@ -86,4 +86,23 @@ import Testing
         layout.cycle(backward: true)
         #expect(layout.focused == "c")
     }
+
+    @Test func adjacentSkipsSessionsOpenInOtherPanes() {
+        var layout = TerminalLayout()
+        layout.add("b"); layout.add("d")   // b ve d açık, odak d'de
+        let ids = ["a", "b", "c", "d", "e"]
+        // Odaktaki panel (d) değişir; başka panelde açık olan b atlanır.
+        #expect(layout.adjacent(in: ids, offset: 1) == "e")
+        #expect(layout.adjacent(in: ids, offset: -1) == "c")
+        layout.show("a")                    // d'nin yerine a; odak a
+        #expect(layout.adjacent(in: ids, offset: 1) == "c")   // b atlanır
+        #expect(layout.adjacent(in: ids, offset: -1) == "e")  // başa sarar
+    }
+
+    @Test func adjacentWithNothingElseToShow() {
+        var layout = TerminalLayout()
+        layout.add("a"); layout.add("b")
+        #expect(layout.adjacent(in: ["a", "b"], offset: 1) == nil)
+        #expect(TerminalLayout().adjacent(in: ["x", "y"], offset: 1) == "x")
+    }
 }

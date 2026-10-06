@@ -607,12 +607,10 @@ extension AppModel {
         focusTerminalView()
     }
 
-    /// ⌘[ / ⌘]: listedeki önceki / sonraki oturum odaktaki panelde açılır.
+    /// ⌘[ / ⌘]: odaktaki paneldeki oturumu listedeki önceki / sonrakiyle değiştirir; başka panelde açık olanları atlar.
     func showAdjacentSession(_ offset: Int) {
-        let ids = store.sessions.map(\.id)
-        guard !ids.isEmpty else { return }
-        let index = layout.focused.flatMap { ids.firstIndex(of: $0) } ?? (offset > 0 ? -1 : 0)
-        showTerminal(ids[(index + offset + ids.count) % ids.count])
+        guard let next = layout.adjacent(in: store.sessions.map(\.id), offset: offset) else { return }
+        showTerminal(next)
     }
 
     func jumpToWaiting() {
