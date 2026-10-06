@@ -232,7 +232,8 @@ final class AppModel {
 
     /// Kapanmış oturumu kaldığı yerden açar. Hiç mesaj yazılmamışsa (transcript yok) aynı kimlikle sıfırdan başlar.
     /// Shell oturumu aynı klasörde yeni bir shell olarak açılır.
-    func resume(_ id: String) {
+    /// `show: false`: terminal açılır ama panel düzeni değişmez (toplu devam ettirme).
+    func resume(_ id: String, show: Bool = true) {
         guard var record = records[id] else { return }
         guard FileManager.default.fileExists(atPath: record.cwd) else {
             errorMessage = "Proje klasörü bulunamadı: \(record.cwd)\nKlasör taşındıysa oturumu kaldırıp yeniden aç."
@@ -247,7 +248,7 @@ final class AppModel {
             guard launchShell(record: record) else { return }
             store.restart(id)
             store.setState(.idle, for: id)
-            showTerminal(id)
+            if show { showTerminal(id) }
             return
         }
         let projects = claudeProjectsDirectory
@@ -259,7 +260,30 @@ final class AppModel {
         records[id] = record
         saveRecords()
         store.restart(id)
-        showTerminal(id)
+        if show { showTerminal(id) }
+    }
+
+    /// Durmuş (süreci çalışmayan) oturumlar, liste sırasıyla.
+    var stoppedSessionIDs: [String] {
+        store.sessions.filter { $0.state == .exited && !isRunning($0.id) }.map(\.id)
+    }
+
+    func isStopped(_ id: String) -> Bool { store.session(id)?.state == .exited && !isRunning(id) }
+
+    /// ⌘⇧R: bütün durmuş oturumları devam ettirir; panel düzeni korunur.
+    func resumeAllStopped() {
+        for id in stoppedSessionIDs { resume(id, show: false) }
+        focusTerminalView()
+    }
+
+    /// ⌘R: odaktaki durmuş oturumu devam ettirir.
+    func resumeFocused() {
+        if let id = layout.focused, isStopped(id) { resume(id) }
+    }
+
+    /// ⌘⇧⌫: odaktaki durmuş oturumu kaldırır (süreç çalışmadığı için onay gerekmez).
+    func removeFocusedStopped() {
+        if let id = layout.focused, isStopped(id) { remove(id) }
     }
 
     /// Terminal var ve süreci kapanmışsa true: çıktısı (ör. hata mesajı) görünür kalsın diye terminal gösterilir.
