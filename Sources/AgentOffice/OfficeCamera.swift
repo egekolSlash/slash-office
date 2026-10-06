@@ -15,7 +15,10 @@ final class OfficeCamera {
     var limits: ClosedRange<Double> { OfficeViewport.zoomLimits(fit: fitViewport) }
 
     func fit(_ plan: OfficePlan) {
-        fitViewport = OfficeViewport.fitting(plan.bounds, height: OfficePlan.wallHeight, viewSize: viewSize)
+        // Ada kenarındaki ağaçlar da görünsün diye plan sınırları biraz genişletilir.
+        let b = plan.bounds
+        let padded = b.isEmpty ? b : PlanRect(minX: b.minX - 0.8, minZ: b.minZ - 0.8, maxX: b.maxX + 0.8, maxZ: b.maxZ + 0.8)
+        fitViewport = OfficeViewport.fitting(padded, height: 1.9, viewSize: viewSize)
         if !userMoved { viewport = fitViewport; target = nil }
     }
 

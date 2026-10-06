@@ -195,7 +195,8 @@ for f, n in ((91, 0), (103, 0.6), (115, 1), (127, 0.6), (138, 0)):
         Head=R(x=22 * n), Hips=up(-0.01 * n))
 # wave 141-164: sağ kol yana-yukarı, ön kol sallanır
 for f, w in ((141, 0), (147, 1), (153, -1), (159, 1), (164, 0)):
-    key(f, UpperArmR=R(z=-125), ForeArmR=R(z=-50 + 25 * w), Head=R(z=4 * w), ForeArmL=R(x=-8))
+    # Kollar kısa: ön kol -35..+15 dışında el kafanın içine girer (ölçüldü); hafif zıplama okunurluğu artırır.
+    key(f, UpperArmR=R(z=-125), ForeArmR=R(z=-10 + 25 * w), Head=R(z=4 * w), ForeArmL=R(x=-8), Hips=up(0.015 * abs(w)))
 scn.frame_start, scn.frame_end = 1, 164
 
 # Doğrulama: el ve kalça konumları (sayısal) + her klipten bir kare (Workbench)

@@ -37,6 +37,12 @@ final class AppModel {
     @ObservationIgnored private var roomOrder: [String] = []
     /// ⌘J ofis modunda: kamera bu masaya gider (OfficeView okuyup sıfırlar).
     var officeFocusRequest: String?
+    /// Kullanıcının değiştirdiği köylü görünüşleri ve oda stilleri (değiştirilmeyenler varsayılan).
+    var avatarLooks: [String: AvatarLook] = [:]
+    var roomStyles: [String: RoomStyle] = [:]
+    /// "Görünümü düzenle…" / "Odayı düzenle…" sayfaları.
+    var editingAvatar: String?
+    var editingRoom: String?
     @ObservationIgnored private var iconLookups: Set<String> = []
     @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
@@ -450,6 +456,10 @@ extension AppModel {
     }
 
     func roomKey(for cwd: String) -> String { roomIdentities[cwd]?.roomKey ?? cwd }
+
+    func look(for id: String) -> AvatarLook { avatarLooks[id] ?? AvatarLook.default(for: id) }
+
+    func style(for roomKey: String) -> RoomStyle { roomStyles[roomKey] ?? RoomStyle.default(for: roomKey) }
 
     func worktree(for cwd: String) -> String? { roomIdentities[cwd]?.worktree }
 

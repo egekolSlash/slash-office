@@ -266,9 +266,10 @@ final class OfficeWorld {
             let name = items[index]
             if name == "bookshelf", !(tallX && cell.i == 0) { continue }
             let prop = art.prop(name)
-            // Hücrenin duvara (sol ya da arka) ya da şerit dışı kenarına yakın köşesi.
-            let px = room.x + Double(cell.i) + (cell.i == 0 ? 0.22 : 0.78)
-            let pz = room.z + Double(cell.j) + (cell.j == 0 ? 0.25 : 0.5)
+            // Hücrenin odanın dış tarafına (koridordan uzak) ve arkaya yakın köşesi: kapı ve şerit boş kalır.
+            let outward = room.side == .left ? -0.28 : 0.28
+            let px = room.x + Double(cell.i) + 0.5 + outward
+            let pz = room.z + Double(cell.j) + (cell.j == 0 ? 0.25 : 0.4)
             prop.position = [Float(px), 0, Float(pz)]
             entity.addChild(prop)
         }

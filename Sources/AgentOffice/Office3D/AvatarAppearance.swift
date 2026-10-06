@@ -58,9 +58,10 @@ final class AvatarAppearance {
         var contents = baseMesh.contents
         let keep = Self.hairInstances[hair] ?? "HairShort"
         let drop = Self.hairInstances.values.filter { $0 != keep } + (glasses ? [] : ["Glasses"])
-        for instance in contents.instances where drop.contains(where: { instance.id.hasPrefix($0) }) {
-            _ = contents.instances.remove(id: instance.id)
-        }
+        // Tutulacak örneklerle yeni koleksiyon: `remove(id:)` birden çok silmede RealityKit içinde çöküyor.
+        contents.instances = MeshInstanceCollection(contents.instances.filter { instance in
+            !drop.contains { instance.id.hasPrefix($0) }
+        })
         do {
             let mesh = try MeshResource.generate(from: contents)
             meshes[key] = mesh
