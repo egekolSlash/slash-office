@@ -10,8 +10,10 @@
 #    Masa üstü 0.565; tabure üstü 0.46.
 #    Duvara yaslanan eşyalar (kitaplık, pencere, perde) +X'e bakar.
 #  - Çiçek başı taban rengi (1.0,0.42,0.48): uygulama renk çeşitler.
+import base64, json
 import bpy, math, os, sys
-from mathutils import Vector
+import numpy as np
+from mathutils import Matrix, Vector
 
 ROOT = sys.argv[sys.argv.index("--") + 1]
 OUT = os.path.join(ROOT, "Resources", "OfficeArt")
@@ -292,10 +294,114 @@ def curtain():
 
 PROPS = dict(desk_set=lambda: desk(laptop), terminal_set=lambda: desk(monitor), bookshelf=bookshelf, plant=plant,
              lamp=lamp, tree=tree, flower=flower, window=window, curtain=curtain)
+PROP_OBJS = {}
 for name, build in PROPS.items():
     PARTS.clear(); build()
     o = join(name, list(PARTS))
     export(os.path.join(OUT, "props", f"{name}.usdz"), [o])
     o.hide_set(True)
+    PROP_OBJS[name] = o
     print("PROP", name, len(o.data.vertices))
+
+# ---------------------------------------------------------------- Metal çizici için JSON (spec v4 §4)
+# Blender (x, y, z) -> Y-yukarı (x, z, -y). Renkler sRGB 8 bit; alfa = emissive gücü.
+YUP = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
+BONES = ["Root", "Hips", "Head", "UpperArmL", "ForeArmL", "ThighL", "ShinL", "UpperArmR", "ForeArmR", "ThighR", "ShinR"]
+HAIR_CODES = {"HairShort": 1, "HairPigtails": 2, "HairSpiky": 3, "HairBob": 4}
+KEYS = {1: (0.30, 0.55, 0.95), 2: (0.99, 0.84, 0.72), 3: (0.35, 0.20, 0.10)}  # tişört, ten, saç
+
+def lin_to_srgb(c):
+    return 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
+
+def material_info(m):
+    if m is None or not m.node_tree:
+        return (0.8, 0.8, 0.8), 0.0
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    c = tuple(b.inputs["Base Color"].default_value[:3])
+    return c, float(b.inputs["Emission Strength"].default_value)
+
+def b64(array):
+    return base64.b64encode(np.ascontiguousarray(array).tobytes()).decode("ascii")
+
+def mesh_json(objs, villager=False):
+    dg = bpy.context.evaluated_depsgraph_get()
+    verts, index_of, indices = [], {}, []
+    for obj in objs:
+        ev = obj.evaluated_get(dg)
+        me = ev.to_mesh()
+        me.calc_loop_triangles()
+        uv_layer = me.uv_layers.active
+        group_names = [g.name for g in obj.vertex_groups]
+        hair = HAIR_CODES.get(obj.name, 0)
+        world = YUP @ obj.matrix_world
+        normal_m = world.to_3x3().inverted().transposed()
+        for tri in me.loop_triangles:
+            mat = me.materials[tri.material_index] if me.materials else None
+            color, emit = material_info(mat)
+            part = 0
+            if villager:
+                if obj.name == "Glasses":
+                    part = 4
+                else:
+                    for code, key in KEYS.items():
+                        if all(abs(a - b) < 0.02 for a, b in zip(color, key)):
+                            part = code
+            rgba = tuple(int(round(lin_to_srgb(c) * 255)) for c in color) + (int(round(min(emit / 4.0, 1.0) * 255)),)
+            for corner, loop in zip(range(3), tri.loops):
+                vi = tri.vertices[corner]
+                p = world @ me.vertices[vi].co
+                n = (normal_m @ Vector(tri.split_normals[corner])).normalized()
+                uv = tuple(uv_layer.data[loop].uv) if uv_layer else (0.0, 0.0)
+                bone = 0
+                if villager:
+                    groups = me.vertices[vi].groups
+                    if groups:
+                        name = group_names[max(groups, key=lambda g: g.weight).group]
+                        bone = BONES.index(name)
+                key = (round(p.x, 5), round(p.y, 5), round(p.z, 5), round(n.x, 3), round(n.y, 3), round(n.z, 3),
+                       round(uv[0], 4), round(uv[1], 4), rgba, bone, part, hair)
+                if key not in index_of:
+                    index_of[key] = len(verts)
+                    verts.append((p, n, uv, rgba, bone, part, hair))
+                indices.append(index_of[key])
+        ev.to_mesh_clear()
+    count = len(verts)
+    out = {
+        "vertexCount": count,
+        "positions": b64(np.array([v[0][:] for v in verts], dtype=np.float32).reshape(-1)),
+        "normals": b64(np.array([v[1][:] for v in verts], dtype=np.float32).reshape(-1)),
+        "uvs": b64(np.array([v[2] for v in verts], dtype=np.float32).reshape(-1)),
+        "colors": b64(np.array([v[3] for v in verts], dtype=np.uint8).reshape(-1)),
+        "indices": b64(np.array(indices, dtype=np.uint32)),
+    }
+    if villager:
+        out["bones"] = b64(np.array([v[4] for v in verts], dtype=np.uint8))
+        out["parts"] = b64(np.array([v[5] for v in verts], dtype=np.uint8))
+        out["hair"] = b64(np.array([v[6] for v in verts], dtype=np.uint8))
+    return out
+
+# Köylü dinlenme pozunda; klipler kare kare skinning matrisi (Y-yukarı uzayda).
+arm.data.pose_position = 'REST'
+bpy.context.view_layer.update()
+villager_json = mesh_json([body, *hairs, glasses], villager=True)
+arm.data.pose_position = 'POSE'
+CLIP_RANGES = {"idle": (1, 24), "walk": (31, 54), "sitType": (61, 84), "sitDoze": (91, 138), "wave": (141, 164)}
+yup_inv = YUP.inverted()
+clips = {}
+for clip, (first, last) in CLIP_RANGES.items():
+    mats = []
+    for f in range(first, last + 1):
+        scn.frame_set(f)
+        bpy.context.view_layer.update()
+        for name in BONES:
+            pb = arm.pose.bones[name]
+            skin = YUP @ arm.matrix_world @ pb.matrix @ pb.bone.matrix_local.inverted() @ arm.matrix_world.inverted() @ yup_inv
+            mats.extend(skin.col[c][r] for c in range(4) for r in range(4))
+    clips[clip] = {"frames": last - first + 1, "matrices": b64(np.array(mats, dtype=np.float32))}
+scn.frame_set(1)
+art = {"version": 1, "bones": BONES, "clips": clips, "villager": villager_json,
+       "props": {name: mesh_json([o]) for name, o in PROP_OBJS.items()}}
+with open(os.path.join(OUT, "office-art.json"), "w") as f:
+    json.dump(art, f)
+print("JSON", os.path.getsize(os.path.join(OUT, "office-art.json")), "villager verts", villager_json["vertexCount"])
 print("DONE")
