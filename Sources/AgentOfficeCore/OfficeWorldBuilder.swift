@@ -13,7 +13,8 @@ public enum OfficeWorldBuilder {
     /// Çiçek eşyasının taban rengi (doğrusal) ve dört çiçek rengi.
     static let flowerKey: AvatarLook.RGBA = (1.0, 0.42, 0.48)
     static let flowerColors: [AvatarLook.RGBA] = [(1.0, 0.42, 0.48), (1.0, 0.85, 0.30), (1.0, 1.0, 1.0), (0.70, 0.55, 1.0)]
-    /// Çayır, plan ve arsaların her yönde bu kadar dışına uzanır.
+    /// Çayır, plan ve arsaların her yönde en az bu kadar dışına uzanır; büyük ofiste kamera daha uzaktan baktığı
+    /// için ofisin boyu kadar daha.
     static let meadowReach = 30.0
     static let groundY: Float = -0.02
 
@@ -21,9 +22,8 @@ public enum OfficeWorldBuilder {
                              projectColor: (String) -> AvatarLook.RGBA, art: OfficeArtFile) -> OfficeMesh {
         var mesh = OfficeMesh()
         let site = siteRect(plan)
-        mesh.appendGround(rect: PlanRect(minX: site.minX - meadowReach, minZ: site.minZ - meadowReach,
-                                         maxX: site.maxX + meadowReach, maxZ: site.maxZ + meadowReach),
-                          height: groundY, cell: 1, color: white, layer: OfficeTextureLayer.grass, uvScale: 0.5)
+        mesh.appendGround(rect: meadowRect(plan), height: groundY, cell: 1, color: white,
+                          layer: OfficeTextureLayer.grass, uvScale: 0.5)
         buildPath(plan, into: &mesh)
         for lot in plan.lots { buildLot(lot, into: &mesh) }
         buildScenery(plan, site: site, art: art, into: &mesh)
@@ -35,6 +35,23 @@ public enum OfficeWorldBuilder {
             }
         }
         return mesh
+    }
+
+    /// Çayırın kapladığı alan.
+    public static func meadowRect(_ plan: OfficePlan) -> PlanRect {
+        let site = siteRect(plan)
+        let reach = min(meadowReach + max(site.maxX - site.minX, site.maxZ - site.minZ), 200)
+        return PlanRect(minX: site.minX - reach, minZ: site.minZ - reach, maxX: site.maxX + reach, maxZ: site.maxZ + reach)
+    }
+
+    /// Uzak görünümün çerçevesi ve kaydırma sınırı: odaların hepsi, arkada ağaç sırası ve tepelerin eteği, önde
+    /// arsaların başı (tabelaları görünsün); boş ofiste bütün alan. Kaydırma odaları, arsaları ve meydanı kaplar.
+    public static func fitRect(_ plan: OfficePlan) -> (framed: PlanRect, bounds: PlanRect) {
+        let site = siteRect(plan)
+        let front = plan.rooms.isEmpty ? site.maxZ
+            : max(plan.rooms.map(\.rect.maxZ).max() ?? 0, (plan.lots.map(\.minZ).max() ?? 0) + 3)
+        let framed = PlanRect(minX: site.minX - 0.5, minZ: site.minZ - 5, maxX: site.maxX + 0.5, maxZ: min(site.maxZ, front))
+        return (framed, PlanRect(minX: framed.minX, minZ: framed.minZ, maxX: framed.maxX, maxZ: site.maxZ))
     }
 
     /// Odalar, arsalar ve meydanın kapladığı alan.

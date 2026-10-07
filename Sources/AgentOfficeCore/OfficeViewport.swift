@@ -116,6 +116,44 @@ public struct OfficeViewport: Equatable, Sendable {
         return Self.matrix(rows: rows)
     }
 
+    // MARK: - Ufuk
+
+    /// Bükülen zeminin ekranda en yukarı çıktığı z (ufuk): bunun arkasındaki noktalar yere gömülür ve ekranda
+    /// tekrar aşağı iner; kartları ve tıklamaları sayılmaz. Bükülme yoksa ya da ufuk çok uzaksa −∞.
+    public func horizonZ(viewSize: ViewSize) -> Double {
+        let bend = bend
+        guard bend.k > 0 else { return -.infinity }
+        func screenY(_ z: Double) -> Double {
+            let behind = max(bend.startZ - z, 0)
+            return projectUnbent(x: targetX, y: -bend.k * behind * behind, z: z, viewSize: viewSize).y
+        }
+        // Kaba adımla en yukarı noktayı bul, sonra incelt.
+        var z = bend.startZ, best = screenY(z)
+        while z > bend.startZ - 400 {
+            let next = screenY(z - 1)
+            if next > best { break }
+            best = next
+            z -= 1
+        }
+        guard z > bend.startZ - 400 else { return -.infinity }
+        var fine = z + 1
+        best = screenY(fine)
+        while fine > z - 1 {
+            let next = screenY(fine - 0.05)
+            if next > best { break }
+            best = next
+            fine -= 0.05
+        }
+        return fine
+    }
+
+    /// Görünüm noktasından çıkan ışın zemine doğru mu iniyor (gökyüzüne değil).
+    public func groundVisible(atX x: Double, y: Double, viewSize: ViewSize) -> Bool {
+        let b = basis(viewHeight: viewSize.height)
+        let dir = SIMD3((x - viewSize.width / 2) / b.focal, 0, 0) - b.up * ((y - viewSize.height / 2) / b.focal) + b.forward
+        return dir.y < -1e-6
+    }
+
     // MARK: - Sığdırma ve gezinme
 
     /// Dikdörtgeni (zeminden `height` yüksekliğe kadar) görünüme sığdırır; sonuç uzak görünümdür (`nearness` 0).
@@ -242,6 +280,19 @@ public enum OfficeOverlay {
 
     public static func bubbleSize(zoom: Double) -> Double { max(18, min(zoom * 0.35, 34)) }
 
+    /// Ekranın üst kenarına yakın bant: buradaki kartlar gizlenir (ufuk bölgesinde okunmaz, tıklaması şaşar).
+    public static let horizonBand = 0.08
+
+    /// Kart, balon ya da tabela gösterilir mi: noktası ufkun önünde ve üst bandın altında. Katman ve tıklama
+    /// testi aynı kuralı kullanır.
+    public static func isShown(z: Double, anchorY: Double, horizonZ: Double, viewSize: OfficeViewport.ViewSize) -> Bool {
+        anchorY > viewSize.height * horizonBand && z > horizonZ + 0.5
+    }
+
+    public static func isShown(z: Double, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, anchorY: Double) -> Bool {
+        isShown(z: z, anchorY: anchorY, horizonZ: viewport.horizonZ(viewSize: viewSize), viewSize: viewSize)
+    }
+
     public static func bubbleOffset(_ detail: OfficeDetail) -> Double { detail == .far ? 6 : 52 }
 }
 
@@ -250,7 +301,11 @@ extension OfficePlan {
     /// Örtüşen balon ya da kartlarda öndeki (ekranda daha aşağıdaki) kazanır.
     public func desk(atViewX x: Double, y: Double, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
                      detail: OfficeDetail, waiting: Set<String>) -> String? {
-        let desks = rooms.flatMap(\.desks)
+        let horizon = viewport.horizonZ(viewSize: viewSize)
+        let desks = rooms.flatMap(\.desks).filter { desk in
+            OfficeOverlay.isShown(z: desk.z, anchorY: OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize).y,
+                                  horizonZ: horizon, viewSize: viewSize)
+        }
         let radius = OfficeOverlay.bubbleSize(zoom: viewport.zoom) / 2
         func front(_ hits: [(id: String, y: Double)]) -> String? { hits.max { $0.y < $1.y }?.id }
         let bubbles = desks.compactMap { desk -> (id: String, y: Double)? in
@@ -269,7 +324,10 @@ extension OfficePlan {
             }
             if let id = front(cards) { return id }
         }
-        return desk(atViewX: x, y: y, viewport: viewport, viewSize: viewSize)
+        // Sahnedeki masa: ufkun arkasındakiler görünmez, seçilmez.
+        guard let id = desk(atViewX: x, y: y, viewport: viewport, viewSize: viewSize),
+              desks.contains(where: { $0.id == id }) else { return nil }
+        return id
     }
 }
 extension OfficeViewport {

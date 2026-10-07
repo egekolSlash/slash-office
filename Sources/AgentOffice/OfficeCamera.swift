@@ -18,12 +18,8 @@ final class OfficeCamera {
     var limits: ClosedRange<Double> { OfficeViewport.zoomLimits(fit: fitViewport) }
 
     func fit(_ plan: OfficePlan) {
-        // Sığdırma: odalar, arkadaki ağaç sırası ve tepeler, önde arsaların başı (gerisi kaydırılarak görülür).
-        // Kaydırma sınırı: odalar, arsalar ve meydanın tamamı.
-        let site = OfficeWorldBuilder.siteRect(plan)
-        let lotsFront = (plan.lots.map(\.minZ).min() ?? site.maxZ) + 3
-        let framed = PlanRect(minX: site.minX - 0.5, minZ: site.minZ - 5, maxX: site.maxX + 0.5, maxZ: min(site.maxZ, lotsFront))
-        bounds = PlanRect(minX: site.minX - 0.5, minZ: site.minZ - 5, maxX: site.maxX + 0.5, maxZ: site.maxZ)
+        let (framed, bounds) = OfficeWorldBuilder.fitRect(plan)
+        self.bounds = bounds
         fitViewport = OfficeViewport.fitting(framed, height: 1.9, viewSize: viewSize)
         if !userMoved {
             viewport = fitViewport

@@ -14,22 +14,23 @@ struct OfficeCards: View {
         let viewport = camera.viewport
         let size = camera.viewSize
         let detail = interactive ? OfficeDetail.level(zoom: viewport.zoom) : .far
-        // Ekranın üst kenarına (ufka) yakın kalanlar gizlenir: bükülme bölgesinde okunmaz ve tıklaması şaşar.
-        let horizon = size.height * 0.08
+        // Ufkun arkasındakiler ve ekranın üst bandındakiler gizlenir (tıklama testiyle aynı kural, Core).
+        let horizon = viewport.horizonZ(viewSize: size)
+        let shown = { (z: Double, y: Double) in OfficeOverlay.isShown(z: z, anchorY: y, horizonZ: horizon, viewSize: size) }
         ZStack(alignment: .topLeading) {
             ForEach(plan.rooms, id: \.key) { room in
                 let anchor = viewport.project(x: room.doorX, y: OfficePlan.wallHeight + 0.25, z: room.doorZ, viewSize: size)
-                if anchor.y > horizon {
+                if shown(room.doorZ, anchor.y) {
                     RoomSign(title: room.title, roomKey: room.key, icon: icons[room.key], compact: detail == .far && !interactive)
                         .position(x: anchor.x, y: anchor.y)
                 }
             }
             ForEach(Array(plan.lots.enumerated()), id: \.offset) { _, lot in
                 let anchor = viewport.project(x: (lot.minX + lot.maxX) / 2, y: 0.95, z: lot.minZ + OfficePlan.lotSignZ, viewSize: size)
-                if anchor.y > horizon { LotSign(compact: detail == .far && !interactive).position(x: anchor.x, y: anchor.y) }
+                if shown(lot.minZ + OfficePlan.lotSignZ, anchor.y) { LotSign(compact: detail == .far && !interactive).position(x: anchor.x, y: anchor.y) }
             }
             ForEach(plan.rooms.flatMap(\.desks), id: \.id) { desk in
-                if let info = desks[desk.id], OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size).y > horizon {
+                if let info = desks[desk.id], shown(desk.z, OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size).y) {
                     let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size)
                     if detail != .far {
                         DeskCard(info: info, near: detail == .near)

@@ -151,7 +151,7 @@ import Testing
     @Test func verticesStayOnTheMeadow() {
         let p = plan(sample)
         let mesh = build(p)
-        let b = OfficeWorldBuilder.siteRect(p), margin: Float = 31
+        let b = OfficeWorldBuilder.meadowRect(p), margin: Float = 0.01
         for v in mesh.vertices {
             #expect(v.position.x >= Float(b.minX) - margin && v.position.x <= Float(b.maxX) + margin)
             #expect(v.position.z >= Float(b.minZ) - margin && v.position.z <= Float(b.maxZ) + margin)

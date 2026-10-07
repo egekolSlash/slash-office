@@ -180,3 +180,86 @@ import simd
         #expect(plan.desk(atViewX: anchor.x + 20, y: cardY, viewport: viewport, viewSize: size, detail: detail, waiting: []) == "b")
     }
 }
+
+@Suite struct OfficeHorizonTests {
+    let size = (width: 1000.0, height: 650.0)
+
+    func deepPlan(_ rooms: Int) -> OfficePlan {
+        let members = (0..<rooms * 2).map { OfficePlan.Member(id: "r\($0 / 2)d\($0 % 2)", roomKey: "/r\($0 / 2)") }
+        return OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+    }
+
+    /// Ufkun arkasındaki (bükülmede yere gömülen) masanın kartı gösterilmez ve tıklaması seçilmez.
+    @Test(arguments: [130.0, 200.0, 260.0])
+    func desksBeyondTheHorizonAreHiddenAndNotClickable(zoom: Double) {
+        let plan = deepPlan(16)
+        let fit = OfficeViewport.fitting(OfficeWorldBuilder.fitRect(plan).framed, height: 1.9, viewSize: size)
+        let front = plan.rooms.last!.desks[0]
+        let v = OfficeViewport.focusing(x: front.x, z: front.z, zoom: zoom, fit: fit)
+        let detail = OfficeDetail.level(zoom: zoom)
+        let desks = plan.rooms.flatMap(\.desks)
+        let hidden = desks.filter { !OfficeOverlay.isShown(z: $0.z, viewport: v, viewSize: size,
+                                                           anchorY: OfficeOverlay.anchor($0, viewport: v, viewSize: size).y) }
+        #expect(!hidden.isEmpty)
+        #expect(OfficeOverlay.isShown(z: front.z, viewport: v, viewSize: size,
+                                      anchorY: OfficeOverlay.anchor(front, viewport: v, viewSize: size).y))
+        let waiting = Set(desks.map(\.id))
+        for desk in hidden {
+            let a = OfficeOverlay.anchor(desk, viewport: v, viewSize: size)
+            for (x, y) in [(a.x, a.y), (a.x, a.y - OfficeOverlay.cardOffset), (a.x, a.y - OfficeOverlay.bubbleOffset(detail))] {
+                let picked = plan.desk(atViewX: x, y: y, viewport: v, viewSize: size, detail: detail, waiting: waiting)
+                #expect(picked != desk.id, "\(desk.id) ufkun arkasında ama \(x),\(y) tıklaması onu seçti")
+            }
+        }
+    }
+
+    @Test func horizonIsBehindTheTargetAndFarWhenZoomedOut() {
+        let plan = deepPlan(16)
+        let fit = OfficeViewport.fitting(OfficeWorldBuilder.fitRect(plan).framed, height: 1.9, viewSize: size)
+        let near = OfficeViewport.focusing(x: 4, z: 90, zoom: 260, fit: fit)
+        #expect(near.horizonZ(viewSize: size) < near.targetZ - 2.5)
+        #expect(fit.horizonZ(viewSize: size) < plan.bounds.minZ)
+    }
+}
+
+@Suite struct OfficeFitRectTests {
+    func plan(_ rooms: [Int]) -> OfficePlan {
+        let members = rooms.enumerated().flatMap { r, n in (0..<n).map { OfficePlan.Member(id: "r\(r)d\($0)", roomKey: "/r\(r)") } }
+        return OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+    }
+
+    /// Uzak görünüm bütün odaları, her arsanın tabelasını ve arkadaki ağaç sırasını çerçeveler.
+    @Test(arguments: [[Int](), [1], [2, 1], [4, 2, 1], [1, 1, 1, 1, 1]])
+    func framedRectShowsEveryRoomAndLotSign(rooms: [Int]) {
+        let p = plan(rooms)
+        let fit = OfficeWorldBuilder.fitRect(p)
+        for room in p.rooms {
+            #expect(fit.framed.minZ <= room.rect.minZ && fit.framed.maxZ >= room.rect.maxZ, "\(room.key)")
+            #expect(fit.framed.minX <= room.rect.minX && fit.framed.maxX >= room.rect.maxX)
+        }
+        for lot in p.lots { #expect(fit.framed.maxZ >= lot.minZ + OfficePlan.lotSignZ + 1) }
+        #expect(fit.framed.minZ <= OfficeWorldBuilder.siteRect(p).minZ - 4)
+        #expect(fit.bounds.maxZ >= OfficeWorldBuilder.siteRect(p).maxZ)
+    }
+
+    /// Kamera hiçbir yakınlıkta çayırın kenarını göstermez.
+    @Test(arguments: [(2560.0, 1400.0, 24), (2560.0, 1400.0, 12), (1600.0, 1000.0, 12), (420.0, 280.0, 6)])
+    func cameraNeverSeesPastTheMeadow(width: Double, height: Double, rooms: Int) {
+        let p = plan(Array(repeating: 2, count: rooms))
+        let view = (width: width, height: height)
+        let fit = OfficeViewport.fitting(OfficeWorldBuilder.fitRect(p).framed, height: 1.9, viewSize: view)
+        var v = fit
+        v.zoom = OfficeViewport.zoomLimits(fit: fit).lowerBound
+        let meadow = OfficeWorldBuilder.meadowRect(p)
+        let horizon = v.horizonZ(viewSize: view)
+        for i in 0...30 {
+            for j in 0...30 {
+                let sx = width * Double(i) / 30, sy = height * Double(j) / 30
+                let hit = v.point(atX: sx, y: sy, height: 0, viewSize: view)
+                // Ufkun ötesi bükülmeyle yere gömülür (gökyüzü/tepeler görünür); sadece görünen zemin sayılır.
+                guard hit.z >= horizon, v.groundVisible(atX: sx, y: sy, viewSize: view) else { continue }
+                #expect(meadow.contains(x: hit.x, z: hit.z), "\(sx),\(sy) → \(hit)")
+            }
+        }
+    }
+}
