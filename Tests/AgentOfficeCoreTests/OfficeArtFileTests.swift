@@ -72,5 +72,8 @@ import Testing
         // İndeks sınır dışında
         let outOfRange = Self.sample.replacingOccurrences(of: Self.b64([UInt32]([2, 1, 0])), with: Self.b64([UInt32]([2, 1, 7])))
         #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data(outOfRange.utf8)) }
+        // Köşenin kemiği iskelette yok (GPU başka köylünün matrisini okurdu).
+        let badBone = Self.sample.replacingOccurrences(of: Self.b64([UInt8]([0, 1, 1])), with: Self.b64([UInt8]([0, 1, 5])))
+        #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data(badBone.utf8)) }
     }
 }

@@ -424,7 +424,8 @@ final class OfficeMetalRenderer: @unchecked Sendable {
             d.textureType = .type2DMultisample
             d.sampleCount = OfficeGPU.sampleCount
             d.usage = .renderTarget
-            d.storageMode = .memoryless
+            // Apple GPU'larında MSAA hedefleri bellekte yer tutmaz; diğerlerinde (Intel/AMD) özel bellek.
+            d.storageMode = gpu.device.supportsFamily(.apple1) ? .memoryless : .private
             return gpu.device.makeTexture(descriptor: d)
         }
         colorMSAA = make(OfficeGPU.colorFormat)

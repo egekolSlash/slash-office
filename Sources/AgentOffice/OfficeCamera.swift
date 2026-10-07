@@ -1,4 +1,5 @@
 import AgentOfficeCore
+import Foundation
 import Observation
 
 /// Ofis kamerası: o anki görünüm, yumuşak geçiş hedefi ve kullanıcının gezinip gezinmediği.
@@ -28,10 +29,11 @@ final class OfficeCamera {
         target = fitViewport
     }
 
-    /// Her karede hedefe doğru bir adım (yaklaşık 0,3 sn'de varır).
-    func step() {
+    /// Hedefe doğru bir adım (yaklaşık 0,3 sn'de varır). `dt`: kare süresi; adım ekranın yenileme hızından bağımsız
+    /// (24 fps'te kare başına %20).
+    func step(dt: Double = 1.0 / 24) {
         guard let target else { return }
-        let t = 0.2
+        let t = 1 - pow(0.8, max(dt, 0) * 24)
         var next = viewport
         next.centerX += (target.centerX - next.centerX) * t
         next.centerY += (target.centerY - next.centerY) * t

@@ -27,7 +27,7 @@ public struct OfficeArtFile: Sendable {
             clips[name] = ArtClip(frames: clip.frames, matrices: matrices)
         }
         return OfficeArtFile(bones: raw.bones, clips: clips,
-                             villager: try ArtMesh(raw.villager, name: "villager", skinned: true),
+                             villager: try ArtMesh(raw.villager, name: "villager", skinned: true, boneCount: raw.bones.count),
                              props: try raw.props.reduce(into: [:]) { $0[$1.key] = try ArtMesh($1.value, name: $1.key, skinned: false) })
     }
 
@@ -76,7 +76,7 @@ public struct ArtMesh: Sendable {
     public var parts: [UInt8] = []
     public var hair: [UInt8] = []
 
-    init(_ raw: OfficeArtFile.RawMesh, name: String, skinned: Bool) throws {
+    init(_ raw: OfficeArtFile.RawMesh, name: String, skinned: Bool, boneCount: Int = 0) throws {
         typealias F = OfficeArtFile
         vertexCount = raw.vertexCount
         positions = try F.array(raw.positions, name)
@@ -94,6 +94,7 @@ public struct ArtMesh: Sendable {
             parts = try F.array(p, name)
             hair = try F.array(h, name)
             guard bones.count == n, parts.count == n, hair.count == n else { throw F.Failure.badLength(name) }
+            guard bones.allSatisfy({ Int($0) < boneCount }) else { throw F.Failure.indexOutOfRange(name) }
         }
     }
 }

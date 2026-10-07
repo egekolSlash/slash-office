@@ -101,8 +101,8 @@ final class OfficeMetalView: NSView {
         }
     }
 
-    @objc private func stepCamera() {
-        camera.step()
+    @objc private func stepCamera(_ link: CADisplayLink) {
+        camera.step(dt: link.targetTimestamp - link.timestamp)
         if camera.target == nil {
             cameraLink?.invalidate()
             cameraLink = nil
@@ -135,6 +135,8 @@ final class OfficeMetalView: NSView {
                 MainActor.assumeIsolated { self?.postVisibility() }
             }
             if interactive { window.makeFirstResponder(self) }
+            // Pencere yokken başlayan kamera geçişi şimdi adımlansın.
+            cameraChanged()
         } else {
             cameraLink?.invalidate()
             cameraLink = nil
@@ -314,6 +316,9 @@ final class OfficeRenderLoop: @unchecked Sendable {
 
     private func run() {
         while true {
+            // Biriken uyandırmaları boşalt (native modda tüketilmezler); kutu kopyalandıktan sonra gelen bildirim
+            // yeniden sinyal verir, kaybolmaz.
+            while wake.wait(timeout: .now()) == .success {}
             lock.lock()
             let box = mailbox
             mailbox.scene = nil
@@ -356,7 +361,13 @@ final class OfficeRenderLoop: @unchecked Sendable {
     }
 
     private func apply(_ box: Mailbox) {
-        if let size = box.drawableSize, layer.drawableSize != size { layer.drawableSize = size }
+        if let size = box.drawableSize, layer.drawableSize != size {
+            // Run loop'suz thread'de örtük transaction açılmasın.
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.drawableSize = size
+            CATransaction.commit()
+        }
         if let world = box.world, world.generation > worldGeneration {
             worldGeneration = world.generation
             renderer.setWorld(world.mesh, plan: world.bounds)
