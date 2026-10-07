@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import CoreGraphics
 import SwiftUI
 import UserNotifications
 
@@ -10,6 +11,7 @@ struct PermissionsView: View {
     @State private var notifications: PermissionStatus = .unknown
     @State private var microphone: PermissionStatus = .unknown
     @State private var fullDisk: PermissionStatus = .unknown
+    @State private var screen: PermissionStatus = .unknown
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -43,6 +45,15 @@ struct PermissionsView: View {
                     AVCaptureDevice.requestAccess(for: .audio) { _ in Task { @MainActor in await refresh() } }
                 }
             }
+            PermissionRow(title: "Ekran Kaydı", symbol: "rectangle.dashed.badge.record",
+                          detail: "Terminallerdeki ajanlar ekran görüntüsü alabilsin (ör. bir arayüzü kontrol etmek için). İzin verdikten sonra uygulamayı yeniden başlat.",
+                          status: screen, action: "İzin ver") {
+                // İlk istekte macOS kendi penceresini gösterir; sonrakilerde sadece Ayarlar'dan açılabilir.
+                if !CGRequestScreenCaptureAccess() {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                }
+                Task { await refresh() }
+            }
 
             HStack {
                 Spacer()
@@ -60,6 +71,7 @@ struct PermissionsView: View {
 
     private func refresh() async {
         fullDisk = Self.hasFullDiskAccess ? .granted : .notDetermined
+        screen = CGPreflightScreenCaptureAccess() ? .granted : .notDetermined
         microphone = switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized: .granted
         case .notDetermined: .notDetermined
