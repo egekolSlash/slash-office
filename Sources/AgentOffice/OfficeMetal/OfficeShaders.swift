@@ -26,7 +26,7 @@ enum OfficeShaders {
         float4 bend;          // x: bükülmenin başladığı z, y: katsayı (OfficeViewport.bend)
         float4 skyTop;        // rgb: gökyüzünün tepesi (doğrusal)
         float4 skyHorizon;    // rgb: ufka yakın gökyüzü (doğrusal)
-        float4 light;         // x: emissive çarpanı (gece parlak), y: yıldızlar (0…1), zw: hedefin piksel boyutu
+        float4 light;         // x: emissive çarpanı (gece parlak), y: yıldızlar (0…1), z: oda içi ışık (0…1)
     };
 
     /// Zemin bükülmesi (v5 spec §2): başlangıcın arkasındaki noktalar ufka doğru alçalır. Işık bükülmez.
@@ -54,6 +54,7 @@ enum OfficeShaders {
         float4 color;         // rgb doğrusal, a: emissive
         float4 lpos;
         ushort layer [[flat]];
+        float interior;       // 1: oda içi (gece sıcak oda ışığı)
     };
 
     static float3 linear(float3 c) {
@@ -71,6 +72,7 @@ enum OfficeShaders {
         o.color = float4(linear(v.color.rgb), v.color.a);
         o.lpos = u.lightViewProj * w;
         o.layer = v.layer;
+        o.interior = v.part == 5 ? 1.0 : 0.0;
         return o;
     }
 
@@ -111,6 +113,7 @@ enum OfficeShaders {
         o.color = float4(linear(c), v.color.a);
         o.lpos = u.lightViewProj * w;
         o.layer = layer;
+        o.interior = 1.0;     // köylüler odalarda
         return o;
     }
 
@@ -147,6 +150,8 @@ enum OfficeShaders {
         // Hafif sarmalı Lambert: gölgeli taraf tamamen kararmasın.
         float ndl = saturate((dot(n, -u.lightDir.xyz) + 0.15) / 1.15);
         float3 ambient = mix(u.ground.rgb, u.sky.rgb, n.y * 0.5 + 0.5);
+        // Gece odaların içi sıcak sarı ışıkla aydınlanır (AC'deki gibi); yukarı bakan yüzler biraz daha fazla.
+        ambient += float3(1.0, 0.70, 0.40) * (0.55 + 0.25 * saturate(n.y)) * i.interior * u.light.z;
         float3 c = albedo * (ambient + u.sun.rgb * ndl * shade) + albedo * i.color.a * 1.5 * u.light.x;
         // v3'teki (RealityKit) yumuşak tona yakın: biraz az doygun.
         c = mix(float3(dot(c, float3(0.2126, 0.7152, 0.0722))), c, 0.82);

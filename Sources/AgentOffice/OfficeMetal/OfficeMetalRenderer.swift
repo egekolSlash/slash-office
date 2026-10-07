@@ -216,7 +216,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         var bend: SIMD4<Float>
         var skyTop: SIMD4<Float>
         var skyHorizon: SIMD4<Float>
-        /// x: emissive çarpanı, y: yıldızlar, zw: hedefin piksel boyutu.
+        /// x: emissive çarpanı, y: yıldızlar, z: oda içi sıcak ışık (0…1).
         var light: SIMD4<Float>
     }
 
@@ -324,7 +324,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
                          bend: SIMD4(Float(viewport.bend.startZ), Float(viewport.bend.k), 0, 0),
                          skyTop: SIMD4(Self.linear(lighting.sky * 0.86), 0),
                          skyHorizon: SIMD4(Self.linear(lighting.sky + (SIMD3(1, 1, 1) - lighting.sky) * 0.3), 0),
-                         light: SIMD4(Float(lighting.emissive), Float(lighting.stars), Float(target.width), Float(target.height)))
+                         light: SIMD4(Float(lighting.emissive), Float(lighting.stars), Float(lighting.interior), 0))
         let villagerCount = writeVillagers(avatars)
         let ringCount = writeRings(avatars, time: time)
 

@@ -113,6 +113,21 @@ import Testing
         #expect(count(mesh, color: [6, 6, 6, 0]) == rooms * Self.art.props["water_cooler"]!.vertexCount)
     }
 
+    /// Odaların zemini, duvarları ve eşyaları iç mekân olarak işaretli (gece sıcak ışık alır); çayır ve manzara değil.
+    @Test func roomGeometryIsMarkedInterior() {
+        let p = plan(sample)
+        let mesh = build(p)
+        let interior = mesh.vertices.filter { $0.part == OfficeVertex.interiorPart }
+        #expect(!interior.isEmpty)
+        for v in interior {
+            let inRoom = p.rooms.contains { $0.rect.insetBy(-0.3).contains(x: Double(v.position.x), z: Double(v.position.z)) }
+            #expect(inRoom, "\(v.position)")
+        }
+        #expect(mesh.vertices.filter { $0.layer == OfficeTextureLayer.grass }.allSatisfy { $0.part == 0 })
+        #expect(mesh.vertices.contains { $0.layer != 0 && OfficeTextureLayer.floor(0)...OfficeTextureLayer.floor(2) ~= $0.layer
+                                         && $0.part == OfficeVertex.interiorPart })
+    }
+
     @Test func longBoxesAreSplitAlongZ() {
         var mesh = OfficeMesh()
         mesh.appendBox(size: SIMD3(0.1, 1, 3), center: SIMD3(0, 0.5, 0), color: SIMD4(255, 255, 255, 0), layer: 0,

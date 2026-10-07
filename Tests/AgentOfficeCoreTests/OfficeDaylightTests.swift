@@ -52,6 +52,20 @@ import simd
         }
     }
 
+    /// Oda içi sıcak ışığı: gece tam, gündüz yok, arada yumuşak.
+    @Test func interiorLightIsOnAtNightOffAtDay() {
+        #expect(OfficeDaylight.at(hour: 23).interior > 0.95)
+        #expect(OfficeDaylight.at(hour: 13).interior == 0)
+        let dusk = OfficeDaylight.at(hour: 20).interior
+        #expect(dusk > 0.2 && dusk < 0.95)
+        var previous = OfficeDaylight.at(hour: 0).interior
+        for minute in 1...(24 * 60) {
+            let v = OfficeDaylight.at(hour: Double(minute) / 60).interior
+            #expect(abs(v - previous) < 0.05)
+            previous = v
+        }
+    }
+
     @Test func hourOfDayReadsTheLocalClock() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/Istanbul")!

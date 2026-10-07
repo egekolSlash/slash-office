@@ -28,11 +28,14 @@ public enum OfficeWorldBuilder {
         for lot in plan.lots { buildLot(lot, into: &mesh) }
         buildScenery(plan, site: site, art: art, into: &mesh)
         for room in plan.rooms {
+            let start = mesh.vertices.count
             buildRoom(room, style: style(room.key), color: projectColor(room.key), art: art, into: &mesh)
             for desk in room.desks {
                 let set = terminalDesks.contains(desk.id) ? "terminal_set" : "desk_set"
                 if let prop = art.props[set] { mesh.append(prop, at: SIMD3(Float(desk.x), 0, Float(desk.z))) }
             }
+            // Oda içi: gece sıcak oda ışığı alır.
+            for i in start..<mesh.vertices.count { mesh.vertices[i].part = OfficeVertex.interiorPart }
         }
         return mesh
     }

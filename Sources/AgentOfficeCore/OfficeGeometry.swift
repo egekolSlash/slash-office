@@ -21,6 +21,9 @@ public struct OfficeVertex: Equatable, Sendable {
         self.color = color; self.layer = layer; self.bone = bone; self.part = part
     }
 
+    /// Dünya mesh'inde `part`: oda içi geometri (gece sıcak oda ışığı alır). Köylüde 0…4 parça kodlarıdır.
+    public static let interiorPart: UInt8 = 5
+
     public var position: SIMD3<Float> { SIMD3(px, py, pz) }
     public var normal: SIMD3<Float> { SIMD3(nx, ny, nz) }
     public var uv: SIMD2<Float> { SIMD2(u, v) }

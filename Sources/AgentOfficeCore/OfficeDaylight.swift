@@ -19,6 +19,8 @@ public enum OfficeDaylight {
         public var emissive: Double
         /// Yıldızların görünürlüğü (0…1).
         public var stars: Double
+        /// Oda içi sıcak ışığın şiddeti (0 gündüz … 1 gece).
+        public var interior: Double
     }
 
     struct Key {
@@ -57,7 +59,8 @@ public enum OfficeDaylight {
         func mix(_ x: SIMD3<Double>, _ y: SIMD3<Double>) -> SIMD3<Double> { x + (y - x) * t }
         return Lighting(sky: mix(a.sky, b.sky), sun: mix(a.sun, b.sun), skyAmbient: mix(a.skyAmbient, b.skyAmbient),
                         groundAmbient: mix(a.groundAmbient, b.groundAmbient), direction: direction(hour: hour),
-                        emissive: a.emissive + (b.emissive - a.emissive) * t, stars: a.stars + (b.stars - a.stars) * t)
+                        emissive: a.emissive + (b.emissive - a.emissive) * t, stars: a.stars + (b.stars - a.stars) * t,
+                        interior: min(max((a.emissive + (b.emissive - a.emissive) * t - 1) / 2, 0), 1))
     }
 
     /// Güneş gün boyunca soldan (sabah, −x) sağa (akşam, +x) geçer ve hep kameranın tarafından (önden) vurur; gölgeler
