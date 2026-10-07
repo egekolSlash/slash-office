@@ -57,7 +57,16 @@ import Testing
             #expect(mesh.uvs.count == mesh.vertexCount * 2 && mesh.colors.count == mesh.vertexCount * 4, "\(name)")
         }
         #expect(Set(art.props.keys).isSuperset(of: ["desk_set", "terminal_set", "bookshelf", "plant", "lamp",
-                                                    "tree", "flower", "window", "curtain"]))
+                                                    "tree", "flower", "window", "curtain",
+                                                    "sofa", "coffee_table", "water_cooler", "hill_a", "hill_b", "hill_c", "tree_b"]))
+        // Tepeler bükülme için z'de sık bölünmüş olmalı: hiçbir üçgen z'de 1 m'den uzun değil.
+        for name in ["hill_a", "hill_b", "hill_c"] {
+            let hill = try #require(art.props[name])
+            for t in stride(from: 0, to: hill.indices.count, by: 3) {
+                let zs = (0..<3).map { hill.positions[Int(hill.indices[t + $0]) * 3 + 2] }
+                #expect(zs.max()! - zs.min()! <= 1.0, "\(name) üçgen \(t / 3)")
+            }
+        }
     }
 
     @Test func missingOrCorruptArtFile() throws {

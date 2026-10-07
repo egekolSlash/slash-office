@@ -283,8 +283,68 @@ def window():
 def curtain():
     box((0.05, 0.3, 1.1), (0, 0, 0), P["curtain"], 0.04)
 
+# v5: dinlenme köşesi (koltuk, sehpa, sebil), arka plan tepeleri ve ikinci ağaç çeşidi.
+def sofa():
+    # +X'e (uygulamada +x'e) bakar; boyu Y boyunca 1.1, oturma yüksekliği 0.42.
+    fabric = mat("SofaFabric", (0.36, 0.62, 0.70), 0.85)
+    fabricD = mat("SofaFabricDark", (0.28, 0.52, 0.60), 0.85)
+    box((0.5, 1.1, 0.2), (0.02, 0, 0.22), P["wood"], 0.03)
+    box((0.42, 1.0, 0.12), (0.05, 0, 0.37), fabric, 0.05)
+    box((0.14, 1.1, 0.42), (-0.2, 0, 0.45), fabricD, 0.06)
+    for dy in (-0.5, 0.5): box((0.5, 0.12, 0.3), (0.02, dy, 0.38), fabricD, 0.05)
+    for dx in (-0.18, 0.2):
+        for dy in (-0.48, 0.48): cyl(0.03, 0.12, (dx, dy, 0.06), P["wood"])
+def coffee_table():
+    cyl(0.28, 0.04, (0, 0, 0.36), P["woodL"], 0.015, verts=32)
+    cyl(0.035, 0.34, (0, 0, 0.17), P["wood"])
+    cyl(0.16, 0.03, (0, 0, 0.015), P["wood"], 0.01)
+    cyl(0.05, 0.08, (0.08, -0.06, 0.42), P["mug"], 0.01)
+def water_cooler():
+    body = mat("CoolerBody", (0.94, 0.94, 0.92), 0.4)
+    water = mat("CoolerWater", (0.45, 0.70, 0.95), 0.15)
+    box((0.32, 0.32, 0.9), (0, 0, 0.45), body, 0.04)
+    cyl(0.13, 0.36, (0, 0, 1.08), water, 0.05)
+    box((0.05, 0.06, 0.06), (0.17, 0, 0.62), P["dark"], 0.01)
+    box((0.05, 0.06, 0.06), (0.17, 0.08, 0.62), mat("CoolerRed", (0.92, 0.35, 0.32), 0.4), 0.01)
+def hill(tiers):
+    # AC tarzı kademeli tepe: her kat düz tepeli, kenarı yuvarlatılmış elips; üstü çimen, yanı koyu yeşil.
+    top = mat("HillTop", (0.48, 0.74, 0.36), 0.9)
+    side = mat("HillSide", (0.36, 0.58, 0.28), 0.9)
+    z = 0.0
+    for rx, ry, h in tiers:
+        bpy.ops.mesh.primitive_cylinder_add(radius=1, depth=h, location=(0, 0, z + h / 2), vertices=32, end_fill_type='TRIFAN')
+        o = bpy.context.active_object; o.scale = (rx, ry, 1); bpy.ops.object.transform_apply(scale=True)
+        o.data.materials.append(side); o.data.materials.append(top)
+        for poly in o.data.polygons: poly.material_index = 1 if poly.normal.z > 0.5 else 0
+        bv = o.modifiers.new("Bevel", "BEVEL"); bv.width = 0.25; bv.segments = 3; bv.limit_method = 'ANGLE'
+        bpy.context.view_layer.objects.active = o
+        bpy.ops.object.modifier_apply(modifier=bv.name)
+        # Uygulamadaki zemin bükülmesi z'ye (Blender'da −y) bağlı: kapakları 0,6 m'lik dilimlere böl.
+        bpy.ops.object.mode_set(mode='EDIT')
+        k = -math.ceil(ry / 0.6)
+        while k * 0.6 < ry:
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.bisect(plane_co=(0, k * 0.6, 0), plane_no=(0, 1, 0))
+            k += 1
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.shade_smooth()
+        PARTS.append(o)
+        z += h * 0.92
+def tree_b():
+    cyl(0.11, 1.0, (0, 0, 0.4), P["trunk"])
+    crown = mat("CrownB", (0.42, 0.70, 0.30), 0.6)
+    crown2 = mat("CrownB2", (0.50, 0.78, 0.36), 0.6)
+    sphere(0.72, (0, 0, 1.45), crown, scale=(1, 1, 0.9))
+    sphere(0.42, (0.42, -0.2, 1.2), crown2)
+    sphere(0.38, (-0.4, 0.15, 1.75), crown2)
+
 PROPS = dict(desk_set=lambda: desk(laptop), terminal_set=lambda: desk(monitor), bookshelf=bookshelf, plant=plant,
-             lamp=lamp, tree=tree, flower=flower, window=window, curtain=curtain)
+             lamp=lamp, tree=tree, flower=flower, window=window, curtain=curtain,
+             sofa=sofa, coffee_table=coffee_table, water_cooler=water_cooler,
+             hill_a=lambda: hill([(6.0, 3.0, 1.3), (4.2, 2.2, 1.3), (2.4, 1.3, 1.1)]),
+             hill_b=lambda: hill([(7.0, 3.4, 1.6), (4.6, 2.4, 1.5)]),
+             hill_c=lambda: hill([(4.5, 2.6, 1.2), (3.0, 1.8, 1.3), (1.8, 1.1, 1.0), (1.0, 0.7, 0.7)]),
+             tree_b=tree_b)
 PROP_OBJS = {}
 for name, build in PROPS.items():
     PARTS.clear(); build()
