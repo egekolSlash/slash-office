@@ -24,6 +24,9 @@ enum OfficeShaders {
         float4 ground;        // rgb: aşağı bakan yüzlerin ortam ışığı
         float4 params;        // x: zaman, y: köylü gölgesi var mı, z: gölge haritası texel'i (statik), w: (köylü)
         float4 bend;          // x: bükülmenin başladığı z, y: katsayı (OfficeViewport.bend)
+        float4 skyTop;        // rgb: gökyüzünün tepesi (doğrusal)
+        float4 skyHorizon;    // rgb: ufka yakın gökyüzü (doğrusal)
+        float4 light;         // x: emissive çarpanı (gece parlak), y: yıldızlar (0…1), zw: hedefin piksel boyutu
     };
 
     /// Zemin bükülmesi (v5 spec §2): başlangıcın arkasındaki noktalar ufka doğru alçalır. Işık bükülmez.
@@ -144,9 +147,43 @@ enum OfficeShaders {
         // Hafif sarmalı Lambert: gölgeli taraf tamamen kararmasın.
         float ndl = saturate((dot(n, -u.lightDir.xyz) + 0.15) / 1.15);
         float3 ambient = mix(u.ground.rgb, u.sky.rgb, n.y * 0.5 + 0.5);
-        float3 c = albedo * (ambient + u.sun.rgb * ndl * shade) + albedo * i.color.a * 1.5;
+        float3 c = albedo * (ambient + u.sun.rgb * ndl * shade) + albedo * i.color.a * 1.5 * u.light.x;
         // v3'teki (RealityKit) yumuşak tona yakın: biraz az doygun.
         c = mix(float3(dot(c, float3(0.2126, 0.7152, 0.0722))), c, 0.82);
+        return float4(c, 1);
+    }
+
+    // MARK: Gökyüzü
+
+    struct SkyOut { float4 pos [[position]]; float2 uv; };
+
+    /// Tam ekran üçgen (köşe tamponu yok); en arkada çizilir.
+    vertex SkyOut skyVS(uint vid [[vertex_id]]) {
+        float2 p = float2((vid << 1) & 2, vid & 2);
+        SkyOut o;
+        o.pos = float4(p * 2 - 1, 1, 1);
+        o.uv = float2(p.x, 1 - p.y);
+        return o;
+    }
+
+    static float hash21(float2 p) {
+        p = fract(p * float2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+    }
+
+    /// Ufukta açık, yukarıda koyu gökyüzü; gece yukarı kısımda hafifçe parlayıp sönen yıldızlar.
+    fragment float4 skyFS(SkyOut i [[stage_in]], constant Uniforms &u [[buffer(1)]]) {
+        float t = smoothstep(0.0, 0.85, 1.0 - i.uv.y);
+        float3 c = mix(u.skyHorizon.rgb, u.skyTop.rgb, t);
+        if (u.light.y > 0.01) {
+            float2 cell = floor(i.pos.xy / 3.0);
+            float h = hash21(cell);
+            if (h > 0.9965) {
+                float twinkle = 0.6 + 0.4 * sin(u.params.x * 1.7 + h * 120.0);
+                c += float3(0.9, 0.92, 1.0) * twinkle * u.light.y * smoothstep(0.15, 0.6, t);
+            }
+        }
         return float4(c, 1);
     }
 

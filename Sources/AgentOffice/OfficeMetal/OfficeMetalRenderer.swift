@@ -14,7 +14,8 @@ final class OfficeGPU: @unchecked Sendable {
     let queue: MTLCommandQueue
     let art: OfficeArtFile
     let skeleton: VillagerSkeleton
-    let worldPipe, villagerPipe, ringPipe, worldShadowPipe, villagerShadowPipe: MTLRenderPipelineState
+    let worldPipe, villagerPipe, ringPipe, skyPipe, worldShadowPipe, villagerShadowPipe: MTLRenderPipelineState
+    let skyDepth: MTLDepthStencilState
     let depthWrite, depthTestOnly: MTLDepthStencilState
     let patterns: MTLTexture
     let patternSampler, shadowSampler: MTLSamplerState
@@ -77,6 +78,18 @@ final class OfficeGPU: @unchecked Sendable {
         worldPipe = try pipe("worldVS", "shadeFS", color: true)
         villagerPipe = try pipe("villagerVS", "shadeFS", color: true)
         ringPipe = try pipe("ringVS", "ringFS", color: true, blend: true)
+        let sky = MTLRenderPipelineDescriptor()
+        sky.vertexFunction = library.makeFunction(name: "skyVS")
+        sky.fragmentFunction = library.makeFunction(name: "skyFS")
+        sky.colorAttachments[0].pixelFormat = Self.colorFormat
+        sky.depthAttachmentPixelFormat = Self.depthFormat
+        sky.rasterSampleCount = Self.sampleCount
+        skyPipe = try device.makeRenderPipelineState(descriptor: sky)
+        let skyDepthDescriptor = MTLDepthStencilDescriptor()
+        skyDepthDescriptor.depthCompareFunction = .always
+        skyDepthDescriptor.isDepthWriteEnabled = false
+        guard let skyDepth = device.makeDepthStencilState(descriptor: skyDepthDescriptor) else { throw Failure.resource("sky depth") }
+        self.skyDepth = skyDepth
         worldShadowPipe = try pipe("worldShadowVS", nil, color: false, samples: 1)
         villagerShadowPipe = try pipe("villagerShadowVS", nil, color: false, samples: 1)
 
@@ -201,6 +214,10 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         var params: SIMD4<Float>
         /// x: bükülmenin başladığı z, y: katsayı (`OfficeViewport.bend`).
         var bend: SIMD4<Float>
+        var skyTop: SIMD4<Float>
+        var skyHorizon: SIMD4<Float>
+        /// x: emissive çarpanı, y: yıldızlar, zw: hedefin piksel boyutu.
+        var light: SIMD4<Float>
     }
 
     struct VillagerData {
@@ -213,17 +230,20 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     }
 
     static func checkLayouts() {
-        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 128, Uniforms 224 bayt).
-        assert(MemoryLayout<VillagerData>.stride == 128 && MemoryLayout<Uniforms>.stride == 224)
+        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 128, Uniforms 272 bayt).
+        assert(MemoryLayout<VillagerData>.stride == 128 && MemoryLayout<Uniforms>.stride == 272)
     }
 
-    /// v3 güneşi: (−2, 9, 8)'den (3, 0, 3)'e.
-    static let lightDirection = simd_normalize(SIMD3<Double>(5, -9, -5))
+    /// Saatin ışığı (gece/gündüz döngüsü); varsayılan öğlen.
+    private(set) var lighting = OfficeDaylight.at(hour: 13)
+
     static let staticShadowSize = 2048
     static let villagerShadowSize = 1024
     static let framesInFlight = 3
-    /// Gökyüzü: v3 ekranındaki sRGB (194, 224, 252), doğrusal.
-    static let skyClear = MTLClearColor(red: 0.539, green: 0.745, blue: 0.973, alpha: 1)
+    static func linear(_ c: SIMD3<Double>) -> SIMD3<Float> {
+        func f(_ x: Double) -> Float { Float(x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)) }
+        return SIMD3(f(c.x), f(c.y), f(c.z))
+    }
 
     let gpu: OfficeGPU
     private var worldVertices: MTLBuffer?
@@ -231,6 +251,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     private var worldIndexCount = 0
     private var islandBounds = PlanRect.zero
     private var lightViewProj = matrix_identity_float4x4
+    private var shadowDirection = SIMD3<Double>(0, -1, 0)
     private var staticShadowDirty = false
     private let staticShadow: MTLTexture
     private let villagerShadow: MTLTexture
@@ -268,7 +289,18 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         // Gölge haritası odaları, arsaları ve meydanı (+2 m) kaplar; çayırın gerisi gölgesizdir.
         let margin = 2.0
         islandBounds = PlanRect(minX: site.minX - margin, minZ: site.minZ - margin, maxX: site.maxX + margin, maxZ: site.maxZ + margin)
-        lightViewProj = OfficeViewport.lightViewProjection(bounds: islandBounds, height: 3.2, direction: Self.lightDirection)
+        updateLightProjection()
+    }
+
+    /// Yeni ışık: güneşin yönü yarım dereceden fazla değiştiyse statik gölge haritası yeniden çizilir.
+    func setLighting(_ lighting: OfficeDaylight.Lighting) {
+        self.lighting = lighting
+        if simd_dot(lighting.direction, shadowDirection) < cos(0.5 * .pi / 180) { updateLightProjection() }
+    }
+
+    private func updateLightProjection() {
+        shadowDirection = lighting.direction
+        lightViewProj = OfficeViewport.lightViewProjection(bounds: islandBounds, height: 3.2, direction: shadowDirection)
         staticShadowDirty = true
     }
 
@@ -285,10 +317,14 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         ensureTargets(width: target.width, height: target.height)
 
         var u = Uniforms(viewProj: viewport.viewProjection(viewSize: viewSize), lightViewProj: lightViewProj,
-                         lightDir: SIMD4(SIMD3<Float>(Self.lightDirection), 0),
-                         sun: SIMD4(1.0, 0.92, 0.80, 0) * 0.72, sky: SIMD4(0.46, 0.47, 0.46, 0), ground: SIMD4(0.34, 0.33, 0.26, 0),
+                         lightDir: SIMD4(SIMD3<Float>(shadowDirection), 0),
+                         sun: SIMD4(SIMD3<Float>(lighting.sun), 0), sky: SIMD4(SIMD3<Float>(lighting.skyAmbient), 0),
+                         ground: SIMD4(SIMD3<Float>(lighting.groundAmbient), 0),
                          params: SIMD4(Float(time), avatars.isEmpty ? 0 : 1, 1 / Float(Self.staticShadowSize), 1 / Float(Self.villagerShadowSize)),
-                         bend: SIMD4(Float(viewport.bend.startZ), Float(viewport.bend.k), 0, 0))
+                         bend: SIMD4(Float(viewport.bend.startZ), Float(viewport.bend.k), 0, 0),
+                         skyTop: SIMD4(Self.linear(lighting.sky * 0.86), 0),
+                         skyHorizon: SIMD4(Self.linear(lighting.sky + (SIMD3(1, 1, 1) - lighting.sky) * 0.3), 0),
+                         light: SIMD4(Float(lighting.emissive), Float(lighting.stars), Float(target.width), Float(target.height)))
         let villagerCount = writeVillagers(avatars)
         let ringCount = writeRings(avatars, time: time)
 
@@ -314,7 +350,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         pass.colorAttachments[0].texture = colorMSAA
         pass.colorAttachments[0].resolveTexture = target
         pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = Self.skyClear
+        let skyLinear = Self.linear(lighting.sky)
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: Double(skyLinear.x), green: Double(skyLinear.y),
+                                                            blue: Double(skyLinear.z), alpha: 1)
         pass.colorAttachments[0].storeAction = .multisampleResolve
         pass.depthAttachment.texture = depthMSAA
         pass.depthAttachment.loadAction = .clear
@@ -331,6 +369,12 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         e.setFragmentTexture(villagerShadow, index: 2)
         e.setFragmentSamplerState(gpu.patternSampler, index: 0)
         e.setFragmentSamplerState(gpu.shadowSampler, index: 1)
+        // Gökyüzü (geçiş ve yıldızlar) en arkada.
+        e.setRenderPipelineState(gpu.skyPipe)
+        e.setDepthStencilState(gpu.skyDepth)
+        e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+        e.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        e.setDepthStencilState(gpu.depthWrite)
         if let vb = worldVertices, let ib = worldIndices {
             e.setRenderPipelineState(gpu.worldPipe)
             e.setVertexBuffer(vb, offset: 0, index: 0)

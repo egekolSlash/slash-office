@@ -22,6 +22,8 @@ final class OfficeMetalView: NSView {
     private let loop: OfficeRenderLoop
     private let camera: OfficeCamera
     private var occlusionObserver: NSObjectProtocol?
+    private var defaultsObserver: NSObjectProtocol?
+    private var clockTimer: Timer?
     private var cameraLink: CADisplayLink?
     private var lastScene: OfficeSceneInput?
     private var worldKey: OfficeWorldKey?
@@ -41,13 +43,42 @@ final class OfficeMetalView: NSView {
         layer = metalLayer
         observeCamera()
         loop.start()
+        // Gece/gündüz: dakikada bir saatin ışığı; ayar değişince hemen.
+        postLighting()
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.postLighting() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        clockTimer = timer
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.postLighting() }
+        }
     }
+
+    static let dayNightKey = "dayNightCycle"
+
+    /// Saatin ışığı (ayar kapalıysa öğlen). `OFFICE_HOUR` ortam değişkeni saati sabitler (deneme için).
+    private func postLighting() {
+        let enabled = UserDefaults.standard.object(forKey: Self.dayNightKey) as? Bool ?? true
+        let fixed = ProcessInfo.processInfo.environment["OFFICE_HOUR"].flatMap(Double.init)
+        let hour = fixed ?? (enabled ? OfficeDaylight.hour(of: Date()) : 13)
+        let lighting = OfficeDaylight.at(hour: hour)
+        guard lighting != lastLighting else { return }
+        lastLighting = lighting
+        loop.post(lighting: lighting)
+    }
+
+    private var lastLighting: OfficeDaylight.Lighting?
 
     required init?(coder: NSCoder) { fatalError("init(coder:) kullanılmıyor") }
 
     isolated deinit {
         loop.stop()
         cameraLink?.invalidate()
+        clockTimer?.invalidate()
+        if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
         if let occlusionObserver { NotificationCenter.default.removeObserver(occlusionObserver) }
     }
 
@@ -264,6 +295,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var visible = false
         var mini = false
         var drawableSize: CGSize?
+        var lighting: OfficeDaylight.Lighting?
         var dirty = true
     }
     private var mailbox = Mailbox()
@@ -312,6 +344,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
     }
 
     func post(visible: Bool, mini: Bool) { send { $0.visible = visible; $0.mini = mini } }
+    func post(lighting: OfficeDaylight.Lighting) { send { $0.lighting = lighting } }
     func post(drawableSize: CGSize) { send { $0.drawableSize = drawableSize } }
     /// Jest sonrası yarım saniye tam hız (kaydırma ve yakınlaştırma akıcı olsun).
     func postInteraction() { send { $0.interactionUntil = CACurrentMediaTime() + 0.5 } }
@@ -327,6 +360,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
             let box = mailbox
             mailbox.world = nil
             mailbox.drawableSize = nil
+            mailbox.lighting = nil
             mailbox.dirty = false
             lock.unlock()
             guard box.running else { return }
@@ -372,6 +406,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
             layer.drawableSize = size
             CATransaction.commit()
         }
+        if let lighting = box.lighting { renderer.setLighting(lighting) }
         if let world = box.world, world.generation > worldGeneration {
             worldGeneration = world.generation
             renderer.setWorld(world.mesh, site: world.bounds)

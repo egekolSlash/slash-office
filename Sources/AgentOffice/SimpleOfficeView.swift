@@ -104,11 +104,15 @@ private struct DeskRow: View {
 /// Ayarlar (⌘,).
 struct SettingsView: View {
     @AppStorage("richOffice") private var richOffice = false
+    @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
 
     var body: some View {
         Form {
             Toggle("Detaylı ofis", isOn: $richOffice)
             Text("Açıkken ofis gezinilebilir, odalı ve animasyonlu çizilir. Kapalıyken animasyonsuz, sade kartlar gösterilir (daha az CPU ve GPU).")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Gece/gündüz döngüsü", isOn: $dayNight).disabled(!richOffice)
+            Text("Gökyüzü ve ışık bilgisayarın saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece. Kapalıyken hep gündüz.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)

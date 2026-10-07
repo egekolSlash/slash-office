@@ -49,6 +49,10 @@ enum OfficeSnapshot {
         let mesh = OfficeWorldBuilder.build(plan: plan, terminalDesks: terminals, style: model.style(for:),
                                             projectColor: { colors[$0] ?? (0.6, 0.6, 0.6) }, art: gpu.art)
         renderer.setWorld(mesh, site: OfficeWorldBuilder.siteRect(plan))
+        // `--hour <saat>`: gece/gündüz döngüsünde o saatin ışığı (ör. 21.5).
+        if let i = arguments.firstIndex(of: "--hour"), let hour = Double(arguments[i + 1]) {
+            renderer.setLighting(OfficeDaylight.at(hour: hour))
+        }
         var sim = AvatarSim(skeleton: gpu.skeleton)
         let states = desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind) }
         let looks = Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) })
