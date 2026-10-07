@@ -168,3 +168,66 @@ extension OfficeViewport {
     /// RealityKit `OrthographicCameraComponent.scale`: görünür yüksekliğin yarısı (dünya birimi).
     public func orthographicScale(viewHeight: Double) -> Double { viewHeight / (2 * zoom) }
 }
+
+import simd
+
+extension OfficeViewport {
+    /// Derinlik aralığı (dünya birimi): kameraya doğru ±`depthRange / 2`.
+    static let depthRange = 120.0
+
+    /// Metal için dünya → kırpma uzayı matrisi (x, y ∈ [−1, 1], z ∈ [0, 1], kameraya yakın küçük).
+    /// `project` ile birebir aynı izdüşüm: SwiftUI kartları ve tıklamalar hizalı kalır.
+    public func viewProjection(viewSize: ViewSize) -> simd_float4x4 {
+        let kx = 2 * zoom / max(viewSize.width, 1)
+        let ky = 2 * zoom / max(viewSize.height, 1)
+        let target = cameraTarget()
+        let s3 = 3.0.squareRoot()
+        let targetDepth = (target.x + target.y + target.z) / s3
+        let r = Self.depthRange
+        // Satırlar: ndc.x, ndc.y, ndc.z, w.
+        let rows: [[Double]] = [
+            [kx / Self.root2, 0, -kx / Self.root2, -kx * centerX],
+            [-ky / Self.root6, 2 * ky / Self.root6, -ky / Self.root6, -ky * centerY],
+            [-1 / (r * s3), -1 / (r * s3), -1 / (r * s3), 0.5 + targetDepth / r],
+            [0, 0, 0, 1],
+        ]
+        return Self.matrix(rows: rows)
+    }
+
+    /// Gölge haritası için ortografik ışık matrisi: `bounds` (zeminden `height`'a kadar) tamamen içeride.
+    public static func lightViewProjection(bounds: PlanRect, height: Double, direction: SIMD3<Double>) -> simd_float4x4 {
+        let forward = simd_normalize(direction)
+        let worldUp = abs(forward.y) > 0.99 ? SIMD3<Double>(0, 0, 1) : SIMD3<Double>(0, 1, 0)
+        let right = simd_normalize(simd_cross(forward, worldUp))
+        let up = simd_cross(right, forward)
+        var lo = SIMD3<Double>(repeating: .infinity), hi = SIMD3<Double>(repeating: -.infinity)
+        for x in [bounds.minX, bounds.maxX] {
+            for z in [bounds.minZ, bounds.maxZ] {
+                for y in [0.0, height] {
+                    let p = SIMD3(x, y, z)
+                    let q = SIMD3(simd_dot(p, right), simd_dot(p, up), simd_dot(p, forward))
+                    lo = simd_min(lo, q)
+                    hi = simd_max(hi, q)
+                }
+            }
+        }
+        let pad = 0.05
+        lo -= pad; hi += pad
+        let sx = 2 / (hi.x - lo.x), sy = 2 / (hi.y - lo.y), sz = 1 / (hi.z - lo.z)
+        let rows: [[Double]] = [
+            [right.x * sx, right.y * sx, right.z * sx, -(lo.x + hi.x) / 2 * sx],
+            [up.x * sy, up.y * sy, up.z * sy, -(lo.y + hi.y) / 2 * sy],
+            [forward.x * sz, forward.y * sz, forward.z * sz, -lo.z * sz],
+            [0, 0, 0, 1],
+        ]
+        return matrix(rows: rows)
+    }
+
+    static func matrix(rows: [[Double]]) -> simd_float4x4 {
+        simd_float4x4(columns: (
+            SIMD4<Float>(Float(rows[0][0]), Float(rows[1][0]), Float(rows[2][0]), Float(rows[3][0])),
+            SIMD4<Float>(Float(rows[0][1]), Float(rows[1][1]), Float(rows[2][1]), Float(rows[3][1])),
+            SIMD4<Float>(Float(rows[0][2]), Float(rows[1][2]), Float(rows[2][2]), Float(rows[3][2])),
+            SIMD4<Float>(Float(rows[0][3]), Float(rows[1][3]), Float(rows[2][3]), Float(rows[3][3]))))
+    }
+}
