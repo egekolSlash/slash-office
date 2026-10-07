@@ -97,3 +97,15 @@ public struct ArtMesh: Sendable {
         }
     }
 }
+
+extension OfficeArtFile {
+    /// Testler ve eksik köylü için boş mesh.
+    static let emptyMesh = ArtMesh(vertexCount: 0, positions: [], normals: [], uvs: [], colors: [], indices: [])
+}
+
+extension ArtMesh {
+    init(vertexCount: Int, positions: [Float], normals: [Float], uvs: [Float], colors: [UInt8], indices: [UInt32]) {
+        self.vertexCount = vertexCount; self.positions = positions; self.normals = normals
+        self.uvs = uvs; self.colors = colors; self.indices = indices
+    }
+}
