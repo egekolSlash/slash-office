@@ -73,7 +73,7 @@ final class OfficeMetalView: NSView {
             let mesh = OfficeWorldBuilder.build(plan: key.plan, terminalDesks: key.terminals,
                                                 style: { key.styles[$0] ?? RoomStyle.default(for: $0) },
                                                 projectColor: { colors[$0] ?? (0.6, 0.6, 0.6) }, art: loop.gpu.art)
-            loop.post(world: mesh, bounds: key.plan.bounds, generation: generation)
+            loop.post(world: mesh, bounds: OfficeWorldBuilder.siteRect(key.plan), generation: generation)
         }
     }
 
@@ -370,7 +370,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
         }
         if let world = box.world, world.generation > worldGeneration {
             worldGeneration = world.generation
-            renderer.setWorld(world.mesh, plan: world.bounds)
+            renderer.setWorld(world.mesh, site: world.bounds)
         }
         if let scene = box.scene {
             sim.sync(plan: scene.plan, desks: scene.desks, looks: scene.looks, projectColors: scene.projectColors, live: synced)

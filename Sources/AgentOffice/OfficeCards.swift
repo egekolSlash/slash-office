@@ -14,14 +14,22 @@ struct OfficeCards: View {
         let viewport = camera.viewport
         let size = camera.viewSize
         let detail = interactive ? OfficeDetail.level(zoom: viewport.zoom) : .far
+        // Ekranın üst kenarına (ufka) yakın kalanlar gizlenir: bükülme bölgesinde okunmaz ve tıklaması şaşar.
+        let horizon = size.height * 0.08
         ZStack(alignment: .topLeading) {
             ForEach(plan.rooms, id: \.key) { room in
                 let anchor = viewport.project(x: room.doorX, y: OfficePlan.wallHeight + 0.25, z: room.doorZ, viewSize: size)
-                RoomSign(title: room.title, roomKey: room.key, icon: icons[room.key], compact: detail == .far && !interactive)
-                    .position(x: anchor.x, y: anchor.y)
+                if anchor.y > horizon {
+                    RoomSign(title: room.title, roomKey: room.key, icon: icons[room.key], compact: detail == .far && !interactive)
+                        .position(x: anchor.x, y: anchor.y)
+                }
+            }
+            ForEach(Array(plan.lots.enumerated()), id: \.offset) { _, lot in
+                let anchor = viewport.project(x: (lot.minX + lot.maxX) / 2, y: 0.95, z: lot.minZ + OfficePlan.lotSignZ, viewSize: size)
+                if anchor.y > horizon { LotSign(compact: detail == .far && !interactive).position(x: anchor.x, y: anchor.y) }
             }
             ForEach(plan.rooms.flatMap(\.desks), id: \.id) { desk in
-                if let info = desks[desk.id] {
+                if let info = desks[desk.id], OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size).y > horizon {
                     let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size)
                     if detail != .far {
                         DeskCard(info: info, near: detail == .near)
@@ -39,6 +47,21 @@ struct OfficeCards: View {
         }
         .frame(width: size.width, height: size.height)
         .allowsHitTesting(false)
+    }
+}
+
+/// Boş arsanın tabelası: tıklanınca yeni oturum açılır (tıklama sahnede, `OfficeView`).
+private struct LotSign: View {
+    let compact: Bool
+
+    var body: some View {
+        Label("Yeni oda", systemImage: "plus")
+            .font(.system(size: compact ? 10 : 12, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.55, green: 0.40, blue: 0.25).opacity(0.9), in: RoundedRectangle(cornerRadius: 5))
+            .fixedSize()
     }
 }
 

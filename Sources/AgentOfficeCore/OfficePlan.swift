@@ -32,6 +32,8 @@ public struct OfficePlan: Equatable, Sendable {
     public static let backRowZ = 1.3
     public static let frontRowZ = 3.1
     public static let walkwayZ = 4.4
+    /// Arsa tabelası arsanın arka tarafında (uzak görünümde arsanın sadece başı görünür).
+    public static let lotSignZ = 1.4
     public static let wallHeight = 1.6
     /// İç ve ön duvarlar alçak (Sims tarzı kesit): arkadaki odayı ve masaları örtmez.
     public static let lowWallHeight = 0.25

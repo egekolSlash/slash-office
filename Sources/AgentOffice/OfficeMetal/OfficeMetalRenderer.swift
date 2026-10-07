@@ -261,12 +261,13 @@ final class OfficeMetalRenderer: @unchecked Sendable {
 
     /// Yeni statik dünya: tamponlar burada (çizim thread'inde) değişir, yani kare ortasında yarım dünya çizilmez.
     /// Uçuştaki komut tamponları eski tamponları kendileri tutar.
-    func setWorld(_ mesh: OfficeMesh, plan: PlanRect) {
+    func setWorld(_ mesh: OfficeMesh, site: PlanRect) {
         worldVertices = OfficeGPU.buffer(gpu.device, mesh.vertices)
         worldIndices = OfficeGPU.buffer(gpu.device, mesh.indices)
         worldIndexCount = worldVertices == nil ? 0 : mesh.indices.count
-        let margin = 1.5
-        islandBounds = PlanRect(minX: plan.minX - margin, minZ: plan.minZ - margin, maxX: plan.maxX + margin, maxZ: plan.maxZ + margin)
+        // Gölge haritası odaları, arsaları ve meydanı (+2 m) kaplar; çayırın gerisi gölgesizdir.
+        let margin = 2.0
+        islandBounds = PlanRect(minX: site.minX - margin, minZ: site.minZ - margin, maxX: site.maxX + margin, maxZ: site.maxZ + margin)
         lightViewProj = OfficeViewport.lightViewProjection(bounds: islandBounds, height: 3.2, direction: Self.lightDirection)
         staticShadowDirty = true
     }

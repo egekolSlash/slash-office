@@ -48,7 +48,7 @@ enum OfficeSnapshot {
         let terminals = Set(desks.values.filter { $0.kind == .shell }.map(\.id))
         let mesh = OfficeWorldBuilder.build(plan: plan, terminalDesks: terminals, style: model.style(for:),
                                             projectColor: { colors[$0] ?? (0.6, 0.6, 0.6) }, art: gpu.art)
-        renderer.setWorld(mesh, plan: plan.bounds)
+        renderer.setWorld(mesh, site: OfficeWorldBuilder.siteRect(plan))
         var sim = AvatarSim(skeleton: gpu.skeleton)
         let states = desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind) }
         let looks = Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) })

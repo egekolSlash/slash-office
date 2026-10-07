@@ -88,7 +88,7 @@ public enum OfficeWorldBuilder {
         for x in [lot.minX + inset, lot.maxX - inset] {
             mesh.appendBox(size: SIMD3(0.025, 0.025, lenZ), center: SIMD3(Float(x), 0.3, c.z), color: rope, layer: 0)
         }
-        let z = Float(lot.maxZ) - 0.6
+        let z = Float(lot.minZ + OfficePlan.lotSignZ)
         mesh.appendBox(size: SIMD3(0.06, 0.55, 0.06), center: SIMD3(c.x, 0.27, z), color: post, layer: 0)
         mesh.appendBox(size: SIMD3(0.7, 0.34, 0.05), center: SIMD3(c.x, 0.52, z + 0.04), color: signBoard, layer: 0)
     }

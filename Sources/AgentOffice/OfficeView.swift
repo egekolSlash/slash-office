@@ -105,9 +105,14 @@ struct OfficeView: View {
             if shift { model.addTerminal(id) } else { model.showTerminal(id) }
             return
         }
+        let ground = camera.viewport.point(atX: x, y: y, height: 0, viewSize: camera.viewSize)
+        // Boş arsaya tık: yeni Claude oturumu seçicisi (⌘N gibi).
+        if plan.lot(atX: ground.x, z: ground.z) != nil {
+            model.openLauncher(beside: false, claude: true)
+            return
+        }
         // Boş zemine çift tık: kamera o odaya yaklaşır (sadece ofis modunda).
         guard interactive, clickCount == 2 else { return }
-        let ground = camera.viewport.point(atX: x, y: y, height: 0, viewSize: camera.viewSize)
         guard let room = plan.room(atX: ground.x, z: ground.z) else { return }
         let roomFit = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
         camera.focus(x: roomFit.targetX, z: roomFit.targetZ, zoom: roomFit.zoom)

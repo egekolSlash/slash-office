@@ -42,16 +42,19 @@ enum OfficeMeasureWindow {
         var lastTime = CACurrentMediaTime(), lastCPU = processCPU(), lastFrames = 0
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
             let now = CACurrentMediaTime(), cpu = processCPU(), count = frames.load(ordering: .relaxed)
-            print(String(format: "fps=%.1f  süreç CPU=%%%.1f", Double(count - lastFrames) / (now - lastTime),
-                         (cpu - lastCPU) / (now - lastTime) * 100))
+            let dt = now - lastTime
+            print(String(format: "fps=%.1f  süreç CPU=%%%.1f (kullanıcı %%%.1f, sistem %%%.1f)", Double(count - lastFrames) / dt,
+                         (cpu.user + cpu.system - lastCPU.user - lastCPU.system) / dt * 100,
+                         (cpu.user - lastCPU.user) / dt * 100, (cpu.system - lastCPU.system) / dt * 100))
             lastTime = now; lastCPU = cpu; lastFrames = count
         }
     }
 
-    /// Sürecin toplam CPU süresi (kullanıcı + sistem, sn).
-    static func processCPU() -> Double {
+    /// Sürecin CPU süresi (sn): kullanıcı ve sistem ayrı.
+    static func processCPU() -> (user: Double, system: Double) {
         var usage = rusage()
         getrusage(RUSAGE_SELF, &usage)
-        return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1e6
+        return (Double(usage.ru_utime.tv_sec) + Double(usage.ru_utime.tv_usec) / 1e6,
+                Double(usage.ru_stime.tv_sec) + Double(usage.ru_stime.tv_usec) / 1e6)
     }
 }
