@@ -37,9 +37,8 @@ enum OfficeSnapshot {
         // `--focus-waiting`: kamera bekleyen ilk masaya (el sallama pozunu yakından görmek için).
         if arguments.contains("--focus-waiting"),
            let desk = plan.rooms.flatMap(\.desks).first(where: { if case .waiting = model.store.session($0.id)?.state { true } else { false } }) {
-            let p = OfficeViewport.screenPlane(x: desk.x, y: 0.6, z: desk.z)
             camera.userMoved = true
-            camera.viewport = OfficeViewport(centerX: p.x, centerY: p.y, zoom: zoom ?? 320)
+            camera.viewport = OfficeViewport.focusing(x: desk.x, z: desk.z, zoom: zoom ?? 200, fit: camera.fitViewport)
         }
         let desks = demoDeskInfos(plan, model: model)
         let colors = Dictionary(uniqueKeysWithValues: plan.rooms.map { room in

@@ -49,16 +49,8 @@ struct OfficeView: View {
             gpu: gpu, camera: camera, scene: scene, interactive: interactive,
             onClick: { x, y, clickCount, shift in handleClick(x: x, y: y, clickCount: clickCount, shift: shift, plan: plan, camera: camera) },
             onRightClick: { x, y in handleRightClick(x: x, y: y, plan: plan, camera: camera) },
-            onPan: { dx, dy in
-                camera.target = nil
-                camera.userMoved = true
-                camera.viewport.pan(dx: dx, dy: dy)
-            },
-            onZoom: { factor, x, y in
-                camera.target = nil
-                camera.userMoved = true
-                camera.viewport.zoom(by: factor, anchorX: x, anchorY: y, viewSize: camera.viewSize, limits: camera.limits)
-            },
+            onPan: { dx, dy in camera.pan(dx: dx, dy: dy) },
+            onZoom: { factor, x, y in camera.zoom(by: factor, anchorX: x, anchorY: y) },
             onResetKey: { camera.resetToFit() })
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
             camera.viewSize = (Double(size.width), Double(size.height))
@@ -117,10 +109,8 @@ struct OfficeView: View {
         guard interactive, clickCount == 2 else { return }
         let ground = camera.viewport.point(atX: x, y: y, height: 0, viewSize: camera.viewSize)
         guard let room = plan.room(atX: ground.x, z: ground.z) else { return }
-        camera.userMoved = true
-        var target = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
-        target.zoom = min(max(target.zoom, camera.limits.lowerBound), camera.limits.upperBound)
-        camera.target = target
+        let roomFit = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
+        camera.focus(x: roomFit.targetX, z: roomFit.targetZ, zoom: roomFit.zoom)
     }
 
     /// Sağ tık: masada "Görünümü düzenle…", odada "Odayı düzenle…".
@@ -136,8 +126,6 @@ struct OfficeView: View {
     /// ⌘J: kamera bekleyen masaya yaklaşır (yakın detay seviyesinde).
     private func focusCamera(on id: String, plan: OfficePlan, camera: OfficeCamera) {
         guard let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == id }) else { return }
-        let point = OfficeViewport.screenPlane(x: desk.x, y: 0.5, z: desk.z)
-        camera.userMoved = true
-        camera.target = OfficeViewport(centerX: point.x, centerY: point.y, zoom: min(max(camera.viewport.zoom, 130), camera.limits.upperBound))
+        camera.focus(x: desk.x, z: desk.z, zoom: max(camera.viewport.zoom, 130))
     }
 }

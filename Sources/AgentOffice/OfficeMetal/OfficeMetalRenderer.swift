@@ -199,6 +199,8 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         var sky: SIMD4<Float>
         var ground: SIMD4<Float>
         var params: SIMD4<Float>
+        /// x: bükülmenin başladığı z, y: katsayı (`OfficeViewport.bend`).
+        var bend: SIMD4<Float>
     }
 
     struct VillagerData {
@@ -211,8 +213,8 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     }
 
     static func checkLayouts() {
-        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 128, Uniforms 208 bayt).
-        assert(MemoryLayout<VillagerData>.stride == 128 && MemoryLayout<Uniforms>.stride == 208)
+        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 128, Uniforms 224 bayt).
+        assert(MemoryLayout<VillagerData>.stride == 128 && MemoryLayout<Uniforms>.stride == 224)
     }
 
     /// v3 güneşi: (−2, 9, 8)'den (3, 0, 3)'e.
@@ -284,7 +286,8 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         var u = Uniforms(viewProj: viewport.viewProjection(viewSize: viewSize), lightViewProj: lightViewProj,
                          lightDir: SIMD4(SIMD3<Float>(Self.lightDirection), 0),
                          sun: SIMD4(1.0, 0.92, 0.80, 0) * 0.72, sky: SIMD4(0.46, 0.47, 0.46, 0), ground: SIMD4(0.34, 0.33, 0.26, 0),
-                         params: SIMD4(Float(time), avatars.isEmpty ? 0 : 1, 1 / Float(Self.staticShadowSize), 1 / Float(Self.villagerShadowSize)))
+                         params: SIMD4(Float(time), avatars.isEmpty ? 0 : 1, 1 / Float(Self.staticShadowSize), 1 / Float(Self.villagerShadowSize)),
+                         bend: SIMD4(Float(viewport.bend.startZ), Float(viewport.bend.k), 0, 0))
         let villagerCount = writeVillagers(avatars)
         let ringCount = writeRings(avatars, time: time)
 

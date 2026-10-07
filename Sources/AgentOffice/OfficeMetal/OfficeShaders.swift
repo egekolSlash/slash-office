@@ -23,7 +23,15 @@ enum OfficeShaders {
         float4 sky;           // rgb: yukarı bakan yüzlerin ortam ışığı
         float4 ground;        // rgb: aşağı bakan yüzlerin ortam ışığı
         float4 params;        // x: zaman, y: köylü gölgesi var mı, z: gölge haritası texel'i (statik), w: (köylü)
+        float4 bend;          // x: bükülmenin başladığı z, y: katsayı (OfficeViewport.bend)
     };
+
+    /// Zemin bükülmesi (v5 spec §2): başlangıcın arkasındaki noktalar ufka doğru alçalır. Işık bükülmez.
+    static float4 bent(float4 w, constant Uniforms &u) {
+        float behind = max(u.bend.x - w.z, 0.0);
+        w.y -= u.bend.y * behind * behind;
+        return w;
+    }
 
     struct VillagerData {
         float4x4 model;
@@ -54,7 +62,7 @@ enum OfficeShaders {
     vertex VOut worldVS(VIn v [[stage_in]], constant Uniforms &u [[buffer(1)]]) {
         VOut o;
         float4 w = float4(v.pos, 1);
-        o.pos = u.viewProj * w;
+        o.pos = u.viewProj * bent(w, u);
         o.nrm = v.nrm;
         o.uv = v.uv;
         o.color = float4(linear(v.color.rgb), v.color.a);
@@ -89,7 +97,7 @@ enum OfficeShaders {
         }
         float4x4 m = skinMatrix(v, d, bones);
         float4 w = m * float4(v.pos, 1);
-        o.pos = u.viewProj * w;
+        o.pos = u.viewProj * bent(w, u);
         o.nrm = (m * float4(v.nrm, 0)).xyz;
         o.uv = v.uv;
         float3 c = v.color.rgb;
@@ -150,7 +158,7 @@ enum OfficeShaders {
                           uint iid [[instance_id]]) {
         float4 r = rings[iid].posScale;
         RingOut o;
-        o.pos = u.viewProj * float4(r.xyz + float3(v.pos.x * r.w, v.pos.y, v.pos.z * r.w), 1);
+        o.pos = u.viewProj * bent(float4(r.xyz + float3(v.pos.x * r.w, v.pos.y, v.pos.z * r.w), 1), u);
         return o;
     }
 

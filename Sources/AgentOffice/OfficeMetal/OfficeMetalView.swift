@@ -251,7 +251,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var running = true
         var scene: OfficeSceneInput?
         var world: (mesh: OfficeMesh, bounds: PlanRect, generation: Int)?
-        var viewport = OfficeViewport(centerX: 0, centerY: 0, zoom: 40)
+        var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
         var viewSize: OfficeViewport.ViewSize = (800, 500)
         var cameraMoving = false
         var interactionUntil = 0.0
@@ -380,7 +380,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
         viewSize = box.viewSize
     }
 
-    private var viewport = OfficeViewport(centerX: 0, centerY: 0, zoom: 40)
+    private var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
     private var viewSize: OfficeViewport.ViewSize = (800, 500)
 
     private func frame() {

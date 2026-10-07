@@ -1,68 +1,171 @@
 import Foundation
+import simd
 
-/// Ofisin izometrik görünümü (spec §5). Sprite sahnesi, SwiftUI kartları ve tıklamalar aynı izdüşümü kullanır.
-/// Ekran düzlemi: kamera (1,1,1) yönünden bakar; sx = (x − z)/√2, sy = (2y − x − z)/√6 (sy yukarı).
+/// Ofis kamerası (v5 spec §2): karşıdan (dönüş 0, +z tarafından −z'ye) bakan hafif perspektifli kamera. Uzakta
+/// (sığdırılmış) eğim 40°, yaklaştıkça 31°'ye iner ve hedefin arkasındaki zemin ufka doğru bükülür. Metal çizici,
+/// SwiftUI kartları ve tıklamalar aynı izdüşümü kullanır.
 public struct OfficeViewport: Equatable, Sendable {
     public typealias ViewSize = (width: Double, height: Double)
-    static let root2 = 2.0.squareRoot()
-    static let root6 = 6.0.squareRoot()
 
-    /// Görünümün ortasına denk gelen ekran düzlemi noktası.
-    public var centerX: Double
-    public var centerY: Double
-    /// Bir dünya biriminin (karonun) ekran düzlemindeki nokta karşılığı.
+    /// Kameranın baktığı zemin noktası.
+    public var targetX: Double
+    public var targetZ: Double
+    /// Hedefte metre başına nokta.
     public var zoom: Double
+    /// Sığdırılmış görünümün yakınlığı (eğim ve bükülme buna göre).
+    public var fitZoom: Double
+    /// Planın arka kenarı: uzak görünümde bükülme bunun 1 m arkasından başlar.
+    public var planMinZ: Double
 
-    public init(centerX: Double, centerY: Double, zoom: Double) {
-        self.centerX = centerX
-        self.centerY = centerY
+    public init(targetX: Double, targetZ: Double, zoom: Double, fitZoom: Double, planMinZ: Double) {
+        self.targetX = targetX
+        self.targetZ = targetZ
         self.zoom = zoom
+        self.fitZoom = fitZoom
+        self.planMinZ = planMinZ
     }
 
-    public static func screenPlane(x: Double, y: Double, z: Double) -> (x: Double, y: Double) {
-        ((x - z) / root2, (2 * y - x - z) / root6)
-    }
-
-    /// Dünya noktasının görünümdeki yeri (sol üst orijin, nokta biriminde).
-    public func project(x: Double, y: Double, z: Double, viewSize: ViewSize) -> (x: Double, y: Double) {
-        let plane = Self.screenPlane(x: x, y: y, z: z)
-        return (viewSize.width / 2 + (plane.x - centerX) * zoom, viewSize.height / 2 - (plane.y - centerY) * zoom)
-    }
-
-    /// `project`'in tersi: görünüm noktasının `height` yüksekliğindeki yatay düzlemde denk geldiği yer.
-    public func point(atX x: Double, y: Double, height: Double, viewSize: ViewSize) -> (x: Double, z: Double) {
-        let sx = centerX + (x - viewSize.width / 2) / zoom
-        let sy = centerY - (y - viewSize.height / 2) / zoom
-        let difference = sx * Self.root2
-        let sum = 2 * height - sy * Self.root6
-        return ((sum + difference) / 2, (sum - difference) / 2)
-    }
-
-    /// Dikdörtgeni (zeminden `height` yüksekliğe kadar) görünüme sığdırır.
-    public static func fitting(_ rect: PlanRect, height: Double, viewSize: ViewSize, margin: Double = 28) -> OfficeViewport {
-        guard !rect.isEmpty else { return OfficeViewport(centerX: 0, centerY: 0, zoom: 40) }
-        var minX = Double.infinity, maxX = -Double.infinity, minY = Double.infinity, maxY = -Double.infinity
-        for x in [rect.minX, rect.maxX] {
-            for z in [rect.minZ, rect.maxZ] {
-                for y in [0, height] {
-                    let p = screenPlane(x: x, y: y, z: z)
-                    minX = min(minX, p.x)
-                    maxX = max(maxX, p.x)
-                    minY = min(minY, p.y)
-                    maxY = max(maxY, p.y)
-                }
-            }
-        }
-        let usableWidth = max(viewSize.width - 2 * margin, 1)
-        let usableHeight = max(viewSize.height - 2 * margin, 1)
-        // Tek odalı küçük bir ofis büyük pencerede devleşmesin; yakınlaştırma sınırının altında kalır.
-        let zoom = min(max(min(usableWidth / (maxX - minX), usableHeight / (maxY - minY)), 1), maxFitZoom)
-        return OfficeViewport(centerX: (minX + maxX) / 2, centerY: (minY + maxY) / 2, zoom: zoom)
-    }
-
+    public static let fov = 24.0
+    public static let farPitch = 40.0
+    public static let nearPitch = 31.0
+    /// Sığdırma en az bu yakınlıktadır (kartlar ve köylüler okunur kalsın); sığmayan ofiste ön taraf gösterilir.
+    public static let minFitZoom = 28.0
     /// Sığdırılmış görünümün en büyük ölçeği; `maxZoom`'dan küçük olduğu için içeri yakınlaştırmaya hep yer kalır.
     public static let maxFitZoom = 200.0
     public static let maxZoom = 260.0
+    /// Kaydırma sınırı: hedef planın bu kadar dışına çıkamaz.
+    public static let panMargin = 3.0
+    static let nearPlane = 0.2
+    static let farReach = 250.0
+
+    /// 0 uzak (sığdırılmış), 1 en yakın.
+    public var nearness: Double {
+        guard fitZoom > 0, Self.maxZoom > fitZoom else { return zoom >= Self.maxZoom ? 1 : 0 }
+        return min(max(log(zoom / fitZoom) / log(Self.maxZoom / fitZoom), 0), 1)
+    }
+
+    public var pitchDegrees: Double { Self.lerp(Self.farPitch, Self.nearPitch, nearness) }
+
+    /// Zemin bükülmesi: `y' = y − k · max(0, startZ − z)²` (sadece çizim ve izdüşüm; ışık bükülmez).
+    public var bend: (startZ: Double, k: Double) {
+        let t = nearness
+        return (targetZ - Self.lerp(targetZ - planMinZ + 1, 2.5, t), Self.lerp(0.012, 0.05, t))
+    }
+
+    static func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }
+
+    // MARK: - Kamera uzayı
+
+    /// Kamera tabanı: sağ (1,0,0), yukarı, ileri (kameradan sahneye) ve göz konumu; `focal` nokta cinsinden odak.
+    struct Basis {
+        var up: SIMD3<Double>
+        var forward: SIMD3<Double>
+        var eye: SIMD3<Double>
+        var focal: Double
+        var sinPitch: Double
+    }
+
+    func basis(viewHeight: Double) -> Basis {
+        let p = pitchDegrees * .pi / 180
+        let d = SIMD3(0, sin(p), cos(p))
+        let halfTan = tan(Self.fov * .pi / 360)
+        let dist = max(viewHeight, 1) / max(zoom, 1e-6) / 2 / halfTan
+        return Basis(up: SIMD3(0, cos(p), -sin(p)), forward: -d, eye: SIMD3(targetX, 0, targetZ) + d * dist,
+                     focal: max(viewHeight, 1) / 2 / halfTan, sinPitch: sin(p))
+    }
+
+    /// Bükülmesiz izdüşüm (sol üst orijin, nokta biriminde).
+    public func projectUnbent(x: Double, y: Double, z: Double, viewSize: ViewSize) -> (x: Double, y: Double) {
+        let b = basis(viewHeight: viewSize.height)
+        let r = SIMD3(x, y, z) - b.eye
+        let depth = max(simd_dot(r, b.forward), 1e-6)
+        return (viewSize.width / 2 + r.x * b.focal / depth, viewSize.height / 2 - simd_dot(r, b.up) * b.focal / depth)
+    }
+
+    /// Dünya noktasının görünümdeki yeri (sol üst orijin, nokta biriminde); bükülme dahil.
+    public func project(x: Double, y: Double, z: Double, viewSize: ViewSize) -> (x: Double, y: Double) {
+        let bend = bend
+        let behind = max(bend.startZ - z, 0)
+        return projectUnbent(x: x, y: y - bend.k * behind * behind, z: z, viewSize: viewSize)
+    }
+
+    /// `project`'in tersi: görünüm noktasından çıkan ışının `height` yüksekliğindeki yatay düzlemi kestiği yer.
+    /// Bükülmeyi saymaz; ofisin bulunduğu alan düz olduğu için orada tamdır.
+    public func point(atX x: Double, y: Double, height: Double, viewSize: ViewSize) -> (x: Double, z: Double) {
+        let b = basis(viewHeight: viewSize.height)
+        let dir = SIMD3((x - viewSize.width / 2) / b.focal, 0, 0) - b.up * ((y - viewSize.height / 2) / b.focal) + b.forward
+        guard abs(dir.y) > 1e-9 else { return (b.eye.x, b.eye.z) }
+        let t = max((height - b.eye.y) / dir.y, 0)
+        let hit = b.eye + dir * t
+        return (hit.x, hit.z)
+    }
+
+    /// Metal için dünya → kırpma uzayı matrisi (bükülme hariç; shader `bend` ile uygular). z ∈ [0, 1], yakın küçük.
+    public func viewProjection(viewSize: ViewSize) -> simd_float4x4 {
+        let b = basis(viewHeight: viewSize.height)
+        let sx = 2 * b.focal / max(viewSize.width, 1), sy = 2 * b.focal / max(viewSize.height, 1)
+        let near = Self.nearPlane, far = simd_length(b.eye - SIMD3(targetX, 0, targetZ)) + Self.farReach
+        let a = far / (far - near), c = -near * far / (far - near)
+        let f = b.forward, u = b.up, e = b.eye
+        let rows: [[Double]] = [
+            [sx, 0, 0, -sx * e.x],
+            [sy * u.x, sy * u.y, sy * u.z, -sy * simd_dot(u, e)],
+            [a * f.x, a * f.y, a * f.z, -a * simd_dot(f, e) + c],
+            [f.x, f.y, f.z, -simd_dot(f, e)],
+        ]
+        return Self.matrix(rows: rows)
+    }
+
+    // MARK: - Sığdırma ve gezinme
+
+    /// Dikdörtgeni (zeminden `height` yüksekliğe kadar) görünüme sığdırır; sonuç uzak görünümdür (`nearness` 0).
+    /// Sığdırma `minFitZoom`'un altına düşerse yakınlık o olur ve dikdörtgenin ön kenarı alt kenarda durur.
+    public static func fitting(_ rect: PlanRect, height: Double, viewSize: ViewSize, margin: Double = 28) -> OfficeViewport {
+        guard !rect.isEmpty else { return OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0) }
+        let size = (width: max(viewSize.width, 1), height: max(viewSize.height, 1))
+        let m = min(margin, size.width / 4, size.height / 4)
+        func centered(_ zoom: Double) -> (OfficeViewport, fits: Bool) {
+            var v = OfficeViewport(targetX: (rect.minX + rect.maxX) / 2, targetZ: (rect.minZ + rect.maxZ) / 2,
+                                   zoom: zoom, fitZoom: zoom, planMinZ: rect.minZ)
+            var box = (minX: 0.0, maxX: 0.0, minY: 0.0, maxY: 0.0)
+            for _ in 0..<3 {
+                box = v.box(rect, height: height, viewSize: size)
+                v.targetX += ((box.minX + box.maxX) / 2 - size.width / 2) / zoom
+                v.targetZ += ((box.minY + box.maxY) / 2 - size.height / 2) / (zoom * v.basis(viewHeight: size.height).sinPitch)
+            }
+            box = v.box(rect, height: height, viewSize: size)
+            return (v, box.minX >= m - 0.5 && box.maxX <= size.width - m + 0.5 && box.minY >= m - 0.5 && box.maxY <= size.height - m + 0.5)
+        }
+        var lo = 1.0, hi = maxFitZoom
+        if centered(hi).fits { return centered(hi).0 }
+        for _ in 0..<40 {
+            let mid = (lo + hi) / 2
+            if centered(mid).fits { lo = mid } else { hi = mid }
+        }
+        if lo >= minFitZoom { return centered(lo).0 }
+        // Sığmıyor: en az yakınlıkta, ön kenar alt kenarda.
+        var v = OfficeViewport(targetX: (rect.minX + rect.maxX) / 2, targetZ: rect.maxZ, zoom: minFitZoom,
+                               fitZoom: minFitZoom, planMinZ: rect.minZ)
+        for _ in 0..<4 {
+            let front = v.project(x: v.targetX, y: 0, z: rect.maxZ, viewSize: size)
+            v.targetZ += (front.y - (size.height - m)) / (v.zoom * v.basis(viewHeight: size.height).sinPitch)
+        }
+        return v
+    }
+
+    /// Dikdörtgenin köşelerinin (0 ve `height` yüksekliğinde) görünümdeki sınırları.
+    func box(_ rect: PlanRect, height: Double, viewSize: ViewSize) -> (minX: Double, maxX: Double, minY: Double, maxY: Double) {
+        var box = (minX: Double.infinity, maxX: -Double.infinity, minY: Double.infinity, maxY: -Double.infinity)
+        for x in [rect.minX, rect.maxX] {
+            for z in [rect.minZ, rect.maxZ] {
+                for y in [0, height] {
+                    let p = project(x: x, y: y, z: z, viewSize: viewSize)
+                    box = (min(box.minX, p.x), max(box.maxX, p.x), min(box.minY, p.y), max(box.maxY, p.y))
+                }
+            }
+        }
+        return box
+    }
 
     /// Yakınlaştırma sınırları: sığdırılmış görünümden biraz uzağa, bir masanın ekranı doldurmasına kadar yakına.
     public static func zoomLimits(fit: OfficeViewport) -> ClosedRange<Double> {
@@ -70,20 +173,35 @@ public struct OfficeViewport: Equatable, Sendable {
         return lower...max(lower, maxZoom, fit.zoom)
     }
 
-    /// İçerik parmakla birlikte hareket eder (görünüm noktası cinsinden).
-    public mutating func pan(dx: Double, dy: Double) {
-        centerX -= dx / zoom
-        centerY += dy / zoom
+    /// Belli bir zemin noktasına belli yakınlıkta bakan görünüm (odaklama); eğim ve bükülme `fit`'e göredir.
+    public static func focusing(x: Double, z: Double, zoom: Double, fit: OfficeViewport) -> OfficeViewport {
+        OfficeViewport(targetX: x, targetZ: z, zoom: zoom, fitZoom: fit.fitZoom, planMinZ: fit.planMinZ)
     }
 
-    /// `anchor`'daki nokta yerinde kalacak şekilde yakınlaştırır.
+    /// İçerik parmakla birlikte hareket eder (görünüm noktası cinsinden); hedef planın `panMargin` yakınında kalır.
+    public mutating func pan(dx: Double, dy: Double, within bounds: PlanRect) {
+        targetX -= dx / zoom
+        targetZ -= dy / (zoom * basis(viewHeight: 1).sinPitch)
+        clamp(to: bounds)
+    }
+
+    /// `anchor`'ın altındaki zemin noktası yerinde kalacak şekilde yakınlaştırır.
     public mutating func zoom(by factor: Double, anchorX: Double, anchorY: Double, viewSize: ViewSize,
-                              limits: ClosedRange<Double>) {
-        let planeX = centerX + (anchorX - viewSize.width / 2) / zoom
-        let planeY = centerY - (anchorY - viewSize.height / 2) / zoom
+                              limits: ClosedRange<Double>, within bounds: PlanRect) {
+        let ground = point(atX: anchorX, y: anchorY, height: 0, viewSize: viewSize)
         zoom = min(max(zoom * factor, limits.lowerBound), limits.upperBound)
-        centerX = planeX - (anchorX - viewSize.width / 2) / zoom
-        centerY = planeY + (anchorY - viewSize.height / 2) / zoom
+        for _ in 0..<4 {
+            let p = projectUnbent(x: ground.x, y: 0, z: ground.z, viewSize: viewSize)
+            targetX += (p.x - anchorX) / zoom
+            targetZ += (p.y - anchorY) / (zoom * basis(viewHeight: viewSize.height).sinPitch)
+        }
+        clamp(to: bounds)
+    }
+
+    mutating func clamp(to bounds: PlanRect) {
+        guard !bounds.isEmpty else { return }
+        targetX = min(max(targetX, bounds.minX - Self.panMargin), bounds.maxX + Self.panMargin)
+        targetZ = min(max(targetZ, bounds.minZ - Self.panMargin), bounds.maxZ + Self.panMargin)
     }
 }
 
@@ -155,46 +273,6 @@ extension OfficePlan {
     }
 }
 extension OfficeViewport {
-    /// Kamera bu yönden bakar (RealityKit, Y-yukarı); izdüşüm formülüyle aynı.
-    public static let cameraDirection = (x: 1 / 3.0.squareRoot(), y: 1 / 3.0.squareRoot(), z: 1 / 3.0.squareRoot())
-
-    /// Görünümün ortasına düşen, zemin düzlemindeki (y = 0) dünya noktası: kamera buraya bakar.
-    public func cameraTarget() -> (x: Double, y: Double, z: Double) {
-        let difference = centerX * Self.root2      // x − z
-        let sum = -centerY * Self.root6            // x + z (y = 0)
-        return ((sum + difference) / 2, 0, (sum - difference) / 2)
-    }
-
-    /// RealityKit `OrthographicCameraComponent.scale`: görünür yüksekliğin yarısı (dünya birimi).
-    public func orthographicScale(viewHeight: Double) -> Double { viewHeight / (2 * zoom) }
-}
-
-import simd
-
-extension OfficeViewport {
-    /// Derinlik aralığı (dünya birimi): kameraya doğru ±`depthRange / 2`.
-    static let depthRange = 120.0
-
-    /// Metal için dünya → kırpma uzayı matrisi (x, y ∈ [−1, 1], z ∈ [0, 1], kameraya yakın küçük).
-    /// `project` ile birebir aynı izdüşüm: SwiftUI kartları ve tıklamalar hizalı kalır.
-    public func viewProjection(viewSize: ViewSize) -> simd_float4x4 {
-        let kx = 2 * zoom / max(viewSize.width, 1)
-        let ky = 2 * zoom / max(viewSize.height, 1)
-        let target = cameraTarget()
-        let s3 = 3.0.squareRoot()
-        let targetDepth = (target.x + target.y + target.z) / s3
-        let r = Self.depthRange
-        // Satırlar: ndc.x, ndc.y, ndc.z, w.
-        let rows: [[Double]] = [
-            [kx / Self.root2, 0, -kx / Self.root2, -kx * centerX],
-            [-ky / Self.root6, 2 * ky / Self.root6, -ky / Self.root6, -ky * centerY],
-            [-1 / (r * s3), -1 / (r * s3), -1 / (r * s3), 0.5 + targetDepth / r],
-            [0, 0, 0, 1],
-        ]
-        return Self.matrix(rows: rows)
-    }
-
-    /// Gölge haritası için ortografik ışık matrisi: `bounds` (zeminden `height`'a kadar) tamamen içeride.
     public static func lightViewProjection(bounds: PlanRect, height: Double, direction: SIMD3<Double>) -> simd_float4x4 {
         let forward = simd_normalize(direction)
         let worldUp = abs(forward.y) > 0.99 ? SIMD3<Double>(0, 0, 1) : SIMD3<Double>(0, 1, 0)
