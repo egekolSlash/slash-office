@@ -9,7 +9,7 @@ struct OfficeView: View {
     @Bindable var model: AppModel
     var interactive = false
     @State private var gpu: OfficeGPU?
-    @State private var camera = OfficeCamera()
+    private var camera: OfficeCamera { interactive ? model.officeCamera : model.miniOfficeCamera }
     @State private var unavailable = false
 
     var body: some View {
@@ -90,7 +90,7 @@ struct OfficeView: View {
     }
 
     private func deskID(atX x: Double, y: Double, plan: OfficePlan, camera: OfficeCamera) -> String? {
-        let detail = interactive ? OfficeDetail.level(zoom: camera.viewport.zoom) : .far
+        let detail = OfficeDetail.level(zoom: camera.viewport.zoom)
         // Balonu olan masalar: bekleyenler (?) ve bitip görülmeyenler (✓).
         let waiting = Set(plan.rooms.flatMap(\.desks).map(\.id).filter { id in
             if case .waiting = model.store.session(id)?.state { return true }
@@ -111,8 +111,8 @@ struct OfficeView: View {
             model.openLauncher(beside: false, claude: true)
             return
         }
-        // Boş zemine çift tık: kamera o odaya yaklaşır (sadece ofis modunda).
-        guard interactive, clickCount == 2 else { return }
+        // Boş zemine çift tık: kamera o odaya yaklaşır.
+        guard clickCount == 2 else { return }
         guard let room = plan.room(atX: ground.x, z: ground.z) else { return }
         let roomFit = OfficeViewport.fitting(room.rect, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
         camera.focus(x: roomFit.targetX, z: roomFit.targetZ, zoom: roomFit.zoom)

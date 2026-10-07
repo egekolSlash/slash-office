@@ -9,6 +9,7 @@ import SwiftUI
 /// matrisleri `OfficeRenderLoop`'un kendi thread'indedir. Kamera geçişi sürerken (sadece o sırada) ana thread'de
 /// bir `displayLink` kamerayı adımlar. Jestler aşama 1'deki gibi.
 final class OfficeMetalView: NSView {
+    /// Ofis modu: klavye odağı alır (`0` ile sığdırma). Mini ofis odak çalmaz ama kaydırma ve yakınlaştırma çalışır.
     var interactive = false
     var mini = false { didSet { if mini != oldValue { postVisibility() } } }
     var onClick: ((_ x: Double, _ y: Double, _ clickCount: Int, _ shift: Bool) -> Void)?
@@ -61,19 +62,27 @@ final class OfficeMetalView: NSView {
     func update(_ scene: OfficeSceneInput) {
         guard scene != lastScene else { return }
         lastScene = scene
-        loop.post(scene: scene)
+        OfficeSharedScene.shared.apply(scene, skeleton: loop.gpu.skeleton)
+        loop.postSceneChanged()
         let key = OfficeWorldKey(plan: scene.plan, terminals: scene.terminals, styles: scene.styles)
         guard key != worldKey else { return }
         worldKey = key
         worldGeneration += 1
         let generation = worldGeneration
+        // Öteki görünüm (ofis modu / mini ofis) aynı dünyayı kurmuşsa hemen kullan.
+        if let cached = OfficeSharedScene.shared.cachedWorld(for: key) {
+            loop.post(world: cached.mesh, bounds: cached.site, generation: generation)
+            return
+        }
         let loop = loop
         let colors = scene.projectColors
         Task.detached(priority: .userInitiated) {
             let mesh = OfficeWorldBuilder.build(plan: key.plan, terminalDesks: key.terminals,
                                                 style: { key.styles[$0] ?? RoomStyle.default(for: $0) },
                                                 projectColor: { colors[$0] ?? (0.6, 0.6, 0.6) }, art: loop.gpu.art)
-            loop.post(world: mesh, bounds: OfficeWorldBuilder.siteRect(key.plan), generation: generation)
+            let site = OfficeWorldBuilder.siteRect(key.plan)
+            OfficeSharedScene.shared.store(world: mesh, site: site, for: key)
+            loop.post(world: mesh, bounds: site, generation: generation)
         }
     }
 
@@ -183,7 +192,6 @@ final class OfficeMetalView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        guard interactive else { return super.scrollWheel(with: event) }
         let (x, y) = point(event)
         if event.modifierFlags.contains(.command) {
             let delta = Double(event.scrollingDeltaY) * (event.hasPreciseScrollingDeltas ? 0.01 : 0.1)
@@ -196,7 +204,6 @@ final class OfficeMetalView: NSView {
     }
 
     override func magnify(with event: NSEvent) {
-        guard interactive else { return super.magnify(with: event) }
         let (x, y) = point(event)
         onZoom?(1 + Double(event.magnification), x, y)
         loop.postInteraction()
@@ -229,7 +236,7 @@ struct OfficeSceneInput: Equatable, Sendable {
     }
 }
 
-private struct OfficeWorldKey: Equatable, Sendable {
+struct OfficeWorldKey: Equatable, Sendable {
     var plan: OfficePlan
     var terminals: Set<String>
     var styles: [String: RoomStyle]
@@ -242,14 +249,13 @@ final class OfficeRenderLoop: @unchecked Sendable {
     let gpu: OfficeGPU
     private let layer: CAMetalLayer
     private let renderer: OfficeMetalRenderer
-    private var sim: AvatarSim
+    private let scene = OfficeSharedScene.shared
     private let wake = DispatchSemaphore(value: 0)
     private let lock = NSLock()
 
     // Ana thread'den gelenler (kilitli).
     private struct Mailbox {
         var running = true
-        var scene: OfficeSceneInput?
         var world: (mesh: OfficeMesh, bounds: PlanRect, generation: Int)?
         var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
         var viewSize: OfficeViewport.ViewSize = (800, 500)
@@ -263,9 +269,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
     private var mailbox = Mailbox()
 
     // Sadece çizim thread'inde.
-    private var synced = false
     private var worldGeneration = 0
-    private var time = 0.0
     private var lastFrame = CACurrentMediaTime()
     private var lastMode = FramePacing.Mode.paused
 
@@ -273,7 +277,6 @@ final class OfficeRenderLoop: @unchecked Sendable {
         self.gpu = gpu
         self.layer = layer
         renderer = try OfficeMetalRenderer(gpu: gpu)
-        sim = AvatarSim(skeleton: gpu.skeleton)
     }
 
     func start() {
@@ -295,7 +298,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
         wake.signal()
     }
 
-    func post(scene: OfficeSceneInput) { send { $0.scene = scene } }
+    /// Paylaşılan sahne değişti (ana thread uyguladı): döngü uyansın, gerekirse bir kare çizsin.
+    func postSceneChanged() { send { _ in } }
 
     func post(world: OfficeMesh, bounds: PlanRect, generation: Int) {
         send { box in
@@ -321,7 +325,6 @@ final class OfficeRenderLoop: @unchecked Sendable {
             while wake.wait(timeout: .now()) == .success {}
             lock.lock()
             let box = mailbox
-            mailbox.scene = nil
             mailbox.world = nil
             mailbox.drawableSize = nil
             mailbox.dirty = false
@@ -330,8 +333,9 @@ final class OfficeRenderLoop: @unchecked Sendable {
             apply(box)
 
             let now = CACurrentMediaTime()
-            let animating = !sim.instances.isEmpty
-            let moving = sim.isMoving || sim.instances.contains { $0.blend < 1 }
+            let state = scene.peek()
+            let animating = !state.instances.isEmpty
+            let moving = state.moving
             var mode = FramePacing.mode(moving: moving, interacting: box.cameraMoving || now < box.interactionUntil,
                                         animating: animating, visible: box.visible, mini: box.mini)
             // Duraklamadan önce son durumu bir kez çiz (ör. köylüsüz ofiste plan değişti, boş ofiste gökyüzü).
@@ -372,10 +376,6 @@ final class OfficeRenderLoop: @unchecked Sendable {
             worldGeneration = world.generation
             renderer.setWorld(world.mesh, site: world.bounds)
         }
-        if let scene = box.scene {
-            sim.sync(plan: scene.plan, desks: scene.desks, looks: scene.looks, projectColors: scene.projectColors, live: synced)
-            synced = true
-        }
         viewport = box.viewport
         viewSize = box.viewSize
     }
@@ -385,13 +385,11 @@ final class OfficeRenderLoop: @unchecked Sendable {
 
     private func frame() {
         let now = CACurrentMediaTime()
-        let dt = min(max(now - lastFrame, 0), 0.1)
         lastFrame = now
-        time += dt
-        sim.tick(dt: dt)
+        let state = scene.advance(now: now)
         guard let drawable = layer.nextDrawable(), let cb = gpu.queue.makeCommandBuffer() else { return }
-        renderer.encode(to: drawable.texture, viewport: viewport, viewSize: viewSize, avatars: sim.instances,
-                        time: time, commandBuffer: cb)
+        renderer.encode(to: drawable.texture, viewport: viewport, viewSize: viewSize, avatars: state.instances,
+                        time: state.time, commandBuffer: cb)
         cb.present(drawable)
         cb.commit()
         OfficeMeasureWindow.frames.add(1, ordering: .relaxed)

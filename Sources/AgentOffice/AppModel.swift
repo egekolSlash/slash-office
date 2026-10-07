@@ -8,6 +8,9 @@ import SwiftTerm
 @Observable
 final class AppModel {
     let store = AgentStore()
+    /// Ofis modu ve mini ofisin kameraları: mod değişince yer ve yakınlık korunur.
+    let officeCamera = OfficeCamera()
+    let miniOfficeCamera = OfficeCamera()
     let diffWatcher = DiffWatcher()
     var changesScope: ChangesScope = .uncommitted
     var layout = TerminalLayout()

@@ -13,7 +13,7 @@ struct OfficeCards: View {
     var body: some View {
         let viewport = camera.viewport
         let size = camera.viewSize
-        let detail = interactive ? OfficeDetail.level(zoom: viewport.zoom) : .far
+        let detail = OfficeDetail.level(zoom: viewport.zoom)
         // Ufkun arkasındakiler ve ekranın üst bandındakiler gizlenir (tıklama testiyle aynı kural, Core).
         let horizon = viewport.horizonZ(viewSize: size)
         let shown = { (z: Double, y: Double) in OfficeOverlay.isShown(z: z, anchorY: y, horizonZ: horizon, viewSize: size) }
