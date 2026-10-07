@@ -14,7 +14,8 @@ import simd
     static let skeleton = VillagerSkeleton(art: OfficeArtFile(
         bones: ["Root"],
         clips: ["idle": clip([0, 1, 2]), "walk": clip([10, 10]), "wave": clip([-4, -4]),
-                "sitType": clip([3, 3]), "sitDoze": clip([5, 5])],
+                "sitType": clip([3, 3]), "sitDoze": clip([5, 5]), "sitDown": clip([0, 7]), "standUp": clip([7, 0]),
+                "cheer": clip([1, 9])],
         villager: OfficeArtFile.emptyMesh, props: [:]))
 
     func x(_ m: [simd_float4x4]) -> Float { m[0].columns.3.x }
@@ -28,6 +29,22 @@ import simd
         #expect(abs(x(s.matrices(clip: .idle, time: 2.0 / 24)) - 0) < 1e-4)
         #expect(abs(x(s.matrices(clip: .idle, time: 2.5 / 24)) - 0.5) < 1e-4)
         #expect(s.boneCount == 1)
+    }
+
+    /// Tek seferlik klip süresini aşınca son karede kalır (başa sarıp ters poza sıçramaz).
+    @Test func oneShotClipsHoldTheirLastFrame() {
+        let s = Self.skeleton
+        #expect(abs(x(s.matrices(clip: .sitDown, time: AvatarClip.sitDown.duration * 1.5)) - 7) < 1e-4)
+        #expect(abs(x(s.matrices(clip: .standUp, time: AvatarClip.standUp.duration + 0.3)) - 0) < 1e-4)
+        // Döngüler hâlâ sarar.
+        #expect(abs(x(s.matrices(clip: .idle, time: 2.0 / 24)) - 0) < 1e-4)
+        // sitDown biter, döngüye geçilir: geçişin ilk anı sitDown'un son pozunda.
+        var a = AvatarInstance(id: "a", clip: .idle)
+        a.play(.sitDown, skeleton: s)
+        a.advance(dt: AvatarInstance.fade)
+        a.advance(dt: AvatarClip.sitDown.duration)
+        a.play(.sitDoze, skeleton: s)
+        #expect(abs(x(s.pose(of: a)) - 7) < 1e-3)
     }
 
     @Test func missingClipGivesIdentity() {
@@ -287,6 +304,80 @@ import simd
         s.sync(plan: p, desks: desks([("a", .idle)]), looks: [:], projectColors: [:], live: true)
         run(&s, 10) { sim in if sim.instances[0].clip == .cheer { cheers += 1 } }
         #expect(cheers == 1)
+    }
+
+    /// Kalkarken ertelenen sevinç, kullanıcı hemen cevap verip köylü masaya dönerse çöpe gider; sonraki bir
+    /// beklemede (ya da bitki/sebilde) yanlış zamanda oynamaz.
+    @Test func staleCheerIsDropped() {
+        var s = sim()
+        let p = plan(["a"])
+        s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
+        s.sync(plan: p, desks: desks([("a", .idle)], finished: ["a"]), looks: [:], projectColors: [:], live: true)
+        run(&s, 0.35)                                           // sevinç kalkarken kararlaştırıldı
+        s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: true)
+        run(&s, 5)
+        s.sync(plan: p, desks: desks([("a", .waiting(.question("?")))]), looks: [:], projectColors: [:], live: true)
+        var cheered = false
+        run(&s, 8) { if $0.instances[0].clip == .cheer { cheered = true } }
+        #expect(!cheered)
+    }
+
+    /// Oda büyürken bir noktaya yürüyen köylü noktanın yeni yerine gider.
+    @Test func walkingToASpotFollowsTheSpotWhenTheRoomGrows() {
+        var s = sim()
+        var ids = ["a", "b"]
+        s.sync(plan: plan(ids), desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: false)
+        // Biri bir noktaya doğru yürürken.
+        var walking: String?
+        for _ in 0..<(120 * 60) {
+            s.tick(dt: 1.0 / 60)
+            if s.isWalking, let id = s.reservedSpots.keys.sorted().first { walking = id; break }
+        }
+        guard let id = walking, let kind = s.reservedSpots[id] else { Issue.record("kimse yürümedi"); return }
+        ids += ["c", "d", "e", "f", "g"]
+        let bigger = plan(ids)
+        s.sync(plan: bigger, desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: true)
+        run(&s, 0.1)
+        guard s.reservedSpots[id] == kind else { return }   // bu arada başka bir hedef seçtiyse geç
+        run(&s, 12) { _ in }
+        let room = bigger.rooms[0]
+        let spot = room.spots.first { $0.kind == kind }!
+        let target = room.approach(to: spot)
+        if s.reservedSpots[id] == kind {
+            #expect(near(s.instances.first { $0.id == id }!.position, target.seat ?? target.stand, 0.1))
+        }
+    }
+
+    /// Başka odaya taşınan köylü eski noktasını bırakır, yeni odada kimseyle aynı noktayı paylaşmaz.
+    @Test func movingRoomsDoesNotShareASpot() {
+        var s = sim()
+        func twoRooms(_ a: String) -> OfficePlan {
+            let members = [OfficePlan.Member(id: "a0", roomKey: a), OfficePlan.Member(id: "b0", roomKey: "/r2")]
+            return OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        }
+        let d = desks([("a0", .idle), ("b0", .idle)])
+        s.sync(plan: twoRooms("/r1"), desks: d, looks: [:], projectColors: [:], live: false)
+        run(&s, 150)
+        s.sync(plan: twoRooms("/r2"), desks: d, looks: [:], projectColors: [:], live: true)
+        run(&s, 60) { sim in
+            let a = sim.reservedSpots["a0"], b = sim.reservedSpots["b0"]
+            #expect(a == nil || a != b, "aynı oda, aynı nokta: \(String(describing: a))")
+        }
+    }
+
+    /// Kalkarken gelen yeni hedef kalkışı baştan başlatmaz.
+    @Test func newGoalDuringStandUpKeepsRising() {
+        var s = sim()
+        let p = plan(["a"])
+        s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
+        s.sync(plan: p, desks: desks([("a", .waiting(.question("?")))]), looks: [:], projectColors: [:], live: true)
+        run(&s, AvatarClip.standUp.duration * 0.6)
+        s.sync(plan: p, desks: desks([("a", .waiting(.permission("Bash")))]), looks: [:], projectColors: [:], live: true)
+        s.sync(plan: p, desks: desks([("a", .working(tool: nil)), ], finished: []), looks: [:], projectColors: [:], live: true)
+        s.sync(plan: p, desks: desks([("a", .waiting(.question("?")))]), looks: [:], projectColors: [:], live: true)
+        // Kalan süre kısalmadıysa yürüyüş toplam 0,6 + 1,0 kalkış süresinden geç başlardı.
+        run(&s, AvatarClip.standUp.duration * 0.5)
+        #expect(s.instances[0].clip == .walk || s.isWalking)
     }
 
     @Test func facingAtSpotsMatchesFurniture() {

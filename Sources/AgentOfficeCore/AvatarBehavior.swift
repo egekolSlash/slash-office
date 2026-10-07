@@ -32,6 +32,10 @@ public struct AvatarBehavior: Sendable {
     private var queued: (clip: AvatarClip, after: Double)?
     private var timer = 0.0
     private var atSpot: RoomSpot.Kind?
+    /// Masasında oturuyor mu (boşta: gidecek yer yoksa masaya döner).
+    private var atDesk = false
+    /// Noktaya gidilirken: varınca başlayacak kalma süresi.
+    private var pendingDwell: Double?
 
     public init(id: String) {
         rng = SeededRandom(seed: StableHash.mixed("behavior:" + id))
@@ -43,6 +47,22 @@ public struct AvatarBehavior: Sendable {
 
     private mutating func pick<T>(_ items: [T]) -> T {
         items[Int(rng.next() * Double(items.count)) % items.count]
+    }
+
+    /// Köylü hedefine vardı (sim haber verir): noktadaki kalma süresi şimdi başlar.
+    public mutating func arrived() {
+        if let dwell = pendingDwell {
+            pendingDwell = nil
+            timer = dwell
+        }
+    }
+
+    /// Hedefi baştan seç (ör. köylü başka odaya taşındı): şimdiki etkinliğin ilk hedefi.
+    public mutating func reset() {
+        needGoal = true
+        queued = nil
+        atSpot = nil
+        pendingDwell = nil
     }
 
     public mutating func setActivity(_ activity: AvatarActivity, finishedNow: Bool) {
@@ -62,6 +82,7 @@ public struct AvatarBehavior: Sendable {
                 pendingCheer = false
                 queued = (.cheer, 0.3)
                 timer = 0.3 + AvatarClip.cheer.duration + 0.2
+                atDesk = false
                 return .goal(.stand(loop: .idle))
             }
             return startGoal(for: activity)
@@ -96,6 +117,8 @@ public struct AvatarBehavior: Sendable {
 
     private mutating func startGoal(for activity: AvatarActivity) -> Decision {
         atSpot = nil
+        pendingDwell = nil
+        atDesk = activity == .typing || activity == .dozing
         switch activity {
         case .typing:
             timer = random(8...20)
@@ -117,17 +140,20 @@ public struct AvatarBehavior: Sendable {
         let choices = freeSpots.filter { $0 != atSpot }
         let goBack = atSpot != nil && (choices.isEmpty || rng.next() < 0.5)
         if goBack || (atSpot == nil && choices.isEmpty) {
-            if atSpot == nil {
+            if atSpot == nil && atDesk {
                 // Gidecek yer yok: masada uyumaya devam.
                 timer = random(20...60)
                 return nil
             }
+            // Noktadan (ya da sevinçten sonra ayakta) masaya dön.
             atSpot = nil
+            atDesk = true
             timer = random(20...60)
             return .goal(.seat(loop: .sitDoze))
         }
         let kind = pick(choices)
         atSpot = kind
+        atDesk = false
         let goal: AvatarGoal
         switch kind {
         case .sofa: goal = .spot(.sofa, loop: .sofaSit, oneShot: nil, dwell: random(10...30))
@@ -135,7 +161,8 @@ public struct AvatarBehavior: Sendable {
         case .waterCooler: goal = .spot(.waterCooler, loop: .idle, oneShot: .drink, dwell: AvatarClip.drink.duration + random(2...5))
         case .coffeeTable: goal = .spot(.coffeeTable, loop: .idle, oneShot: .stretch, dwell: AvatarClip.stretch.duration + random(2...5))
         }
-        if case .spot(_, _, _, let dwell) = goal { timer = dwell + 6 }   // ~yürüme payı
+        // Kalma süresi köylü varınca başlar (`arrived`); o zamana kadar karar yok.
+        if case .spot(_, _, _, let dwell) = goal { pendingDwell = dwell; timer = .infinity }
         return .goal(goal)
     }
 }

@@ -84,7 +84,9 @@ public struct RoomNav: Sendable {
     public func path(from start: PlanPoint, to target: PlanPoint) -> [PlanPoint]? {
         let ends = [start, target]
         func free(_ i: Int, _ j: Int) -> Bool { isFree(center(i, j), near: ends) }
-        let s = cell(of: start)
+        // Başlangıç bir mobilyanın içindeyse (ör. koltukta oturan) en yakın boş hücreden çıkılır.
+        var s = cell(of: start)
+        if !free(s.0, s.1), let near = nearestFree(to: start, free: free) { s = near }
         // Hedef sert bir engelin içindeyse en yakın boş hücreye gidilir.
         let targetFree = isFree(target, near: ends)
         var g = cell(of: target)

@@ -94,6 +94,33 @@ import Testing
         #expect(oneShots(run(&b, seconds: 10)).filter { $0 == .cheer }.count == 1)
     }
 
+    /// Boş nokta yokken sevinçten sonra ayakta kalmaz, masasına dönüp uyur.
+    @Test func afterCheerWithNoFreeSpotGoesBackToTheDesk() {
+        var b = AvatarBehavior(id: "nc")
+        b.setActivity(.typing, finishedNow: false)
+        _ = run(&b, seconds: 1, spots: [])
+        b.setActivity(.dozing, finishedNow: true)
+        let goals = run(&b, seconds: 120, spots: []).compactMap { d -> AvatarGoal? in if case .goal(let g) = d { g } else { nil } }
+        #expect(goals.first == .stand(loop: .idle))
+        #expect(goals.last == .seat(loop: .sitDoze))
+    }
+
+    /// Noktadaki kalma süresi köylü varınca başlar (uzun yürüyüş süreyi yemez).
+    @Test func dwellStartsOnArrival() {
+        var b = AvatarBehavior(id: "dw")
+        b.setActivity(.dozing, finishedNow: false)
+        var goal: AvatarGoal?
+        for _ in 0..<2000 {
+            if case .goal(let g)? = b.advance(dt: 0.1, freeSpots: [.waterCooler]), case .spot = g { goal = g; break }
+        }
+        guard case .spot(_, _, _, let dwell)? = goal else { Issue.record("noktaya gitmedi"); return }
+        // Varmadan (ör. 40 sn yürüyüş) karar yok.
+        #expect(run(&b, seconds: 40, spots: [.waterCooler]).isEmpty)
+        b.arrived()
+        #expect(run(&b, seconds: dwell * 0.9, spots: [.waterCooler]).isEmpty)
+        #expect(!run(&b, seconds: dwell * 0.2 + 0.2, spots: [.waterCooler]).isEmpty)
+    }
+
     @Test func awayLeaves() {
         var b = AvatarBehavior(id: "a")
         b.setActivity(.away, finishedNow: false)
@@ -102,7 +129,6 @@ import Testing
 
     @Test func sameIdSameSequence() {
         var a = AvatarBehavior(id: "x"), b = AvatarBehavior(id: "x"), c = AvatarBehavior(id: "y")
-        for v in [0, 1, 2] { _ = v }
         a.setActivity(.typing, finishedNow: false); b.setActivity(.typing, finishedNow: false); c.setActivity(.typing, finishedNow: false)
         let ra = run(&a, seconds: 100), rb = run(&b, seconds: 100), rc = run(&c, seconds: 100)
         #expect(ra == rb)

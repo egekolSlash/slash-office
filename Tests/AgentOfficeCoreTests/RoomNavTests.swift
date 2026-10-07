@@ -19,6 +19,8 @@ import Testing
                 let p = PlanPoint(x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t)
                 // Uçlardaki 0,35 m (kendi taburesi, kapı) serbest; arası boş olmalı.
                 if p.distance(to: path.first!) < 0.36 || p.distance(to: path.last!) < 0.36 { continue }
+                // Koltuktan çıkış: başlangıç mobilyanın içindeyse en yakın boş noktaya kadar olan ilk adım serbest.
+                if a == path.first!, !nav.isFree(a), p.distance(to: a) < 0.8 { continue }
                 if !nav.isFree(p) || !room.rect.contains(x: p.x, z: p.z) { return false }
             }
         }
@@ -58,6 +60,19 @@ import Testing
             #expect(path?.last == target.stand, "\(spot.kind)")
         }
         #expect(nav.path(from: r.seat(for: r.desks[5]), to: door)?.last == door)
+    }
+
+    /// Koltukta oturan köylü (başlangıç mobilyanın içinde) her masaya engelsiz bir yol bulur.
+    @Test(arguments: [1, 4, 7, 12])
+    func pathFromTheSofaSeatReachesEveryDesk(desks: Int) {
+        let r = room(desks)
+        let nav = RoomNav(room: r)
+        let sofa = r.approach(to: r.spots.first { $0.kind == .sofa }!).seat!
+        for desk in r.desks {
+            let path = nav.path(from: sofa, to: r.seat(for: desk))
+            #expect(path?.last == r.seat(for: desk), "\(desk.id)")
+            if let path { #expect(clear(path, nav, r), "\(desk.id): \(path)") }
+        }
     }
 
     @Test func blockedTargetFallsBackToNearestFree() {

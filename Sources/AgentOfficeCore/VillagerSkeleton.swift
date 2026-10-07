@@ -41,8 +41,14 @@ public struct VillagerSkeleton: Sendable {
         }
         guard frames.count > 1 else { return frames[0] }
         let period = Double(frames.count - 1)
-        var p = (time * Self.fps).truncatingRemainder(dividingBy: period)
-        if p < 0 { p += period }
+        var p: Double
+        if clip.loops {
+            p = (time * Self.fps).truncatingRemainder(dividingBy: period)
+            if p < 0 { p += period }
+        } else {
+            // Tek seferlik klip bitince son karede kalır (geçiş sırasında başa sarıp ters poza sıçramasın).
+            p = min(max(time * Self.fps, 0), period)
+        }
         let i = min(Int(p), frames.count - 2)
         return Self.mix(frames[i], frames[i + 1], Float(p - Double(i)))
     }

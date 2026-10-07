@@ -114,6 +114,13 @@ public struct AvatarSim: Sendable {
                 if existing == nil {
                     // İlk karar hemen: canlıysa kapıdan yürür, değilse yerinde başlar.
                     decide(desk.id, dt: 0, place: !live)
+                } else if let existing, existing.room.key != room.key {
+                    // Başka odaya taşındı: noktasını bırakır, etkinliğin ilk hedefinden yeniden başlar (yerinde).
+                    avatars[desk.id]?.spot = nil
+                    avatars[desk.id]?.goal = nil
+                    avatars[desk.id]?.action = nil
+                    avatars[desk.id]?.behavior.reset()
+                    decide(desk.id, dt: 0, place: true)
                 } else if moved {
                     // Masa ya da oda kaydı: yeni hedefe ışınla (odalar arası yürüme yok).
                     avatars[desk.id]?.target = nil
@@ -122,6 +129,8 @@ public struct AvatarSim: Sendable {
                     // Oda büyüdü: masalar yerinde ama dinlenme köşesi dışa kaydı. Yürüyorsa yol yeniden planlanır;
                     // bir noktada duruyorsa noktanın yeni yerine geçer (eski yer artık bir masanın içinde olabilir).
                     if avatars[desk.id]?.path.isEmpty == false {
+                        replan(desk.id)
+                    } else if case .standUp? = avatars[desk.id]?.action {
                         replan(desk.id)
                     } else if case .spot = avatars[desk.id]?.goal {
                         decide(desk.id, dt: 0, place: true, force: true)
@@ -164,6 +173,8 @@ public struct AvatarSim: Sendable {
             avatar = avatars[id]!
             avatar.spot = nil
             avatar.goal = goal
+            // Ertelenmiş hareket sadece içinde kararlaştırıldığı hedefe aittir (sevinç bayatlamasın).
+            avatar.pendingShot = nil
             if case .spot(let kind, _, _, _) = goal {
                 avatar.spot = kind
                 everReservedCount += 1
@@ -225,6 +236,12 @@ public struct AvatarSim: Sendable {
             avatars[id] = avatar
             return
         }
+        if case .standUp(let remaining, _) = avatar.action {
+            // Zaten kalkıyor: kalkış sürer, sadece sonraki hedef değişir.
+            avatar.action = .standUp(remaining: remaining, then: target)
+            avatars[id] = avatar
+            return
+        }
         if avatar.seated {
             // Önce kalk; yürüyüş `standUp` bitince başlar.
             avatar.action = .standUp(remaining: AvatarClip.standUp.duration, then: target)
@@ -267,15 +284,21 @@ public struct AvatarSim: Sendable {
         avatars[id] = avatar
     }
 
-    /// Yürürken oda değişti: yolu bulunulan yerden yeniden planla.
+    /// Yürürken oda değişti: hedefi yeni odaya göre yeniden hesapla (noktalar dışa kayar) ve yolu baştan bul.
     private mutating func replan(_ id: String) {
-        guard let avatar = avatars[id], !avatar.path.isEmpty, let target = avatar.target else { return }
-        startWalking(id, to: target)
+        guard let avatar = avatars[id], let goal = avatar.goal else { return }
+        let target = target(for: goal, avatar: avatar)
+        if case .standUp(let remaining, _) = avatar.action {
+            avatars[id]?.action = .standUp(remaining: remaining, then: target)
+        } else if !avatar.path.isEmpty {
+            startWalking(id, to: target)
+        }
     }
 
     private mutating func arrive(_ id: String) {
         guard var avatar = avatars[id], let target = avatar.target else { return }
         if target.leave { avatars[id] = nil; return }
+        avatar.behavior.arrived()
         avatar.instance.facing = Float(target.facing)
         if let seat = target.seat {
             avatar.action = .sitDown(remaining: AvatarClip.sitDown.duration, from: avatar.point, to: seat,
