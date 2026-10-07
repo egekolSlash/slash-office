@@ -54,7 +54,7 @@ enum OfficeSnapshot {
             renderer.setLighting(OfficeDaylight.at(hour: hour))
         }
         var sim = AvatarSim(skeleton: gpu.skeleton)
-        let states = desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind) }
+        let states = desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind, unseenFinish: $0.unseenFinish) }
         let looks = Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) })
         if live { sim.sync(plan: OfficePlan.make([], slots: [:]), desks: [:], looks: [:], projectColors: [:], live: false) }
         sim.sync(plan: plan, desks: states, looks: looks, projectColors: colors, live: live)

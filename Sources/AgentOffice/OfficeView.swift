@@ -38,7 +38,7 @@ struct OfficeView: View {
         let plan = model.officePlan()
         let desks = deskInfos(plan)
         let scene = OfficeSceneInput(
-            plan: plan, desks: desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind) },
+            plan: plan, desks: desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind, unseenFinish: $0.unseenFinish) },
             looks: Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) }),
             styles: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, model.style(for: $0.key)) }),
             terminals: Set(desks.values.filter { $0.kind == .shell }.map(\.id)),

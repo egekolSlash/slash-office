@@ -92,11 +92,17 @@ import simd
 
     func sim() -> AvatarSim { AvatarSim(skeleton: VillagerSkeletonTests.skeleton) }
 
-    func desks(_ pairs: [(String, AgentState)], kind: SessionKind = .claude) -> [String: AvatarDeskState] {
-        Dictionary(uniqueKeysWithValues: pairs.map { ($0.0, AvatarDeskState(state: $0.1, kind: kind)) })
+    func desks(_ pairs: [(String, AgentState)], kind: SessionKind = .claude, finished: Set<String> = []) -> [String: AvatarDeskState] {
+        Dictionary(uniqueKeysWithValues: pairs.map { ($0.0, AvatarDeskState(state: $0.1, kind: kind, unseenFinish: finished.contains($0.0))) })
     }
 
     func position(_ p: PlanPoint) -> SIMD3<Float> { SIMD3(Float(p.x), 0, Float(p.z)) }
+    func near(_ a: SIMD3<Float>, _ p: PlanPoint, _ tolerance: Float = 0.02) -> Bool { simd_length(a - position(p)) < tolerance }
+
+    /// `seconds` boyunca 1/60 sn adımlarla ilerletir; her adımda `each` çağrılır.
+    func run(_ s: inout AvatarSim, _ seconds: Double, each: (AvatarSim) -> Void = { _ in }) {
+        for _ in 0..<Int(seconds * 60) { s.tick(dt: 1.0 / 60); each(s) }
+    }
 
     @Test func firstLoadPlacesInPlace() {
         var s = sim()
@@ -111,19 +117,18 @@ import simd
         #expect(!s.isMoving)
     }
 
-    @Test func liveNewSessionWalksInFromTheDoor() {
+    @Test func liveNewSessionWalksInFromTheDoorAndSitsDown() {
         var s = sim()
         let p = plan(["a"])
         s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: true)
         let room = p.rooms[0]
         #expect(s.instances[0].position == position(room.doorOutside))
-        #expect(s.instances[0].clip == .walk)
-        #expect(s.isMoving)
-        for _ in 0..<600 { s.tick(dt: 1.0 / 60) }
-        #expect(!s.isMoving)
-        #expect(s.instances[0].position == position(room.seat(for: room.desks[0])))
-        #expect(s.instances[0].clip == .sitType)
-        #expect(s.instances[0].facing == 0)
+        #expect(s.instances[0].clip == .walk && s.isMoving)
+        var clips: [AvatarClip] = []
+        run(&s, 8) { if clips.last != $0.instances[0].clip { clips.append($0.instances[0].clip) } }
+        #expect(clips.contains(.sitDown))
+        #expect(near(s.instances[0].position, room.seat(for: room.desks[0])))
+        #expect(s.instances[0].clip.seated && s.instances[0].facing == 0)
     }
 
     @Test func walkingFacesTheDirectionOfTravel() {
@@ -142,12 +147,11 @@ import simd
         let p = plan(["a", "b"])
         s.sync(plan: p, desks: desks([("a", .working(tool: nil)), ("b", .exited)]), looks: [:], projectColors: [:], live: false)
         #expect(s.instances.map(\.id) == ["a"])
-        // Canlı: çıkış yürüyüşü bitince kalkar.
         s.sync(plan: p, desks: desks([("a", .exited), ("b", .exited)]), looks: [:], projectColors: [:], live: true)
+        run(&s, 0.2)
         #expect(s.instances.map(\.id) == ["a"] && s.isMoving)
-        for _ in 0..<600 { s.tick(dt: 1.0 / 60) }
+        run(&s, 15)
         #expect(s.instances.isEmpty)
-        // Plandan çıkan masa: hemen kalkar.
         s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
         s.sync(plan: plan(["b"]), desks: desks([("b", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
         #expect(s.instances.map(\.id) == ["b"])
@@ -182,10 +186,127 @@ import simd
         let p = plan(["a"])
         s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
         s.sync(plan: p, desks: desks([("a", .waiting(.permission("Bash")))]), looks: [:], projectColors: [:], live: true)
-        #expect(s.isMoving && s.instances[0].clip == .walk)
-        for _ in 0..<600 { s.tick(dt: 1.0 / 60) }
+        run(&s, 10)
         let room = p.rooms[0]
-        #expect(s.instances[0].position == position(room.standSpot(for: room.desks[0])))
-        #expect(s.instances[0].clip == .wave && s.instances[0].waving)
+        #expect(near(s.instances[0].position, room.standSpot(for: room.desks[0])))
+        #expect([AvatarClip.wave, .waitTap, .lookAround].contains(s.instances[0].clip) && s.instances[0].waving)
+    }
+
+    @Test func sittingUsesSitDownAndStandUp() {
+        var s = sim()
+        let p = plan(["a"])
+        s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
+        s.sync(plan: p, desks: desks([("a", .waiting(.question("?")))]), looks: [:], projectColors: [:], live: true)
+        var clips: [AvatarClip] = []
+        run(&s, 6) { if clips.last != $0.instances[0].clip { clips.append($0.instances[0].clip) } }
+        #expect(clips.first == .standUp)
+        #expect(clips.contains(.walk))
+        // Kalkarken yürümez: standUp bitene kadar yer değiştirmez.
+        var s2 = sim()
+        s2.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
+        let seat = s2.instances[0].position
+        s2.sync(plan: p, desks: desks([("a", .waiting(.question("?")))]), looks: [:], projectColors: [:], live: true)
+        run(&s2, AvatarClip.standUp.duration * 0.8)
+        #expect(s2.instances[0].position == seat)
+    }
+
+    @Test func stateChangeMidActionStandsUpThenWalks() {
+        var s = sim()
+        let p = plan(["a", "b"])
+        s.sync(plan: p, desks: desks([("a", .idle), ("b", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
+        // Boştaki köylü bir noktaya gidip yerleşene kadar.
+        var wandered = false
+        for _ in 0..<(120 * 60) {
+            s.tick(dt: 1.0 / 60)
+            if !s.isMoving, let a = s.instances.first(where: { $0.id == "a" }),
+               !near(a.position, p.rooms[0].seat(for: p.rooms[0].desks[0]), 0.3) { wandered = true; break }
+        }
+        #expect(wandered)
+        // Soru gelir: masanın yanına yürür, sıçramadan (adım başına en fazla hız × dt).
+        s.sync(plan: p, desks: desks([("a", .waiting(.question("?"))), ("b", .working(tool: nil))]), looks: [:], projectColors: [:], live: true)
+        var last = s.instances.first { $0.id == "a" }!.position
+        var maxStep: Float = 0
+        run(&s, 15) { sim in
+            let now = sim.instances.first { $0.id == "a" }!.position
+            maxStep = max(maxStep, simd_length(now - last)); last = now
+        }
+        #expect(maxStep < Float(AvatarRoute.speed / 60) * 1.5 + 0.02)
+        let room = p.rooms[0]
+        #expect(near(s.instances.first { $0.id == "a" }!.position, room.standSpot(for: room.desks[0])))
+    }
+
+    @Test func idleVillagersReserveDistinctSpots() {
+        var s = sim()
+        let ids = (0..<6).map { "i\($0)" }
+        let p = plan(ids)
+        s.sync(plan: p, desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: false)
+        var collision = false
+        run(&s, 240) { sim in
+            let spots = sim.reservedSpots.values
+            if Set(spots).count != spots.count { collision = true }
+        }
+        #expect(!collision)
+        #expect(s.everReservedCount > 0)
+    }
+
+    @Test func roomChangeWhileWanderingReplans() {
+        var s = sim()
+        var ids = ["a", "b"]
+        s.sync(plan: plan(ids), desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: false)
+        run(&s, 40)
+        // Oda büyür (masa eklenir): kimse engelin içinde kalmaz, kimse ışınlanıp kaybolmaz.
+        ids += ["c", "d", "e"]
+        let bigger = plan(ids)
+        s.sync(plan: bigger, desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: true)
+        let nav = RoomNav(room: bigger.rooms[0])
+        run(&s, 30) { sim in
+            for a in sim.instances where ["a", "b"].contains(a.id) {
+                let pt = PlanPoint(x: Double(a.position.x), z: Double(a.position.z))
+                // Taburede ya da koltukta oturmak (mobilyanın içi) ve kapı eşiği serbest.
+                let seats = bigger.rooms[0].desks.map { bigger.rooms[0].seat(for: $0) }
+                    + bigger.rooms[0].spots.filter { $0.kind == .sofa }.map { PlanPoint(x: $0.x, z: $0.z) }
+                #expect(nav.isFree(pt) || seats.contains { $0.distance(to: pt) < 0.7 } || pt.distance(to: bigger.rooms[0].doorInside) < 0.5,
+                        "\(a.id) engelde: \(pt)")
+            }
+        }
+    }
+
+    @Test func cheerOncePerFinish() {
+        var s = sim()
+        let p = plan(["a"])
+        s.sync(plan: p, desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: false)
+        s.sync(plan: p, desks: desks([("a", .idle)], finished: ["a"]), looks: [:], projectColors: [:], live: true)
+        var cheers = 0, last: AvatarClip?
+        run(&s, 10) { sim in
+            let c = sim.instances[0].clip
+            if c == .cheer && last != .cheer { cheers += 1 }
+            last = c
+        }
+        #expect(cheers == 1)
+        // Görüldü (unseenFinish kalktı), sonra aynı bitmiş durum: tekrar sevinmez.
+        s.sync(plan: p, desks: desks([("a", .idle)]), looks: [:], projectColors: [:], live: true)
+        run(&s, 10) { sim in if sim.instances[0].clip == .cheer { cheers += 1 } }
+        #expect(cheers == 1)
+    }
+
+    @Test func facingAtSpotsMatchesFurniture() {
+        var s = sim()
+        let ids = (0..<4).map { "f\($0)" }
+        let p = plan(ids)
+        let room = p.rooms[0]
+        s.sync(plan: p, desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: false)
+        var checked = Set<RoomSpot.Kind>()
+        run(&s, 300) { sim in
+            for (id, kind) in sim.reservedSpots where !sim.isMoving {
+                guard let a = sim.instances.first(where: { $0.id == id }), let spot = room.spots.first(where: { $0.kind == kind }) else { continue }
+                let target = room.approach(to: spot)
+                let at = target.seat ?? target.stand
+                if near(a.position, at, 0.05) {
+                    #expect(abs(remainder(Double(a.facing) - target.facing, 2 * .pi)) < 0.05, "\(kind)")
+                    checked.insert(kind)
+                }
+            }
+        }
+        #expect(!checked.isEmpty)
     }
 }
