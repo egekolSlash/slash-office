@@ -99,15 +99,15 @@ extension OfficePlan.Room {
     public func aisleX(for desk: OfficePlan.Desk) -> Double { desk.x - outward * OfficePlan.columnSpacing / 2 }
     public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: aisleX(for: desk), z: desk.z + 0.1) }
 
-    /// Dinlenme köşesi: dış duvar dibinde koltuk (içe bakar) ve önünde sehpa, dış ön köşede bitki, koridor
-    /// tarafındaki ön köşede sebil.
+    /// Dinlenme köşesi: dış duvar dibinde koltuk (içe bakar), koltuğun arkasında bitki, önünde ve biraz yanda
+    /// sehpa (koltuğa yaklaşma yolunu kapatmaz), koridor tarafındaki ön köşede sebil.
     public var spots: [RoomSpot] {
         let outer = corridorEdgeX + outward * width
         let inward = outward > 0 ? -Double.pi / 2 : Double.pi / 2
         return [
             RoomSpot(kind: .sofa, x: outer - outward * 0.45, z: z + 4.95, facing: inward),
-            RoomSpot(kind: .coffeeTable, x: outer - outward * 1.25, z: z + 4.95, facing: 0),
-            RoomSpot(kind: .plant, x: outer - outward * 0.4, z: z + 5.8, facing: 0),
+            RoomSpot(kind: .coffeeTable, x: outer - outward * 1.25, z: z + 5.75, facing: 0),
+            RoomSpot(kind: .plant, x: outer - outward * 0.4, z: z + 3.95, facing: 0),
             RoomSpot(kind: .waterCooler, x: corridorEdgeX + outward * 0.4, z: z + 5.75, facing: -inward),
         ]
     }
