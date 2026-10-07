@@ -3,7 +3,7 @@ import AppKit
 import Metal
 import SwiftUI
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--focus-waiting] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -87,6 +87,10 @@ enum OfficeSnapshot {
                 if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
             }
             exit(0)
+        }
+        // `--advance <sn>`: köylüleri önce bu kadar ilerlet (dolaşma, koltuk, sebil anlarını görmek için).
+        if let i = arguments.firstIndex(of: "--advance"), let seconds = Double(arguments[i + 1]) {
+            for _ in 0..<Int(seconds * 30) { sim.tick(dt: 1.0 / 30) }
         }
         for _ in 0..<45 { await renderFrame(dt: 1.0 / 30) }
         let anchors = plan.rooms.flatMap(\.desks).map { OfficeOverlay.anchor($0, viewport: camera.viewport, viewSize: camera.viewSize) }

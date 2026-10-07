@@ -67,8 +67,12 @@ public struct AvatarSim: Sendable {
         self.skeleton = skeleton
     }
 
-    /// Yürüyen, geçiş ya da tek seferlik klip oynatan köylü var mı (native kare hızı için).
-    public var isMoving: Bool { avatars.values.contains { !$0.path.isEmpty || $0.action != nil } }
+    /// Yürüyen, geçiş ya da tek seferlik klip oynatan köylü var mı.
+    public var isMoving: Bool { isWalking || isActing }
+    /// Yürüyen köylü var mı (native kare hızı).
+    public var isWalking: Bool { avatars.values.contains { !$0.path.isEmpty } }
+    /// Yerinde tek seferlik hareket, oturma ya da kalkma oynatan köylü var mı (30 fps).
+    public var isActing: Bool { avatars.values.contains { $0.action != nil } }
 
     // MARK: - Durum
 

@@ -10,7 +10,10 @@ final class OfficeSharedScene: @unchecked Sendable {
     struct Frame {
         var instances: [AvatarInstance]
         var time: Double
+        /// Yürüyen köylü (native kare hızı).
         var moving: Bool
+        /// Yerinde hareket ya da klip geçişi (30 fps).
+        var acting: Bool
     }
 
     private let lock = NSLock()
@@ -49,8 +52,8 @@ final class OfficeSharedScene: @unchecked Sendable {
 
     private func frame() -> Frame {
         let instances = sim?.instances ?? []
-        return Frame(instances: instances, time: clock,
-                     moving: (sim?.isMoving ?? false) || instances.contains { $0.blend < 1 })
+        return Frame(instances: instances, time: clock, moving: sim?.isWalking ?? false,
+                     acting: (sim?.isActing ?? false) || instances.contains { $0.blend < 1 })
     }
 
     func cachedWorld(for key: OfficeWorldKey) -> (mesh: OfficeMesh, site: PlanRect)? {

@@ -304,6 +304,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
     private var worldGeneration = 0
     private var lastFrame = CACurrentMediaTime()
     private var lastMode = FramePacing.Mode.paused
+    static let minimumFrameInterval = 1.0 / 120
 
     init(gpu: OfficeGPU, layer: CAMetalLayer) throws {
         self.gpu = gpu
@@ -370,7 +371,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
             let state = scene.peek()
             let animating = !state.instances.isEmpty
             let moving = state.moving
-            var mode = FramePacing.mode(moving: moving, interacting: box.cameraMoving || now < box.interactionUntil,
+            var mode = FramePacing.mode(moving: moving, acting: state.acting,
+                                        interacting: box.cameraMoving || now < box.interactionUntil,
                                         animating: animating, visible: box.visible, mini: box.mini)
             // Duraklamadan önce son durumu bir kez çiz (ör. köylüsüz ofiste plan değişti, boş ofiste gökyüzü).
             let drawOnce = mode == .paused && box.dirty && box.visible
@@ -385,7 +387,12 @@ final class OfficeRenderLoop: @unchecked Sendable {
                 wake.wait()
                 lastFrame = CACurrentMediaTime()
             case .native:
+                let start = CACurrentMediaTime()
                 autoreleasepool { frame() }
+                // Normalde `nextDrawable` ekran yenilemesini bekler; pencere gerçekten gösterilmiyorsa (ör. başka
+                // Space, ekran kapalı) beklemeden döner ve döngü binlerce kare çizer. Üst sınır: 120 fps.
+                let wait = start + Self.minimumFrameInterval - CACurrentMediaTime()
+                if wait > 0 { _ = wake.wait(timeout: .now() + wait) }
             case .fixed(let fps):
                 let start = CACurrentMediaTime()
                 autoreleasepool { frame() }

@@ -7,15 +7,19 @@ public enum FramePacing {
         case paused
     }
 
-    public static func mode(moving: Bool, interacting: Bool, animating: Bool, visible: Bool, mini: Bool) -> Mode {
+    /// `moving`: yürüyen köylü; `acting`: yerinde tek seferlik hareket, oturma/kalkma ya da klip geçişi.
+    public static func mode(moving: Bool, acting: Bool = false, interacting: Bool, animating: Bool,
+                            visible: Bool, mini: Bool) -> Mode {
         guard visible else { return .paused }
         let busy = moving || interacting
         if mini {
             // Mini ofiste köylüler en fazla 12 fps; ama jest (kaydırma, yakınlaştırma) akıcı olsun.
             if interacting { return .native }
-            return busy || animating ? .fixed(12) : .paused
+            return busy || acting || animating ? .fixed(12) : .paused
         }
         if busy { return .native }
+        // Yerinde hareket: klipler 24 fps, 30 fps'te akıcı; native'e gerek yok.
+        if acting { return .fixed(30) }
         return animating ? .fixed(12) : .paused
     }
 }
