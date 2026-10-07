@@ -20,7 +20,8 @@ final class OfficeCamera {
     func fit(_ plan: OfficePlan) {
         let (framed, bounds) = OfficeWorldBuilder.fitRect(plan)
         self.bounds = bounds
-        fitViewport = OfficeViewport.fitting(framed, height: 1.9, viewSize: viewSize)
+        fitViewport = OfficeViewport.fitting(framed, height: 1.9, viewSize: viewSize,
+                                             bendFrom: OfficeWorldBuilder.siteRect(plan).minZ)
         if !userMoved {
             viewport = fitViewport
             target = nil

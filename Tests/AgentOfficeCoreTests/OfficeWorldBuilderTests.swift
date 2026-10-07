@@ -192,3 +192,64 @@ import Testing
 }
 
 import simd
+
+@Suite struct OfficeScenaryTests {
+    let art = OfficeWorldBuilderTests.art
+
+    func plan(_ rooms: Int) -> OfficePlan {
+        let members = (0..<rooms * 2).map { OfficePlan.Member(id: "r\($0 / 2)d\($0 % 2)", roomKey: "/r\($0 / 2)") }
+        return OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+    }
+
+    func items(_ p: OfficePlan) -> [OfficeWorldBuilder.SceneryItem] {
+        OfficeWorldBuilder.scenery(plan: p, site: OfficeWorldBuilder.siteRect(p), art: art)
+    }
+
+    @Test(arguments: [0, 1, 4])
+    func sceneryStaysOffTheSiteAndPath(rooms: Int) {
+        let p = plan(rooms)
+        let blocked = p.rooms.map(\.rect) + p.lots
+            + [PlanRect(minX: OfficePlan.corridorX, minZ: -1, maxX: OfficePlan.corridorX + OfficePlan.corridorWidth,
+                        maxZ: OfficeWorldBuilder.siteRect(p).maxZ)]
+        for item in items(p) {
+            #expect(!blocked.contains { $0.contains(x: item.x, z: item.z) }, "\(item.name) \(item.x),\(item.z)")
+        }
+    }
+
+    @Test func groundTreesGrowInClustersWithSpacing() {
+        let trees = items(plan(4)).filter { ($0.name == "tree" || $0.name == "tree_b" || $0.name == "cedar") && $0.y < 0.1 }
+        #expect(trees.count >= 20)
+        for (i, a) in trees.enumerated() {
+            for b in trees.dropFirst(i + 1) { #expect(hypot(a.x - b.x, a.z - b.z) >= 1.0) }
+        }
+        // Kümeler: ağaçların çoğunun 2,5 m içinde bir komşusu var (düz sıra değil).
+        let clustered = trees.filter { a in trees.contains { b in b.x != a.x && hypot(a.x - b.x, a.z - b.z) < 2.5 } }
+        #expect(Double(clustered.count) >= Double(trees.count) * 0.7)
+        #expect(Set(trees.map(\.name)).count >= 2)
+    }
+
+    @Test func cliffsFormARidgeBehindTheOfficeWithTreesOnTop() {
+        let p = plan(4)
+        let site = OfficeWorldBuilder.siteRect(p)
+        let all = items(p)
+        let cliffs = all.filter { $0.name.hasPrefix("cliff") }
+        #expect(cliffs.count >= 4)
+        #expect(cliffs.allSatisfy { $0.z < site.minZ - 7 })
+        #expect(cliffs.map(\.x).min()! < site.minX && cliffs.map(\.x).max()! > site.maxX)
+        #expect(all.contains { !$0.name.hasPrefix("cliff") && $0.y > 0.8 })   // kayalık üstünde ağaç
+    }
+
+    @Test func flowersGrowInSameColorClumps() {
+        let flowers = items(plan(2)).filter { $0.name == "flower" }
+        #expect(flowers.count >= 30)
+        let sameColorNeighbor = flowers.filter { a in
+            flowers.contains { b in (b.x, b.z) != (a.x, a.z) && b.recolor == a.recolor && hypot(a.x - b.x, a.z - b.z) < 0.8 }
+        }
+        #expect(Double(sameColorNeighbor.count) >= Double(flowers.count) * 0.7)
+    }
+
+    @Test func sceneryIsDeterministic() {
+        let a = items(plan(3)), b = items(plan(3))
+        #expect(a.map { "\($0.name)\($0.x)\($0.z)" } == b.map { "\($0.name)\($0.x)\($0.z)" })
+    }
+}

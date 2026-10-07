@@ -30,9 +30,27 @@ import simd
         let far = viewport(zoom: 60), near = viewport(zoom: OfficeViewport.maxZoom)
         #expect(far.nearness == 0 && near.nearness == 1)
         #expect(abs(far.pitchDegrees - 40) < 1e-9 && abs(near.pitchDegrees - 31) < 1e-9)
-        #expect(abs(far.bend.k - 0.012) < 1e-9 && abs(near.bend.k - 0.05) < 1e-9)
+        // Uzakta da hafif bükülme var (ufuk az görünür); yakında tam.
+        #expect(abs(far.bend.k - 0.026) < 1e-9 && abs(near.bend.k - 0.05) < 1e-9)
         #expect(abs(far.bend.startZ - (0 - 1)) < 1e-9)       // uzakta planın arkasından
         #expect(abs(near.bend.startZ - (4 - 2.5)) < 1e-9)    // yakında hedefin 2,5 m arkasından
+    }
+
+    /// Ufuk yakınlaştırmanın başında hızla belirir: yolun dörtte birinde bükülme farkın yarısından fazlası.
+    @Test func bendArrivesEarlyInTheZoom() {
+        let fit = 60.0, quarter = fit * pow(OfficeViewport.maxZoom / fit, 0.25)
+        let v = viewport(zoom: quarter)
+        #expect(abs(v.nearness - 0.25) < 1e-9)
+        #expect(v.bend.k > 0.026 + (0.05 - 0.026) * 0.5 - 1e-9)
+        // Eğim ise doğrusal kalır (kamera sarsılmasın).
+        #expect(abs(v.pitchDegrees - (40 - 9 * 0.25)) < 1e-9)
+    }
+
+    /// Sığdırma çerçevesi planın arkasından genişse bükülme yine planın arkasından başlar.
+    @Test func fittingBendsFromThePlanBackNotTheFrame() {
+        let v = OfficeViewport.fitting(PlanRect(minX: 0, minZ: -5, maxX: 10, maxZ: 12), height: 1.6,
+                                       viewSize: (900, 600), bendFrom: 0)
+        #expect(v.planMinZ == 0 && abs(v.bend.startZ - (-1)) < 1e-9)
     }
 
     @Test func bendLowersOnlyPointsBehindStart() {

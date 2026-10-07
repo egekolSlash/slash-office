@@ -306,30 +306,61 @@ def water_cooler():
     cyl(0.13, 0.36, (0, 0, 1.08), water, 0.05)
     box((0.05, 0.06, 0.06), (0.17, 0, 0.62), P["dark"], 0.01)
     box((0.05, 0.06, 0.06), (0.17, 0.08, 0.62), mat("CoolerRed", (0.92, 0.35, 0.32), 0.4), 0.01)
-def hill(tiers):
-    # AC tarzı kademeli tepe: her kat düz tepeli, kenarı yuvarlatılmış elips; üstü çimen, yanı koyu yeşil.
-    top = mat("HillTop", (0.48, 0.74, 0.36), 0.9)
-    side = mat("HillSide", (0.36, 0.58, 0.28), 0.9)
+def cliff(tiers, seed):
+    # AC: New Horizons tarzı kayalık: yuvarlatılmış dikdörtgen (süper elips) taban, hafif dalgalı kenar, dik kaya yüzü,
+    # düz çimen tepe. Katlar arkaya (Blender +Y, uygulamada −z) doğru kaydırılır. z'de (Blender y) 0,6 m dilimlenir.
+    import bmesh
+    rock = mat("CliffRock", (0.60, 0.50, 0.38), 0.9)
+    rockDark = mat("CliffRockDark", (0.50, 0.41, 0.31), 0.9)
+    top = mat("CliffTop", (0.45, 0.72, 0.32), 0.9)
     z = 0.0
-    for rx, ry, h in tiers:
-        bpy.ops.mesh.primitive_cylinder_add(radius=1, depth=h, location=(0, 0, z + h / 2), vertices=32, end_fill_type='TRIFAN')
-        o = bpy.context.active_object; o.scale = (rx, ry, 1); bpy.ops.object.transform_apply(scale=True)
-        o.data.materials.append(side); o.data.materials.append(top)
-        for poly in o.data.polygons: poly.material_index = 1 if poly.normal.z > 0.5 else 0
-        bv = o.modifiers.new("Bevel", "BEVEL"); bv.width = 0.25; bv.segments = 3; bv.limit_method = 'ANGLE'
+    for t, (rx, ry, h, dy) in enumerate(tiers):
+        me = bpy.data.meshes.new(f"cliff{t}")
+        bm = bmesh.new()
+        n = 44
+        ring = []
+        for i in range(n):
+            a = 2 * math.pi * i / n
+            c, s_ = math.cos(a), math.sin(a)
+            r = (abs(c) ** 4 + abs(s_) ** 4) ** -0.25
+            r *= 1 + 0.05 * math.sin(3 * a + seed + t) + 0.03 * math.sin(7 * a + 2 * seed)
+            ring.append(bm.verts.new((rx * r * c, dy + ry * r * s_, z)))
+        face = bm.faces.new(ring)
+        ext = bmesh.ops.extrude_face_region(bm, geom=[face])
+        moved = [e for e in ext["geom"] if isinstance(e, bmesh.types.BMVert)]
+        bmesh.ops.translate(bm, vec=(0, 0, h), verts=moved)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(me); bm.free()
+        o = bpy.data.objects.new(f"cliff{t}", me); bpy.context.collection.objects.link(o)
+        for m in (rock, top, rockDark): o.data.materials.append(m)
         bpy.context.view_layer.objects.active = o
+        bv = o.modifiers.new("Bevel", "BEVEL"); bv.width = 0.18; bv.segments = 3; bv.limit_method = 'ANGLE'
         bpy.ops.object.modifier_apply(modifier=bv.name)
-        # Uygulamadaki zemin bükülmesi z'ye (Blender'da −y) bağlı: kapakları 0,6 m'lik dilimlere böl.
         bpy.ops.object.mode_set(mode='EDIT')
-        k = -math.ceil(ry / 0.6)
-        while k * 0.6 < ry:
+        k = -math.ceil((ry + abs(dy) + 1) / 0.6)
+        while k * 0.6 < ry + abs(dy) + 1:
             bpy.ops.mesh.select_all(action='SELECT')
             bpy.ops.mesh.bisect(plane_co=(0, k * 0.6, 0), plane_no=(0, 1, 0))
             k += 1
+        # Kaya yüzünde yatay bant: alt üçte bir koyu.
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.bisect(plane_co=(0, 0, z + h * 0.35), plane_no=(0, 0, 1))
         bpy.ops.object.mode_set(mode='OBJECT')
-        bpy.ops.object.shade_smooth()
+        for poly in o.data.polygons:
+            if poly.normal.z > 0.6: poly.material_index = 1
+            elif poly.center.z < z + h * 0.35: poly.material_index = 2
+            else: poly.material_index = 0
+        bpy.ops.object.shade_flat()
         PARTS.append(o)
-        z += h * 0.92
+        z += h
+def cedar():
+    # AC'deki sedir: ince gövde, üst üste dar koniler.
+    cyl(0.08, 0.6, (0, 0, 0.3), P["trunk"])
+    needles = mat("Cedar", (0.20, 0.46, 0.30), 0.7)
+    needles2 = mat("Cedar2", (0.26, 0.54, 0.34), 0.7)
+    for i, (z0, r, h) in enumerate(((0.5, 0.62, 0.8), (0.95, 0.5, 0.75), (1.35, 0.38, 0.7), (1.72, 0.25, 0.6))):
+        bpy.ops.mesh.primitive_cone_add(radius1=r, radius2=0.02, depth=h, location=(0, 0, z0 + h / 2), vertices=20)
+        finish(bpy.context.active_object, needles if i % 2 == 0 else needles2)
 def tree_b():
     cyl(0.11, 1.0, (0, 0, 0.4), P["trunk"])
     crown = mat("CrownB", (0.42, 0.70, 0.30), 0.6)
@@ -341,10 +372,10 @@ def tree_b():
 PROPS = dict(desk_set=lambda: desk(laptop), terminal_set=lambda: desk(monitor), bookshelf=bookshelf, plant=plant,
              lamp=lamp, tree=tree, flower=flower, window=window, curtain=curtain,
              sofa=sofa, coffee_table=coffee_table, water_cooler=water_cooler,
-             hill_a=lambda: hill([(6.0, 3.0, 1.3), (4.2, 2.2, 1.3), (2.4, 1.3, 1.1)]),
-             hill_b=lambda: hill([(7.0, 3.4, 1.6), (4.6, 2.4, 1.5)]),
-             hill_c=lambda: hill([(4.5, 2.6, 1.2), (3.0, 1.8, 1.3), (1.8, 1.1, 1.0), (1.0, 0.7, 0.7)]),
-             tree_b=tree_b)
+             cliff_a=lambda: cliff([(5.0, 2.4, 1.3, 0.0), (3.4, 1.6, 1.2, 0.9)], 1.0),
+             cliff_b=lambda: cliff([(6.5, 2.8, 1.5, 0.0), (4.2, 1.8, 1.3, 1.1)], 2.3),
+             cliff_c=lambda: cliff([(4.0, 2.2, 1.2, 0.0), (2.6, 1.4, 1.1, 0.8), (1.6, 0.9, 0.9, 1.3)], 3.7),
+             tree_b=tree_b, cedar=cedar)
 PROP_OBJS = {}
 for name, build in PROPS.items():
     PARTS.clear(); build()

@@ -112,54 +112,124 @@ public enum OfficeWorldBuilder {
 
     // MARK: - Manzara
 
-    /// Arkada ağaç sırası ve tepeler, yanlarda seyrek ağaçlar, boş çimende çiçekler; sabit tohumla.
+    /// Manzaradaki bir eşya: ad (`art.props`), konum, ölçek, y ekseni dönüşü ve (çiçekse) renk sırası.
+    public struct SceneryItem: Sendable {
+        public var name: String
+        public var x: Double, y: Double, z: Double
+        public var scale: Double
+        public var yaw: Double
+        public var recolor: Int?
+    }
+
     static func buildScenery(_ plan: OfficePlan, site: PlanRect, art: OfficeArtFile, into mesh: inout OfficeMesh) {
-        var rng = SeededRandom(seed: StableHash.mixed("\(site.minX),\(site.minZ),\(site.maxX),\(site.maxZ)"))
-        let trees = ["tree", "tree_b"].compactMap { art.props[$0] }
-        func tree(_ x: Double, _ z: Double) {
-            guard !trees.isEmpty else { return }
-            let prop = trees[Int(rng.next() * Double(trees.count)) % trees.count]
-            mesh.append(prop, at: SIMD3(Float(x), -0.02, Float(z)), scale: Float(0.85 + rng.next() * 0.4),
-                        yaw: Float(rng.next() * 2 * .pi))
-        }
-        // Arka ağaç sırası.
-        var x = site.minX - 9
-        while x < site.maxX + 9 {
-            tree(x + rng.next() * 0.6, site.minZ - 3 - rng.next() * 2)
-            x += 2.0 + rng.next() * 0.8
-        }
-        // Tepeler: ortada büyük, yanlarda küçükler.
-        let cx = (site.minX + site.maxX) / 2
-        let hills: [(String, Double, Double, Double)] = [
-            ("hill_b", cx, site.minZ - 15, 1.6), ("hill_a", site.minX - 4, site.minZ - 10.5, 1.2),
-            ("hill_c", site.maxX + 4, site.minZ - 11, 1.25), ("hill_a", cx + 15, site.minZ - 14, 1.0),
-            ("hill_c", cx - 16, site.minZ - 15, 1.1),
-        ]
-        for (name, hx, hz, scale) in hills {
-            if let hill = art.props[name] { mesh.append(hill, at: SIMD3(Float(hx), -0.05, Float(hz)), scale: Float(scale)) }
-        }
-        // Yanlarda seyrek ağaçlar.
-        var z = site.minZ - 1
-        while z < site.maxZ + 6 {
-            tree(site.minX - 2.5 - rng.next() * 4, z)
-            tree(site.maxX + 2.5 + rng.next() * 4, z + 1.2)
-            z += 3.2 + rng.next() * 1.5
-        }
-        // Çiçekler: odaların, arsaların, patikanın ve meydanın dışındaki çimende.
-        guard let flower = art.props["flower"] else { return }
         let key = OfficeColor.linearToSRGB8(flowerKey)
-        let blocked = plan.rooms.map { $0.rect.insetBy(-0.3) } + plan.lots.map { $0.insetBy(-0.2) }
-            + [plaza(plan).insetBy(-0.3),
-               PlanRect(minX: OfficePlan.corridorX, minZ: -1, maxX: OfficePlan.corridorX + OfficePlan.corridorWidth, maxZ: plaza(plan).minZ)]
-        var placed = 0
-        while placed < 90 {
-            let fx = site.minX - 7 + rng.next() * (site.maxX - site.minX + 14)
-            let fz = site.minZ - 4 + rng.next() * (site.maxZ - site.minZ + 9)
-            let color = flowerColors[Int(rng.next() * Double(flowerColors.count)) % flowerColors.count]
-            placed += 1
-            if blocked.contains(where: { $0.contains(x: fx, z: fz) }) { continue }
-            mesh.append(flower, at: SIMD3(Float(fx), -0.02, Float(fz)), recolor: (key, OfficeColor.linearToSRGB8(color)))
+        for item in scenery(plan: plan, site: site, art: art) {
+            guard let prop = art.props[item.name] else { continue }
+            let recolor = item.recolor.map { (key, OfficeColor.linearToSRGB8(flowerColors[$0])) }
+            mesh.append(prop, at: SIMD3(Float(item.x), Float(item.y), Float(item.z)), scale: Float(item.scale),
+                        yaw: Float(item.yaw), recolor: recolor)
         }
+    }
+
+    /// AC: New Horizons'tan esinli manzara (v5 spec §3), sabit tohumla:
+    /// - arkada iki sıra kademeli kayalık (sırt), ön sıranın tepesinde ağaçlar;
+    /// - arkada ve yanlarda kümeler halinde ağaçlar (yuvarlak, ikinci çeşit, sedir karışık);
+    /// - boş çimende aynı renkte çiçek öbekleri.
+    /// Odalara, arsalara, patikaya ve meydana bir şey konmaz.
+    public static func scenery(plan: OfficePlan, site: PlanRect, art: OfficeArtFile) -> [SceneryItem] {
+        var rng = SeededRandom(seed: StableHash.mixed("\(site.minX),\(site.minZ),\(site.maxX),\(site.maxZ)"))
+        var items: [SceneryItem] = []
+        let corridor = PlanRect(minX: OfficePlan.corridorX, minZ: -1, maxX: OfficePlan.corridorX + OfficePlan.corridorWidth,
+                                maxZ: site.maxZ)
+        let blocked = plan.rooms.map { $0.rect.insetBy(-0.6) } + plan.lots.map { $0.insetBy(-0.4) }
+            + [corridor.insetBy(-0.5), plaza(plan).insetBy(-0.5)]
+        func free(_ x: Double, _ z: Double) -> Bool { !blocked.contains { $0.contains(x: x, z: z) } }
+
+        // Kayalık sırtı.
+        let cliffNames = ["cliff_b", "cliff_a", "cliff_c"].filter { art.props[$0] != nil }
+        if !cliffNames.isEmpty {
+            for (row, (baseZ, scale)) in [(site.minZ - 10.0, 1.0), (site.minZ - 16.0, 1.35)].enumerated() {
+                var x = site.minX - 16 + (row == 1 ? 5 : 0)
+                var i = row
+                while x < site.maxX + 16 {
+                    let name = cliffNames[i % cliffNames.count]
+                    let s = scale * (1 + rng.next() * 0.25)
+                    let cz = baseZ - rng.next() * 1.5
+                    items.append(SceneryItem(name: name, x: x, y: -0.05, z: cz, scale: s, yaw: 0, recolor: nil))
+                    // Ön sıranın tepesinde 1–3 ağaç.
+                    if row == 0, let top = cliffTop(art.props[name]!) {
+                        let count = 1 + Int(rng.next() * 3)
+                        for _ in 0..<count {
+                            let tx = x + (top.minX + rng.next() * (top.maxX - top.minX)) * s
+                            let tz = cz + (top.minZ + rng.next() * (top.maxZ - top.minZ)) * s
+                            items.append(SceneryItem(name: rng.next() < 0.6 ? "cedar" : "tree_b", x: tx, y: top.height * s - 0.08,
+                                                     z: tz, scale: 0.8 + rng.next() * 0.3, yaw: rng.next() * 2 * .pi, recolor: nil))
+                        }
+                    }
+                    x += (9 + rng.next() * 3) * s
+                    i += 1
+                }
+            }
+        }
+
+        // Ağaç kümeleri: arkada bir bant, yanlarda iki şerit.
+        var trees: [(Double, Double)] = []
+        let species = ["tree", "tree_b", "cedar"].filter { art.props[$0] != nil }
+        func cluster(_ cx: Double, _ cz: Double) {
+            guard !species.isEmpty else { return }
+            let main = species[Int(rng.next() * Double(species.count)) % species.count]
+            for _ in 0..<(3 + Int(rng.next() * 3)) {
+                let a = rng.next() * 2 * .pi, r = rng.next() * 1.8
+                let x = cx + cos(a) * r, z = cz + sin(a) * r
+                guard free(x, z), trees.allSatisfy({ hypot($0.0 - x, $0.1 - z) >= 1.1 }) else { continue }
+                let name = rng.next() < 0.7 ? main : species[Int(rng.next() * Double(species.count)) % species.count]
+                items.append(SceneryItem(name: name, x: x, y: -0.02, z: z, scale: 0.85 + rng.next() * 0.4,
+                                         yaw: rng.next() * 2 * .pi, recolor: nil))
+                trees.append((x, z))
+            }
+        }
+        var x = site.minX - 12
+        while x < site.maxX + 12 {
+            cluster(x + rng.next() * 1.5, site.minZ - 3.5 - rng.next() * 2)
+            x += 4 + rng.next() * 2.5
+        }
+        var z = site.minZ
+        while z < site.maxZ + 4 {
+            cluster(site.minX - 3.5 - rng.next() * 4, z + rng.next() * 2)
+            cluster(site.maxX + 3.5 + rng.next() * 4, z + 2.5 + rng.next() * 2)
+            z += 5 + rng.next() * 2
+        }
+
+        // Çiçek öbekleri.
+        if art.props["flower"] != nil {
+            var flowers: [(Double, Double)] = []
+            for _ in 0..<16 {
+                let cx = site.minX - 7 + rng.next() * (site.maxX - site.minX + 14)
+                let cz = site.minZ - 4 + rng.next() * (site.maxZ - site.minZ + 9)
+                let color = Int(rng.next() * Double(flowerColors.count)) % flowerColors.count
+                for _ in 0..<(4 + Int(rng.next() * 4)) {
+                    let fx = cx + (rng.next() - 0.5) * 1.2, fz = cz + (rng.next() - 0.5) * 1.2
+                    guard free(fx, fz), flowers.allSatisfy({ hypot($0.0 - fx, $0.1 - fz) >= 0.22 }),
+                          trees.allSatisfy({ hypot($0.0 - fx, $0.1 - fz) >= 0.6 }) else { continue }
+                    items.append(SceneryItem(name: "flower", x: fx, y: -0.02, z: fz, scale: 1, yaw: 0, recolor: color))
+                    flowers.append((fx, fz))
+                }
+            }
+        }
+        return items
+    }
+
+    /// Kayalığın en üst katının yerel ayak izi ve yüksekliği (ağaçlar buraya konur), kenarlardan 0,4 m içeride.
+    static func cliffTop(_ mesh: ArtMesh) -> (minX: Double, maxX: Double, minZ: Double, maxZ: Double, height: Double)? {
+        let ys = stride(from: 1, to: mesh.positions.count, by: 3).map { Double(mesh.positions[$0]) }
+        guard let height = ys.max(), height > 0 else { return nil }
+        var minX = Double.infinity, maxX = -Double.infinity, minZ = Double.infinity, maxZ = -Double.infinity
+        for i in 0..<mesh.vertexCount where Double(mesh.positions[3 * i + 1]) > height - 0.01 {
+            minX = min(minX, Double(mesh.positions[3 * i])); maxX = max(maxX, Double(mesh.positions[3 * i]))
+            minZ = min(minZ, Double(mesh.positions[3 * i + 2])); maxZ = max(maxZ, Double(mesh.positions[3 * i + 2]))
+        }
+        guard maxX - minX > 0.8, maxZ - minZ > 0.8 else { return nil }
+        return (minX + 0.4, maxX - 0.4, minZ + 0.4, maxZ - 0.4, height)
     }
 
     // MARK: - Oda

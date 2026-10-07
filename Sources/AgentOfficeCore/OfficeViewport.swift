@@ -26,6 +26,9 @@ public struct OfficeViewport: Equatable, Sendable {
     }
 
     public static let fov = 24.0
+    /// Bükülme katsayısı: uzakta (sığdırılmış) ve en yakında.
+    public static let farBend = 0.026
+    public static let nearBend = 0.05
     public static let farPitch = 40.0
     public static let nearPitch = 31.0
     /// Sığdırma en az bu yakınlıktadır (kartlar ve köylüler okunur kalsın); sığmayan ofiste ön taraf gösterilir.
@@ -47,9 +50,10 @@ public struct OfficeViewport: Equatable, Sendable {
     public var pitchDegrees: Double { Self.lerp(Self.farPitch, Self.nearPitch, nearness) }
 
     /// Zemin bükülmesi: `y' = y − k · max(0, startZ − z)²` (sadece çizim ve izdüşüm; ışık bükülmez).
+    /// Uzakta da hafiftir (ufuk az görünür); yakınlaştırmanın başında hızla artar (√t), eğim ise doğrusal kalır.
     public var bend: (startZ: Double, k: Double) {
-        let t = nearness
-        return (targetZ - Self.lerp(targetZ - planMinZ + 1, 2.5, t), Self.lerp(0.012, 0.05, t))
+        let e = nearness.squareRoot()
+        return (targetZ - Self.lerp(targetZ - planMinZ + 1, 2.5, e), Self.lerp(Self.farBend, Self.nearBend, e))
     }
 
     static func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }
@@ -158,7 +162,15 @@ public struct OfficeViewport: Equatable, Sendable {
 
     /// Dikdörtgeni (zeminden `height` yüksekliğe kadar) görünüme sığdırır; sonuç uzak görünümdür (`nearness` 0).
     /// Sığdırma `minFitZoom`'un altına düşerse yakınlık o olur ve dikdörtgenin ön kenarı alt kenarda durur.
-    public static func fitting(_ rect: PlanRect, height: Double, viewSize: ViewSize, margin: Double = 28) -> OfficeViewport {
+    /// `bendFrom`: bükülmenin uzakta başlayacağı planın arka kenarı (verilmezse dikdörtgeninki).
+    public static func fitting(_ rect: PlanRect, height: Double, viewSize: ViewSize, margin: Double = 28,
+                               bendFrom: Double? = nil) -> OfficeViewport {
+        var v = fittingFrame(rect, height: height, viewSize: viewSize, margin: margin)
+        if let bendFrom { v.planMinZ = bendFrom }
+        return v
+    }
+
+    static func fittingFrame(_ rect: PlanRect, height: Double, viewSize: ViewSize, margin: Double) -> OfficeViewport {
         guard !rect.isEmpty else { return OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0) }
         let size = (width: max(viewSize.width, 1), height: max(viewSize.height, 1))
         let m = min(margin, size.width / 4, size.height / 4)
