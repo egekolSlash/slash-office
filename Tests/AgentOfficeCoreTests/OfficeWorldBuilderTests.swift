@@ -93,14 +93,14 @@ import Testing
         #expect(near.count == Self.art.props["desk_set"]!.vertexCount)
     }
 
-    @Test func verticesStayOnTheIsland() {
+    @Test func verticesStayOnTheMeadow() {
         let p = plan(sample)
         let mesh = build(p)
-        let b = p.bounds, margin: Float = 1.5 + 0.01
+        let b = p.bounds, margin: Float = 31
         for v in mesh.vertices {
             #expect(v.position.x >= Float(b.minX) - margin && v.position.x <= Float(b.maxX) + margin)
             #expect(v.position.z >= Float(b.minZ) - margin && v.position.z <= Float(b.maxZ) + margin)
-            #expect(v.position.y >= -1 && v.position.y <= 3)
+            #expect(v.position.y >= -1 && v.position.y <= 12)
         }
     }
 

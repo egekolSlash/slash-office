@@ -65,7 +65,7 @@ import Testing
 
     @Test func replanFromMidWalkStartsAtCurrentPoint() {
         let r = room(); let desk = r.desks[2]
-        let mid = PlanPoint(x: r.laneX, z: r.z + 0.7)
+        let mid = PlanPoint(x: r.aisleX(for: desk), z: r.z + 2.2)
         guard case .walk(let path, .wave, _, _) = AvatarPlanner.plan(current: AvatarPose(point: mid, roomKey: r.key), activity: .waving, desk: desk, room: r, live: true) else {
             Issue.record("yürümeliydi"); return
         }
@@ -87,6 +87,33 @@ import Testing
         }
         #expect(path.last == r.doorOutside && hide)
         #expect(AvatarPlanner.plan(current: nil, activity: .away, desk: desk, room: r, live: false) == .hide)
+    }
+
+    @Test func everyRouteBetweenSpotsAvoidsDesks() {
+        let r = room(6)
+        for desk in r.desks {
+            let starts = [r.seat(for: desk), r.standSpot(for: desk), r.doorOutside, PlanPoint(x: r.aisleX(for: desk), z: r.doorZ)]
+            for start in starts {
+                for target in [AvatarSpot.seat, .stand, .outside] {
+                    let path = AvatarRoute.route(from: start, to: target, desk: desk, room: r)
+                    #expect(path.first == start)
+                    #expect(path.last == AvatarRoute.point(target, desk: desk, room: r))
+                    #expect(clear(path, r), "\(start) → \(target)")
+                }
+            }
+        }
+    }
+
+    func clear(_ path: [PlanPoint], _ r: OfficePlan.Room) -> Bool {
+        for (a, b) in zip(path, path.dropFirst()) {
+            for i in 0...40 {
+                let t = Double(i) / 40
+                let p = PlanPoint(x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t)
+                for other in r.desks where abs(p.x - other.x) < DeskGeometry.deskHalfWidth - 0.02
+                    && abs(p.z - other.z) < DeskGeometry.deskHalfDepth - 0.02 { return false }
+            }
+        }
+        return true
     }
 
     @Test func clipFramesMatchArtTimeline() {
@@ -111,20 +138,6 @@ import Testing
         for (i, a) in spots.enumerated() {
             for b in spots.dropFirst(i + 1) {
                 #expect(a.distance(to: b) > 0.25, "\(a) ve \(b) çakışıyor")
-            }
-        }
-    }
-
-    @Test func decorSpotsStayOffLaneDesksAndDoorRow() {
-        for count in [1, 2, 3, 4, 5] {
-            let r = room(count)
-            for spot in r.decorSpots() {
-                #expect(abs(spot.x - r.laneX) > 0.4, "şeride yakın: \(spot)")
-                #expect(abs(spot.z - r.doorZ) > 0.4, "kapı sırasında: \(spot)")
-                for desk in r.desks {
-                    #expect(abs(spot.x - desk.x) > 0.5 || abs(spot.z - desk.z) > 0.6, "masaya yakın: \(spot)")
-                }
-                #expect(r.rect.contains(x: spot.x, z: spot.z))
             }
         }
     }

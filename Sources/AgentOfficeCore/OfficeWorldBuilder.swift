@@ -103,7 +103,8 @@ public enum OfficeWorldBuilder {
         mesh.appendBox(size: SIMD3(0.45, 0.014, 0.55), center: SIMD3(Float(inside.x), 0.007, Float(inside.z) - 0.1),
                        color: tint, layer: OfficeTextureLayer.none)
         // Duvarlar: dış kenarda tam boy (lambri + duvar kâğıdı), içeride ve önde alçak.
-        let heights = room.backWallHeights
+        // Geçici (Task 4'te yeniden yazılır): arka duvar ve x = room.x duvarı.
+        let heights = (z: room.backWallHeight, x: room.side == .left ? OfficePlan.wallHeight : OfficePlan.lowWallHeight)
         let t: Float = 0.1
         func wall(alongX: Bool, from start: Float, to end: Float, at fixed: Float, height: Float) {
             let length = end - start
@@ -168,7 +169,7 @@ public enum OfficeWorldBuilder {
     /// Dekor: `room.decorSpots()` noktalarına bitki, lamba, kitaplık. Kitaplık sadece tam boy sol duvarın dibine.
     static func addDecor(room: OfficePlan.Room, tallX: Bool, art: OfficeArtFile, into mesh: inout OfficeMesh) {
         var items = ["plant", "lamp", "bookshelf"]
-        for spot in room.decorSpots() {
+        for spot in room.spots.map({ PlanPoint(x: $0.x, z: $0.z) }) {
             guard let name = items.first else { break }
             if name == "bookshelf", !(tallX && spot.x - room.x < 0.5) { continue }
             items.removeFirst()

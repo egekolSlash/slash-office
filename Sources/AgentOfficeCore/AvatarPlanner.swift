@@ -47,40 +47,43 @@ public enum DeskGeometry {
     public static let seatOffset = 0.32
 }
 
-extension OfficePlan.Room {
-    /// Masa sütunları arasındaki yürüme şeridi.
-    public var laneX: Double { x + Double(width) / 2 }
-    public var doorInside: PlanPoint { PlanPoint(x: side == .left ? doorX - 0.3 : doorX + 0.3, z: doorZ) }
-    public var doorOutside: PlanPoint { PlanPoint(x: side == .left ? doorX + 0.6 : doorX - 0.6, z: doorZ) }
-    public func seat(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: desk.x, z: desk.z - DeskGeometry.seatOffset) }
-    /// Beklerken masanın yanında, şeritte durur. Aynı sıradaki iki masanın köylüsü çakışmasın diye sol sütunun
-    /// köylüsü biraz arkada, sağınki biraz önde durur.
-    public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint {
-        PlanPoint(x: laneX, z: desk.z + (desk.x < laneX ? -0.12 : 0.28))
-    }
+/// Odanın dinlenme köşesindeki ilgi noktası (v5 spec §4): eşya burada durur, köylüler (aşama 2) burada oyalanır.
+public struct RoomSpot: Equatable, Sendable {
+    public enum Kind: String, Sendable { case sofa, coffeeTable, waterCooler, plant }
+    public var kind: Kind
+    public var x: Double
+    public var z: Double
+    /// Eşyanın baktığı yön: y ekseni etrafında radyan, 0 = +z.
+    public var facing: Double
+}
 
-    /// Dekor noktaları (bitki, lamba, kitaplık): masa olmayan hücrelerde, şeritten uzak tarafta, kapının bulunduğu
-    /// sıra hariç (köylüler oradan girer). Arka sıralar önce.
-    public func decorSpots() -> [PlanPoint] {
-        let deskCells = Set(desks.map { "\(Int(($0.x - x).rounded(.down))),\(Int(($0.z - z).rounded(.down)))" })
-        let laneColumn = width % 2 == 1 ? width / 2 : -1
-        let doorRow = Int((doorZ - z).rounded(.down))
-        var spots: [PlanPoint] = []
-        for j in 0..<depth where j != doorRow {
-            for i in 0..<width where i != laneColumn && !deskCells.contains("\(i),\(j)") {
-                let centerX = x + Double(i) + 0.5
-                let px = centerX + (centerX < laneX ? -0.28 : 0.28)
-                let pz = z + Double(j) + (j == 0 ? 0.25 : 0.4)
-                spots.append(PlanPoint(x: px, z: pz))
-            }
-        }
-        return spots
+extension OfficePlan.Room {
+    public var doorInside: PlanPoint { PlanPoint(x: corridorEdgeX + outward * 0.35, z: doorZ) }
+    public var doorOutside: PlanPoint { PlanPoint(x: corridorEdgeX - outward * 0.6, z: doorZ) }
+    public func seat(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: desk.x, z: desk.z - DeskGeometry.seatOffset) }
+    /// Masanın koridor tarafındaki boşluk (iki masa sütunu arası ya da koridor duvarının dibi): köylüler masaya
+    /// buradan yürür, beklerken burada durur.
+    public func aisleX(for desk: OfficePlan.Desk) -> Double { desk.x - outward * OfficePlan.columnSpacing / 2 }
+    public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: aisleX(for: desk), z: desk.z + 0.1) }
+
+    /// Dinlenme köşesi: dış duvar dibinde koltuk (içe bakar) ve önünde sehpa, dış ön köşede bitki, koridor
+    /// tarafındaki ön köşede sebil.
+    public var spots: [RoomSpot] {
+        let outer = corridorEdgeX + outward * width
+        let inward = outward > 0 ? -Double.pi / 2 : Double.pi / 2
+        return [
+            RoomSpot(kind: .sofa, x: outer - outward * 0.45, z: z + 4.95, facing: inward),
+            RoomSpot(kind: .coffeeTable, x: outer - outward * 1.25, z: z + 4.95, facing: 0),
+            RoomSpot(kind: .plant, x: outer - outward * 0.4, z: z + 5.8, facing: 0),
+            RoomSpot(kind: .waterCooler, x: corridorEdgeX + outward * 0.4, z: z + 5.75, facing: -inward),
+        ]
     }
 }
 
 public enum AvatarSpot: Equatable, Sendable { case outside, seat, stand }
 
-/// Dik açılı yol: bulunulan nokta → şerit → hedefin hizası → hedef (masaların içinden geçmez).
+/// Dik açılı yol (v5 spec §4): masa alanında masanın koridor tarafındaki boşlukta, önde yürüme şeridinde yürünür;
+/// masaların içinden geçmez. Oda dışına sadece kapıdan çıkılır.
 public enum AvatarRoute {
     public static let speed = 1.4
 
@@ -92,28 +95,35 @@ public enum AvatarRoute {
         }
     }
 
-    /// Şeritten hedefe giden ara noktalar (şerit tarafından başlayarak).
-    static func approach(_ spot: AvatarSpot, desk: OfficePlan.Desk, room: OfficePlan.Room) -> [PlanPoint] {
-        switch spot {
-        case .outside: [PlanPoint(x: room.laneX, z: room.doorZ), room.doorInside, room.doorOutside]
-        case .seat: [PlanPoint(x: room.laneX, z: room.seat(for: desk).z), room.seat(for: desk)]
-        case .stand: [room.standSpot(for: desk)]
-        }
-    }
-
     public static func route(from start: PlanPoint, to spot: AvatarSpot, desk: OfficePlan.Desk, room: OfficePlan.Room) -> [PlanPoint] {
+        let aisle = room.aisleX(for: desk), walkway = room.doorZ
         var path = [start]
-        // Kapının dışındaysa önce içeri gir; masa hizasındaysa önce şeride çık.
-        if start == room.doorOutside {
-            path += [room.doorInside, PlanPoint(x: room.laneX, z: room.doorZ)]
-        } else if abs(start.x - room.laneX) > 0.01 {
-            path.append(PlanPoint(x: room.laneX, z: start.z))
+        func go(_ p: PlanPoint) { path.append(p) }
+        // Kapının dışındaysa önce içeri gir.
+        if start == room.doorOutside { go(room.doorInside) }
+        var here = path.last!
+        // Masanın boşluğuna geç: masa alanındaysa (ör. tabureden) yana, öndeyse önce yürüme şeridine.
+        if abs(here.x - aisle) > 0.01 {
+            if here.z < walkway - 0.01 {
+                go(PlanPoint(x: aisle, z: here.z))
+            } else {
+                if abs(here.z - walkway) > 0.01 { go(PlanPoint(x: here.x, z: walkway)) }
+                go(PlanPoint(x: aisle, z: walkway))
+            }
         }
-        let approach = approach(spot, desk: desk, room: room)
-        if let first = approach.first, let last = path.last, abs(last.z - first.z) > 0.01 {
-            path.append(PlanPoint(x: room.laneX, z: first.z))
+        here = path.last!
+        switch spot {
+        case .outside:
+            go(PlanPoint(x: aisle, z: walkway))
+            go(room.doorInside)
+            go(room.doorOutside)
+        case .seat:
+            let seat = room.seat(for: desk)
+            go(PlanPoint(x: aisle, z: seat.z))
+            go(seat)
+        case .stand:
+            go(room.standSpot(for: desk))
         }
-        path += approach
         // Ardışık aynı noktaları at.
         return path.reduce(into: []) { result, p in
             if let last = result.last, last.distance(to: p) < 0.01 { return }
