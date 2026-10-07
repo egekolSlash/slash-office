@@ -66,11 +66,16 @@ public struct OfficeMesh: Sendable {
 
     public init() {}
 
+    /// Zemin bükülmesi köşe başına uygulandığı için kutular z'de en fazla bu uzunlukta parçalara bölünür.
+    public static let maxSegmentZ: Float = 0.5
+
     /// Kutu: altı yüz, dışa bakan normaller. UV her yüzde 0…`uvRepeat` (RealityKit'in doku dönüşümü gibi):
     /// x'e bakan yüzlerde u = z, z'ye bakanlarda u = x, üst/altta (u, v) = (x, z); yan yüzlerde v = y.
+    /// z boyunca uzun yüzler `maxSegmentZ`'lik parçalara bölünür (UV parçalar boyunca süreklidir).
     public mutating func appendBox(size: SIMD3<Float>, center: SIMD3<Float>, color: SIMD4<UInt8>, layer: UInt16,
                                    uvRepeat: SIMD2<Float> = SIMD2(1, 1)) {
         let h = size / 2
+        let zSegments = max(1, Int((size.z / Self.maxSegmentZ).rounded(.up)))
         // Her yüz: normal, u ekseni, v ekseni (u × v = normal olacak şekilde).
         let faces: [(SIMD3<Float>, SIMD3<Float>, SIMD3<Float>)] = [
             (SIMD3(1, 0, 0), SIMD3(0, 0, -1), SIMD3(0, 1, 0)),
@@ -81,13 +86,47 @@ public struct OfficeMesh: Sendable {
             (SIMD3(0, -1, 0), SIMD3(1, 0, 0), SIMD3(0, 0, 1)),
         ]
         for (n, uAxis, vAxis) in faces {
+            let nu = uAxis.z != 0 ? zSegments : 1, nv = vAxis.z != 0 ? zSegments : 1
             let base = UInt32(vertices.count)
-            for (cu, cv) in [(Float(-1), Float(-1)), (1, -1), (1, 1), (-1, 1)] {
-                let p = center + n * h + uAxis * h * cu + vAxis * h * cv
-                let uv = SIMD2((cu + 1) / 2 * uvRepeat.x, (1 - cv) / 2 * uvRepeat.y)
-                vertices.append(OfficeVertex(position: p, normal: n, uv: uv, color: color, layer: layer))
+            for j in 0...nv {
+                for i in 0...nu {
+                    let a = Float(i) / Float(nu), b = Float(j) / Float(nv)
+                    let p = center + n * h + uAxis * h * (2 * a - 1) + vAxis * h * (2 * b - 1)
+                    vertices.append(OfficeVertex(position: p, normal: n, uv: SIMD2(a * uvRepeat.x, (1 - b) * uvRepeat.y),
+                                                 color: color, layer: layer))
+                }
             }
-            indices += [base, base + 1, base + 2, base, base + 2, base + 3]
+            let row = UInt32(nu + 1)
+            for j in 0..<UInt32(nv) {
+                for i in 0..<UInt32(nu) {
+                    let v00 = base + j * row + i
+                    indices += [v00, v00 + 1, v00 + row + 1, v00, v00 + row + 1, v00 + row]
+                }
+            }
+        }
+    }
+
+    /// Düz zemin ızgarası (y = `height`, yukarı bakar): hücre başına iki üçgen; UV dünya konumundan (`uvScale`).
+    public mutating func appendGround(rect: PlanRect, height: Float, cell: Float, color: SIMD4<UInt8>, layer: UInt16,
+                                      uvScale: Float) {
+        let nx = max(1, Int((Float(rect.maxX - rect.minX) / cell).rounded(.up)))
+        let nz = max(1, Int((Float(rect.maxZ - rect.minZ) / cell).rounded(.up)))
+        let dx = Float(rect.maxX - rect.minX) / Float(nx), dz = Float(rect.maxZ - rect.minZ) / Float(nz)
+        let base = UInt32(vertices.count)
+        for j in 0...nz {
+            for i in 0...nx {
+                let p = SIMD3(Float(rect.minX) + Float(i) * dx, height, Float(rect.minZ) + Float(j) * dz)
+                vertices.append(OfficeVertex(position: p, normal: SIMD3(0, 1, 0), uv: SIMD2(p.x, p.z) * uvScale,
+                                             color: color, layer: layer))
+            }
+        }
+        let row = UInt32(nx + 1)
+        for j in 0..<UInt32(nz) {
+            for i in 0..<UInt32(nx) {
+                let a = base + j * row + i
+                // Yukarı bakan yüz (sağ el kuralı, y yukarı): a → a+row → a+1.
+                indices += [a, a + row, a + 1, a + 1, a + row, a + row + 1]
+            }
         }
     }
 

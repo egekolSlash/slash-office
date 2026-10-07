@@ -66,9 +66,64 @@ import Testing
         #expect(!a.vertices.isEmpty)
     }
 
-    @Test func emptyPlanGivesEmptyMesh() {
+    static func marked(_ markers: [String: [UInt8]]) -> OfficeArtFile {
+        var art = Self.art
+        for (name, marker) in markers {
+            var mesh = art.props[name]!
+            mesh.colors = Array((0..<mesh.vertexCount).map { _ in marker }.joined())
+            art.props[name] = mesh
+        }
+        return art
+    }
+
+    @Test func emptyPlanShowsMeadowAndLots() {
         let mesh = build(plan([]))
-        #expect(mesh.vertices.isEmpty && mesh.indices.isEmpty)
+        #expect(!mesh.vertices.isEmpty)
+        #expect(mesh.vertices.contains { $0.layer == OfficeTextureLayer.grass })
+        #expect(mesh.vertices.contains { $0.layer == OfficeTextureLayer.dirt })   // arsa zemini
+        #expect(mesh.indices.allSatisfy { Int($0) < mesh.vertices.count })
+    }
+
+    @Test func meadowSurroundsPlanAndLots() {
+        let p = plan(sample)
+        let grass = build(p).vertices.filter { $0.layer == OfficeTextureLayer.grass && $0.normal.y > 0.9 }
+        let minX = grass.map(\.position.x).min()!, maxX = grass.map(\.position.x).max()!
+        let minZ = grass.map(\.position.z).min()!, maxZ = grass.map(\.position.z).max()!
+        let lotsMaxZ = p.lots.map(\.maxZ).max()!
+        #expect(Double(minX) <= p.bounds.minX - 29 && Double(maxX) >= p.bounds.maxX + 29)
+        #expect(Double(minZ) <= p.bounds.minZ - 29 && Double(maxZ) >= lotsMaxZ + 29)
+    }
+
+    @Test func meadowIsAOneMeterGrid() {
+        // Bükülme köşe başına uygulanır: zeminde z'de 1 m'den uzun üçgen olmamalı.
+        let mesh = build(plan(sample))
+        for t in stride(from: 0, to: mesh.indices.count, by: 3) {
+            let v = (0..<3).map { mesh.vertices[Int(mesh.indices[t + $0])] }
+            guard v.allSatisfy({ $0.layer == OfficeTextureLayer.grass && $0.normal.y > 0.9 }) else { continue }
+            let zs = v.map(\.position.z)
+            #expect(zs.max()! - zs.min()! <= 1.0 + 1e-4)
+        }
+    }
+
+    @Test func loungeFurnitureIsPlacedAtSpots() {
+        let p = plan(sample)
+        let mesh = build(p, art: Self.marked(["sofa": [5, 5, 5, 0], "water_cooler": [6, 6, 6, 0]]))
+        let rooms = p.rooms.count
+        #expect(count(mesh, color: [5, 5, 5, 0]) == rooms * Self.art.props["sofa"]!.vertexCount)
+        #expect(count(mesh, color: [6, 6, 6, 0]) == rooms * Self.art.props["water_cooler"]!.vertexCount)
+    }
+
+    @Test func longBoxesAreSplitAlongZ() {
+        var mesh = OfficeMesh()
+        mesh.appendBox(size: SIMD3(0.1, 1, 3), center: SIMD3(0, 0.5, 0), color: SIMD4(255, 255, 255, 0), layer: 0,
+                       uvRepeat: SIMD2(3, 1))
+        let zs = Set(mesh.vertices.map { ($0.position.z * 100).rounded() })
+        #expect(zs.count >= 7)                         // −1,5 … 1,5, en fazla 0,5 aralıkla
+        #expect(mesh.indices.count % 3 == 0 && mesh.indices.allSatisfy { Int($0) < mesh.vertices.count })
+        // Kesitler boyunca UV sürekli: x'e bakan yüzde u, z boyunca 0…3.
+        let side = mesh.vertices.filter { $0.normal.x > 0.9 }
+        #expect(abs(side.map(\.uv.x).max()! - 3) < 1e-5 && abs(side.map(\.uv.x).min()!) < 1e-5)
+        for v in side { #expect(abs(v.uv.x - (1.5 - v.position.z)) < 1e-4) }
     }
 
     @Test func everyDeskGetsADeskSet() {
@@ -96,7 +151,7 @@ import Testing
     @Test func verticesStayOnTheMeadow() {
         let p = plan(sample)
         let mesh = build(p)
-        let b = p.bounds, margin: Float = 31
+        let b = OfficeWorldBuilder.siteRect(p), margin: Float = 31
         for v in mesh.vertices {
             #expect(v.position.x >= Float(b.minX) - margin && v.position.x <= Float(b.maxX) + margin)
             #expect(v.position.z >= Float(b.minZ) - margin && v.position.z <= Float(b.maxZ) + margin)
@@ -112,7 +167,7 @@ import Testing
 
     @Test func boxHasSixFacesWithOutwardNormals() {
         var mesh = OfficeMesh()
-        mesh.appendBox(size: SIMD3(2, 1, 4), center: SIMD3(1, 0.5, 2), color: SIMD4(255, 255, 255, 0), layer: 0, uvRepeat: SIMD2(2, 3))
+        mesh.appendBox(size: SIMD3(2, 1, 0.5), center: SIMD3(1, 0.5, 2), color: SIMD4(255, 255, 255, 0), layer: 0, uvRepeat: SIMD2(2, 3))
         #expect(mesh.vertices.count == 24 && mesh.indices.count == 36)
         for v in mesh.vertices {
             let outward = (v.position - SIMD3(1, 0.5, 2)) * v.normal
