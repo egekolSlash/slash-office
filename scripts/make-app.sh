@@ -9,7 +9,15 @@ APP=${1:-build/SlashOffice.app}
 STAGE=$(mktemp -d)/SlashOffice.app
 mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources"
 cp Resources/Info.plist "$STAGE/Contents/Info.plist"
-cp Resources/AppIcon.icns "$STAGE/Contents/Resources/AppIcon.icns"
+# Uyarlanabilir ikon (macOS 26 Icon Composer: açık/koyu/renklendirilmiş, Liquid Glass) actool ile Assets.car'a
+# derlenir; eski sistemler için AppIcon.icns de yanında. actool yoksa depodaki AppIcon.icns kullanılır.
+if xcrun --find actool >/dev/null 2>&1; then
+    xcrun actool tools/app-icon/AppIcon.icon --compile "$STAGE/Contents/Resources" --platform macosx \
+        --minimum-deployment-target 26.0 --app-icon AppIcon \
+        --output-partial-info-plist "$(dirname "$STAGE")/icon-info.plist" >/dev/null
+else
+    cp Resources/AppIcon.icns "$STAGE/Contents/Resources/AppIcon.icns"
+fi
 # Ofis v3 varlıkları (köylü + eşyalar, scripts/build-office-art.sh ile üretilir).
 cp -R Resources/OfficeArt "$STAGE/Contents/Resources/OfficeArt"
 cp "$BIN/AgentOffice" "$BIN/agent-office-hook" "$STAGE/Contents/MacOS/"
