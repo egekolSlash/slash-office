@@ -32,15 +32,20 @@ final class OfficeCamera {
         }
     }
 
+    /// Son elle kamera hareketi (mini ofisin kendiliğinden odağı bir süre bekler).
+    private(set) var lastManualMove: Date?
+
     func pan(dx: Double, dy: Double) {
         target = nil
         userMoved = true
+        lastManualMove = Date()
         viewport.pan(dx: dx, dy: dy, within: bounds)
     }
 
     func zoom(by factor: Double, anchorX: Double, anchorY: Double) {
         target = nil
         userMoved = true
+        lastManualMove = Date()
         viewport.zoom(by: factor, anchorX: anchorX, anchorY: anchorY, viewSize: viewSize, limits: limits, within: bounds)
     }
 

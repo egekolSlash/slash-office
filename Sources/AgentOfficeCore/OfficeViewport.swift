@@ -282,6 +282,21 @@ public enum OfficeOverlay {
     /// Kart ve balonun asıldığı nokta: masanın üstünde, karakterin başı hizasında.
     public static let anchorHeight = 1.1
     public static let cardOffset = 18.0
+    /// Masa kartının boyutu (SwiftUI katmanı bu boyutta çizer, tıklama testi de bunu kullanır).
+    public static func cardSize(_ detail: OfficeDetail) -> (width: Double, height: Double) {
+        detail == .near ? (230, 54) : (150, 36)
+    }
+    /// Köylünün başının görünümdeki yaklaşık yarıçapı: kart bunun yanına konur.
+    public static func headRadius(zoom: Double) -> Double { max(6, zoom * 0.28) }
+
+    /// Köylünün başının yüksekliği: taburede oturan ve ayakta duran.
+    public static let seatedHead = 1.05
+    public static let standingHead = 1.4
+
+    /// Planın oda tabelaları kaçınılacak alan olarak (kartlar tabelaları örtmesin).
+    public static func signObstacles(_ plan: OfficePlan, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize) -> [Obstacle] {
+        plan.rooms.map { signObstacle(title: $0.title, at: roomSignAnchor($0, viewport: viewport, viewSize: viewSize)) }
+    }
     /// Kartın tıklanabilir yaklaşık boyutu (başlık + durum satırı).
     public static let cardSize = (width: 130.0, height: 34.0)
 
@@ -291,6 +306,63 @@ public enum OfficeOverlay {
     }
 
     public static func bubbleSize(zoom: Double) -> Double { max(18, min(zoom * 0.35, 34)) }
+
+    /// Bir kartın görünümdeki merkezi.
+    public struct CardFrame: Equatable, Sendable {
+        public var x: Double
+        public var y: Double
+    }
+
+    /// Kartların örtmemesi gereken alan (görünüm noktası, merkez ve boyut): başlar, oda ve arsa tabelaları.
+    public struct Obstacle: Equatable, Sendable {
+        public var x: Double, y: Double, width: Double, height: Double
+        public init(x: Double, y: Double, width: Double, height: Double) {
+            self.x = x; self.y = y; self.width = width; self.height = height
+        }
+    }
+
+    /// Oda tabelasının yeri ve tahmini boyutu (SwiftUI katmanı aynı noktaya çizer).
+    public static func roomSignAnchor(_ room: OfficePlan.Room, viewport: OfficeViewport,
+                                      viewSize: OfficeViewport.ViewSize) -> (x: Double, y: Double) {
+        viewport.project(x: room.doorX, y: OfficePlan.wallHeight + 0.25, z: room.doorZ, viewSize: viewSize)
+    }
+
+    public static func signObstacle(title: String, at p: (x: Double, y: Double)) -> Obstacle {
+        Obstacle(x: p.x, y: p.y, width: Double(title.count) * 7.5 + 40, height: 26)
+    }
+
+    /// Masa kartlarının yeri: başın yanında (önce sağ, sonra sol), birbirinin üstüne binmeden; sığmazsa aşağı ve
+    /// yukarı kaydırılır. Önce öndeki (ekranda aşağıdaki) masalar yerleşir; sonuç girdi sırasından bağımsızdır.
+    /// `headRadius`: başın görünümdeki yarıçapı (nokta).
+    public static func layoutCards(_ anchors: [(String, (x: Double, y: Double))], headRadius: Double,
+                                   cardSize: (width: Double, height: Double),
+                                   viewSize: OfficeViewport.ViewSize, avoiding obstacles: [Obstacle] = []) -> [String: CardFrame] {
+        let w = cardSize.width, h = cardSize.height
+        // Bütün başlar da kaçınılacak alandır (kart kendi başının yanında, başkasının başının üstünde olmasın).
+        let blocked = obstacles + anchors.map { Obstacle(x: $0.1.x, y: $0.1.y, width: 2 * headRadius, height: 2 * headRadius) }
+        let ordered = anchors.sorted { a, b in
+            a.1.y != b.1.y ? a.1.y > b.1.y : a.1.x != b.1.x ? a.1.x < b.1.x : a.0 < b.0
+        }
+        var placed: [String: CardFrame] = [:]
+        func free(_ f: CardFrame) -> Bool {
+            f.x - w / 2 >= 0 && f.x + w / 2 <= viewSize.width && f.y - h / 2 >= 0 && f.y + h / 2 <= viewSize.height
+                && placed.values.allSatisfy { abs($0.x - f.x) >= w || abs($0.y - f.y) >= h }
+                && blocked.allSatisfy { abs($0.x - f.x) >= (w + $0.width) / 2 || abs($0.y - f.y) >= (h + $0.height) / 2 }
+        }
+        for (id, anchor) in ordered {
+            let gap = headRadius + 6
+            let right = anchor.x + gap + w / 2, left = anchor.x - gap - w / 2
+            var candidates = [CardFrame(x: right, y: anchor.y), CardFrame(x: left, y: anchor.y)]
+            for k in 1...8 {
+                let dy = Double(k) * (h + 4)
+                candidates += [CardFrame(x: right, y: anchor.y + dy), CardFrame(x: left, y: anchor.y + dy),
+                               CardFrame(x: right, y: anchor.y - dy), CardFrame(x: left, y: anchor.y - dy)]
+            }
+            placed[id] = candidates.first(where: free)
+                ?? CardFrame(x: min(max(right, w / 2), viewSize.width - w / 2), y: anchor.y)
+        }
+        return placed
+    }
 
     /// Ekranın üst kenarına yakın bant: buradaki kartlar gizlenir (ufuk bölgesinde okunmaz, tıklaması şaşar).
     public static let horizonBand = 0.08
@@ -309,10 +381,38 @@ public enum OfficeOverlay {
 }
 
 extension OfficePlan {
+    /// Kart ve balonun asıldığı nokta: köylünün başı (oturuyorsa taburede, ayaktaysa masanın yanındaki boşlukta).
+    public func headAnchor(_ desk: Desk, standing: Bool, viewport: OfficeViewport,
+                           viewSize: OfficeViewport.ViewSize) -> (x: Double, y: Double) {
+        guard let room = rooms.first(where: { $0.desks.contains(desk) }) else {
+            return OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize)
+        }
+        let p = standing ? room.standSpot(for: desk) : room.seat(for: desk)
+        return viewport.project(x: p.x, y: standing ? OfficeOverlay.standingHead : OfficeOverlay.seatedHead, z: p.z,
+                                viewSize: viewSize)
+    }
+
+    /// Gösterilen masaların kart yerleri (uzak seviyede kart yok): başın yanında, başları ve tabelaları örtmeden.
+    /// `bubbles`: `?` ya da `✓` balonu olan masalar (kartlar balonları da örtmez).
+    public func cardFrames(_ desks: [Desk], standing: Set<String>, bubbles: Set<String> = [], viewport: OfficeViewport,
+                           viewSize: OfficeViewport.ViewSize, detail: OfficeDetail) -> [String: OfficeOverlay.CardFrame] {
+        guard detail != .far else { return [:] }
+        let anchors = desks.map { desk in
+            (desk.id, headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize))
+        }
+        let bubble = OfficeOverlay.bubbleSize(zoom: viewport.zoom)
+        let bubbleRects = anchors.filter { bubbles.contains($0.0) }.map { _, a in
+            OfficeOverlay.Obstacle(x: a.x, y: a.y - OfficeOverlay.bubbleOffset(detail), width: bubble, height: bubble)
+        }
+        return OfficeOverlay.layoutCards(anchors, headRadius: OfficeOverlay.headRadius(zoom: viewport.zoom),
+                                         cardSize: OfficeOverlay.cardSize(detail), viewSize: viewSize,
+                                         avoiding: OfficeOverlay.signObstacles(self, viewport: viewport, viewSize: viewSize) + bubbleRects)
+    }
+
     /// Tıklama: önce bekleyenlerin `?` balonu, sonra (uzak seviye değilse) masa kartı, sonra sahnedeki masa.
     /// Örtüşen balon ya da kartlarda öndeki (ekranda daha aşağıdaki) kazanır.
     public func desk(atViewX x: Double, y: Double, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
-                     detail: OfficeDetail, waiting: Set<String>) -> String? {
+                     detail: OfficeDetail, waiting: Set<String>, standing: Set<String> = []) -> String? {
         let horizon = viewport.horizonZ(viewSize: viewSize)
         let desks = rooms.flatMap(\.desks).filter { desk in
             OfficeOverlay.isShown(z: desk.z, anchorY: OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize).y,
@@ -322,19 +422,17 @@ extension OfficePlan {
         func front(_ hits: [(id: String, y: Double)]) -> String? { hits.max { $0.y < $1.y }?.id }
         let bubbles = desks.compactMap { desk -> (id: String, y: Double)? in
             guard waiting.contains(desk.id) else { return nil }
-            let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize)
+            let anchor = headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize)
             let center = anchor.y - OfficeOverlay.bubbleOffset(detail)
             return hypot(x - anchor.x, y - center) <= radius + 4 ? (desk.id, anchor.y) : nil
         }
         if let id = front(bubbles) { return id }
         if detail != .far {
-            let cards = desks.compactMap { desk -> (id: String, y: Double)? in
-                let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize)
-                let inside = abs(x - anchor.x) <= OfficeOverlay.cardSize.width / 2
-                    && abs(y - (anchor.y - OfficeOverlay.cardOffset)) <= OfficeOverlay.cardSize.height / 2
-                return inside ? (desk.id, anchor.y) : nil
+            let size = OfficeOverlay.cardSize(detail)
+            let frames = cardFrames(desks, standing: standing, bubbles: waiting, viewport: viewport, viewSize: viewSize, detail: detail)
+            if let hit = frames.first(where: { abs(x - $0.value.x) <= size.width / 2 && abs(y - $0.value.y) <= size.height / 2 }) {
+                return hit.key
             }
-            if let id = front(cards) { return id }
         }
         // Sahnedeki masa: ufkun arkasındakiler görünmez, seçilmez.
         guard let id = desk(atViewX: x, y: y, viewport: viewport, viewSize: viewSize),

@@ -191,11 +191,36 @@ import simd
         let fit = OfficeViewport.fitting(plan.bounds, height: OfficePlan.wallHeight, viewSize: size)
         let viewport = OfficeViewport.focusing(x: desk.x, z: desk.z, zoom: zoom, fit: fit)
         let detail = OfficeDetail.level(zoom: zoom)
-        let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size)
+        let anchor = plan.headAnchor(desk, standing: false, viewport: viewport, viewSize: size)
         let bubbleY = anchor.y - OfficeOverlay.bubbleOffset(detail)
         #expect(plan.desk(atViewX: anchor.x, y: bubbleY, viewport: viewport, viewSize: size, detail: detail, waiting: ["b"]) == "b")
-        let cardY = anchor.y - OfficeOverlay.cardOffset
-        #expect(plan.desk(atViewX: anchor.x + 20, y: cardY, viewport: viewport, viewSize: size, detail: detail, waiting: []) == "b")
+        let card = plan.cardFrames(plan.rooms.flatMap(\.desks), standing: [], viewport: viewport, viewSize: size, detail: detail)["b"]!
+        #expect(abs(card.x - anchor.x) >= OfficeOverlay.cardSize(detail).width / 2)   // kart başın yanında
+        #expect(plan.desk(atViewX: card.x + 20, y: card.y, viewport: viewport, viewSize: size, detail: detail, waiting: []) == "b")
+    }
+}
+
+@Suite struct OfficeHeadAnchorTests {
+    let size = (width: 900.0, height: 600.0)
+
+    /// Kart ve balon köylünün başına bağlıdır: oturan için taburede, bekleyen (ayakta) için masanın yanındaki boşlukta.
+    @Test func anchorFollowsWhereTheVillagerIs() {
+        let members = (0..<4).map { OfficePlan.Member(id: "d\($0)", roomKey: "/r") }
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let room = plan.rooms[0], desk = room.desks[2]
+        let fit = OfficeViewport.fitting(plan.bounds, height: 1.6, viewSize: size)
+        let v = OfficeViewport.focusing(x: desk.x, z: desk.z, zoom: 130, fit: fit)
+        let seat = room.seat(for: desk), stand = room.standSpot(for: desk)
+        let seated = plan.headAnchor(desk, standing: false, viewport: v, viewSize: size)
+        let standing = plan.headAnchor(desk, standing: true, viewport: v, viewSize: size)
+        let expectSeat = v.project(x: seat.x, y: OfficeOverlay.seatedHead, z: seat.z, viewSize: size)
+        let expectStand = v.project(x: stand.x, y: OfficeOverlay.standingHead, z: stand.z, viewSize: size)
+        #expect(abs(seated.x - expectSeat.x) < 1e-9 && abs(seated.y - expectSeat.y) < 1e-9)
+        #expect(abs(standing.x - expectStand.x) < 1e-9 && abs(standing.y - expectStand.y) < 1e-9)
+        // Bekleyenin kartı ayaktaki başının yanında.
+        let frames = plan.cardFrames(room.desks, standing: [desk.id], viewport: v, viewSize: size, detail: .near)
+        let card = frames[desk.id]!
+        #expect(abs(card.y - standing.y) < 120 && abs(card.x - standing.x) < OfficeOverlay.cardSize(.near).width + 60)
     }
 }
 

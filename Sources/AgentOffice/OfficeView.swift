@@ -10,6 +10,8 @@ struct OfficeView: View {
     var interactive = false
     @State private var gpu: OfficeGPU?
     private var camera: OfficeCamera { interactive ? model.officeCamera : model.miniOfficeCamera }
+    /// Mini ofisin kendiliğinden baktığı masa (`OfficeAutoFocus`).
+    @State private var autoFocused: String?
     @State private var unavailable = false
 
     var body: some View {
@@ -65,6 +67,18 @@ struct OfficeView: View {
             model.officeFocusRequest = nil
             focusCamera(on: id, plan: plan, camera: camera)
         }
+        .onChange(of: autoFocusTarget(plan: plan, desks: desks), initial: true) { _, target in
+            applyAutoFocus(target, plan: plan, camera: camera)
+        }
+        // Elle hareketten sonraki bekleme bitince odak yeniden uygulansın.
+        .task(id: interactive) {
+            guard !interactive else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                applyAutoFocus(autoFocusTarget(plan: model.officePlan(), desks: deskInfos(model.officePlan())),
+                               plan: model.officePlan(), camera: camera)
+            }
+        }
         .overlay {
             OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: interactive)
         }
@@ -73,6 +87,35 @@ struct OfficeView: View {
                 ContentUnavailableView("Ofis boş", systemImage: "building.2", description: Text("⌘T ile yeni panel aç."))
             }
         }
+    }
+
+    /// Mini ofiste kameranın dönmesi gereken masa: soru soran > işi bitip görülmemiş > çalışan; panelde açık
+    /// olmayan önce (ofis modunda kendiliğinden odak yok).
+    private func autoFocusTarget(plan: OfficePlan, desks: [String: OfficeDeskInfo]) -> String? {
+        guard !interactive else { return nil }
+        let candidates = desks.values.map { info in
+            OfficeAutoFocus.Candidate(id: info.id, state: info.state, unseenFinish: info.unseenFinish,
+                                      openInPane: model.layout.visible.contains(info.id),
+                                      lastEventAt: model.store.session(info.id)?.lastEventAt)
+        }
+        return OfficeAutoFocus.pick(candidates, current: autoFocused)
+    }
+
+    private func applyAutoFocus(_ target: String?, plan: OfficePlan, camera: OfficeCamera) {
+        guard !interactive, !OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) else { return }
+        guard target != autoFocused || (target != nil && camera.target == nil && !isLooking(at: target, plan: plan, camera: camera)) else { return }
+        autoFocused = target
+        guard let target, let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == target }) else {
+            camera.resetToFit()
+            return
+        }
+        camera.focus(x: desk.x, z: desk.z, zoom: max(camera.fitViewport.zoom * 2.2, 70))
+    }
+
+    /// Kamera zaten bu masaya bakıyor mu (yeniden odaklamaya gerek yok).
+    private func isLooking(at id: String?, plan: OfficePlan, camera: OfficeCamera) -> Bool {
+        guard let id, let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == id }) else { return false }
+        return abs(camera.viewport.targetX - desk.x) < 0.3 && abs(camera.viewport.targetZ - desk.z) < 0.3
     }
 
     private func deskInfos(_ plan: OfficePlan) -> [String: OfficeDeskInfo] {
@@ -96,7 +139,11 @@ struct OfficeView: View {
             if case .waiting = model.store.session(id)?.state { return true }
             return model.store.session(id)?.unseenFinish == true
         })
-        return plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize, detail: detail, waiting: waiting)
+        let standing = Set(plan.rooms.flatMap(\.desks).map(\.id).filter { id in
+            if case .waiting = model.store.session(id)?.state { true } else { false }
+        })
+        return plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize, detail: detail,
+                         waiting: waiting, standing: standing)
     }
 
     private func handleClick(x: Double, y: Double, clickCount: Int, shift: Bool, plan: OfficePlan, camera: OfficeCamera) {

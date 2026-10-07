@@ -19,7 +19,7 @@ struct OfficeCards: View {
         let shown = { (z: Double, y: Double) in OfficeOverlay.isShown(z: z, anchorY: y, horizonZ: horizon, viewSize: size) }
         ZStack(alignment: .topLeading) {
             ForEach(plan.rooms, id: \.key) { room in
-                let anchor = viewport.project(x: room.doorX, y: OfficePlan.wallHeight + 0.25, z: room.doorZ, viewSize: size)
+                let anchor = OfficeOverlay.roomSignAnchor(room, viewport: viewport, viewSize: size)
                 if shown(room.doorZ, anchor.y) {
                     RoomSign(title: room.title, roomKey: room.key, icon: icons[room.key], compact: detail == .far && !interactive)
                         .position(x: anchor.x, y: anchor.y)
@@ -29,12 +29,24 @@ struct OfficeCards: View {
                 let anchor = viewport.project(x: (lot.minX + lot.maxX) / 2, y: 0.95, z: lot.minZ + OfficePlan.lotSignZ, viewSize: size)
                 if shown(lot.minZ + OfficePlan.lotSignZ, anchor.y) { LotSign(compact: detail == .far && !interactive).position(x: anchor.x, y: anchor.y) }
             }
-            ForEach(plan.rooms.flatMap(\.desks), id: \.id) { desk in
-                if let info = desks[desk.id], shown(desk.z, OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size).y) {
-                    let anchor = OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size)
-                    if detail != .far {
-                        DeskCard(info: info, near: detail == .near)
-                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.cardOffset)
+            let visibleDesks = plan.rooms.flatMap(\.desks).filter { desk in
+                desks[desk.id] != nil && shown(desk.z, OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size).y)
+            }
+            // Kartlar başın yanında, birbirinin üstüne binmeden (Core: tıklama testiyle aynı yerleşim).
+            let standing = Set(desks.values.filter { if case .waiting = $0.state { true } else { false } }.map(\.id))
+            let bubbles = Set(desks.values.filter { info in
+                if case .waiting = info.state { return true }
+                return info.unseenFinish
+            }.map(\.id))
+            let frames = plan.cardFrames(visibleDesks, standing: standing, bubbles: bubbles, viewport: viewport,
+                                         viewSize: size, detail: detail)
+            let cardSize = OfficeOverlay.cardSize(detail)
+            ForEach(visibleDesks, id: \.id) { desk in
+                if let info = desks[desk.id] {
+                    let anchor = plan.headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: size)
+                    if let frame = frames[desk.id] {
+                        DeskCard(info: info, near: detail == .near, size: cardSize)
+                            .position(x: frame.x, y: frame.y)
                     }
                     if case .waiting = info.state {
                         QuestionBubble(size: OfficeOverlay.bubbleSize(zoom: viewport.zoom))
@@ -84,9 +96,11 @@ private struct RoomSign: View {
     }
 }
 
+/// Masa kartı: köylünün başının yanında, sabit boyutta (yerleşim ve tıklama testi bu boyutu varsayar; uzun yazılar kısalır).
 private struct DeskCard: View {
     let info: OfficeDeskInfo
     let near: Bool
+    let size: (width: Double, height: Double)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -97,17 +111,17 @@ private struct DeskCard: View {
             // Yakın görünümde: ne üzerinde çalışıyor.
             if near, let summary = info.summary {
                 Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.85))
-                    .frame(maxWidth: 220, alignment: .leading)
             }
             StatusBadge(state: info.state, kind: info.kind).font(.system(size: near ? 10 : 9))
         }
         .foregroundStyle(.white)
+        .lineLimit(1)
+        .truncationMode(.tail)
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
+        .frame(width: size.width, height: size.height, alignment: .leading)
         .background(.black.opacity(info.focused ? 0.75 : 0.55), in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(info.focused ? Color.white.opacity(0.8) : .clear, lineWidth: 1))
-        .lineLimit(1)
-        .fixedSize()
     }
 }
 
