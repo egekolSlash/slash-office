@@ -2,18 +2,20 @@ import AgentOfficeCore
 import AppKit
 import SwiftUI
 
-/// Detaylı ofis (spec v3 §6): Animal Crossing tarzı gerçek zamanlı 3D ada. `interactive`: tam ekran ofis modunda
-/// gezinme açık; mini ofiste hep sığdırılmış, uzak görünüm ve en fazla 12 fps. Varlıklar bulunamazsa sade görünüm.
+/// Detaylı ofis (spec v3, v4): Animal Crossing tarzı gerçek zamanlı 3D ada, kendi Metal çizicimizle. `interactive`:
+/// tam ekran ofis modunda gezinme açık; mini ofiste hep sığdırılmış, uzak görünüm ve en fazla 12 fps.
+/// Varlıklar ya da Metal yoksa sade görünüm.
 struct OfficeView: View {
     @Bindable var model: AppModel
     var interactive = false
-    @State private var scene: Office3DScene?
+    @State private var gpu: OfficeGPU?
+    @State private var camera = OfficeCamera()
     @State private var unavailable = false
 
     var body: some View {
         Group {
-            if let scene {
-                content(scene)
+            if let gpu {
+                content(gpu)
             } else if unavailable {
                 SimpleOfficeView(model: model)
             } else {
@@ -21,32 +23,30 @@ struct OfficeView: View {
             }
         }
         .task {
-            guard scene == nil, !unavailable else { return }
-            if let resources = await Office3DResources.shared(), let created = Office3DScene(resources: resources) {
-                scene = created
+            guard gpu == nil, !unavailable else { return }
+            if let loaded = await OfficeGPU.shared() {
+                gpu = loaded
             } else {
                 unavailable = true
             }
         }
     }
 
-    /// Sahneyi güncelleyen her şey: değişmediyse sahneye dokunulmaz.
-    private struct SceneInput: Equatable {
-        var plan: OfficePlan
-        var desks: [String: OfficeDeskInfo]
-        var looks: [String: AvatarLook]
-        var styles: [String: RoomStyle]
-    }
-
-    private func content(_ scene: Office3DScene) -> some View {
+    private func content(_ gpu: OfficeGPU) -> some View {
         let plan = model.officePlan()
         let desks = deskInfos(plan)
-        let input = SceneInput(plan: plan, desks: desks,
-                               looks: Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) }),
-                               styles: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, model.style(for: $0.key)) }))
-        let camera = scene.camera
-        return OfficeRenderRepresentable(
-            scene: scene, interactive: interactive,
+        let scene = OfficeSceneInput(
+            plan: plan, desks: desks.mapValues { AvatarDeskState(state: $0.state, kind: $0.kind) },
+            looks: Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) }),
+            styles: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, model.style(for: $0.key)) }),
+            terminals: Set(desks.values.filter { $0.kind == .shell }.map(\.id)),
+            projectColors: Dictionary(uniqueKeysWithValues: plan.rooms.map { room in
+                let c = ProjectPalette.colors[ProjectPalette.index(for: room.key)]
+                return (room.key, (red: c.red, green: c.green, blue: c.blue))
+            }))
+        let camera = camera
+        return OfficeMetalRepresentable(
+            gpu: gpu, camera: camera, scene: scene, interactive: interactive,
             onClick: { x, y, clickCount, shift in handleClick(x: x, y: y, clickCount: clickCount, shift: shift, plan: plan, camera: camera) },
             onRightClick: { x, y in handleRightClick(x: x, y: y, plan: plan, camera: camera) },
             onPan: { dx, dy in
@@ -64,11 +64,7 @@ struct OfficeView: View {
             camera.viewSize = (Double(size.width), Double(size.height))
             camera.fit(plan)
         }
-        .onChange(of: input, initial: true) {
-            camera.fit(input.plan)
-            scene.update(plan: input.plan, desks: input.desks, look: { input.looks[$0] ?? AvatarLook.default(for: $0) },
-                         style: { input.styles[$0] ?? RoomStyle.default(for: $0) })
-        }
+        .onChange(of: plan, initial: true) { camera.fit(plan) }
         .task(id: model.store.sessions.map(\.cwd)) { model.loadRoomKeys(model.store.sessions.map(\.cwd)) }
         // Oda anahtarları arka planda geldikçe (ör. sadece worktree açıkken ana depo) tabela ikonları yüklenir.
         .task(id: plan.rooms.map(\.key)) { model.loadProjectIcons(plan.rooms.map(\.key)) }

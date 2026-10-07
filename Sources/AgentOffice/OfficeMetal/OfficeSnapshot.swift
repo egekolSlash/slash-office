@@ -68,10 +68,10 @@ enum OfficeSnapshot {
             let cb = gpu.queue.makeCommandBuffer()!
             renderer.encode(to: texture, viewport: camera.viewport, viewSize: camera.viewSize, avatars: sim.instances,
                             time: time, commandBuffer: cb)
-            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-                cb.addCompletedHandler { _ in done.resume() }
-                cb.commit()
-            }
+            let (done, finish) = AsyncStream<Void>.makeStream()
+            cb.addCompletedHandler { _ in finish.finish() }
+            cb.commit()
+            for await _ in done {}
         }
         // `--bench <fps>`: ölçüm için ekran dışında bu kare hızında 20 sn çizer (pencere başka Space'teyken de çalışır).
         if let i = arguments.firstIndex(of: "--bench"), let fps = Double(arguments[i + 1]) {

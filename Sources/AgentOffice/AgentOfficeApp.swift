@@ -13,6 +13,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in await OfficeSnapshot.run(arguments: CommandLine.arguments, model: model) }
             return
         }
+        // `--office-window`: demo ofisini yüzen pencerede gösterip kare hızı ve CPU ölçer.
+        if OfficeMeasureWindow.requested(CommandLine.arguments) {
+            OfficeMeasureWindow.run(arguments: CommandLine.arguments, model: model)
+            return
+        }
         // `swift run` ile bundle'sız çalışırken Dock'ta görünmesi ve klavye odağı alması için.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()

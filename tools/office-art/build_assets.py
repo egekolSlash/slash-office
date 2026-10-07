@@ -1,12 +1,12 @@
-# Slash Office varlıkları: iskeletli Animal Crossing tarzı köylü + eşyalar -> USDZ.
+# Slash Office varlıkları: iskeletli Animal Crossing tarzı köylü + eşyalar -> Resources/OfficeArt/office-art.json.
 # Çalıştır: scripts/build-office-art.sh  (Blender -b --factory-startup --python build_assets.py -- <depo kökü>)
 #
-# Sözleşme (uygulama buna güvenir, spec §4/§8):
-#  - Blender (x, y, z) -> RealityKit (x, z, -y). Köylü -Y'ye (RealityKit +z'ye, kameraya) bakar; ayakları z=0'da.
-#  - villager.usdz mesh örnekleri: Body, HairShort, HairPigtails, HairSpiky, HairBob, Glasses.
+# Sözleşme (uygulama buna güvenir, v3 spec §4/§8, v4 spec §4; Core'da OfficeArtFile):
+#  - Blender (x, y, z) -> uygulama (x, z, -y), Y yukarı. Köylü -Y'ye (uygulamada +z'ye, kameraya) bakar; ayakları z=0'da.
+#  - Köylü mesh'leri: Body, HairShort, HairPigtails, HairSpiky, HairBob, Glasses (saç modeli kodu 1…4, gözlük parça 4).
 #  - Değiştirilebilir malzemeler taban rengiyle tanınır: tişört (0.30,0.55,0.95), ten (0.99,0.84,0.72), saç (0.35,0.20,0.10).
 #  - Klipler (24 fps): idle 1-24, walk 31-54, sitType 61-84, sitDoze 91-138, wave 141-164 (AvatarClip.frames).
-#  - Eşyalar orijinde, zeminde. Masa takımında köylü +Y tarafında (RealityKit -z) oturur; tabure y=+0.32 (DeskGeometry.seatOffset).
+#  - Eşyalar orijinde, zeminde. Masa takımında köylü +Y tarafında (uygulamada -z) oturur; tabure y=+0.32 (DeskGeometry.seatOffset).
 #    Masa üstü 0.565; tabure üstü 0.46.
 #    Duvara yaslanan eşyalar (kitaplık, pencere, perde) +X'e bakar.
 #  - Çiçek başı taban rengi (1.0,0.42,0.48): uygulama renk çeşitler.
@@ -18,7 +18,7 @@ from mathutils import Matrix, Vector
 ROOT = sys.argv[sys.argv.index("--") + 1]
 OUT = os.path.join(ROOT, "Resources", "OfficeArt")
 PREVIEW = os.path.join(ROOT, "tools", "office-art", "out")
-os.makedirs(os.path.join(OUT, "props"), exist_ok=True)
+os.makedirs(OUT, exist_ok=True)
 os.makedirs(PREVIEW, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scn = bpy.context.scene
@@ -78,16 +78,8 @@ def join(name, objs):
     for o in objs: o.select_set(True)
     bpy.context.view_layer.objects.active = objs[0]
     bpy.ops.object.join()
-    o = bpy.context.active_object; o.name = name; o.data.name = name  # USD'de mesh adı veri adından
+    o = bpy.context.active_object; o.name = name; o.data.name = name
     return o
-
-def export(path, objs, animation=False):
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in objs: o.select_set(True)
-    bpy.ops.wm.usd_export(filepath=path, selected_objects_only=True, export_animation=animation,
-                          export_armatures=animation, only_deform_bones=False, export_materials=True,
-                          generate_preview_surface=True, export_lights=False, export_cameras=False,
-                          convert_orientation=True, export_global_up_selection='Y', export_global_forward_selection='NEGATIVE_Z')
 
 # ---------------------------------------------------------------- köylü
 M = dict(
@@ -220,7 +212,6 @@ for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115
 for h in hairs[1:] + [glasses]: h.hide_render = False
 bpy.data.objects.remove(cam, do_unlink=True)
 scn.frame_set(1)
-export(os.path.join(OUT, "villager.usdz"), [arm, *meshes], animation=True)
 
 # ---------------------------------------------------------------- eşyalar
 for o in list(scn.objects): o.hide_set(True)
@@ -298,7 +289,6 @@ PROP_OBJS = {}
 for name, build in PROPS.items():
     PARTS.clear(); build()
     o = join(name, list(PARTS))
-    export(os.path.join(OUT, "props", f"{name}.usdz"), [o])
     o.hide_set(True)
     PROP_OBJS[name] = o
     print("PROP", name, len(o.data.vertices))

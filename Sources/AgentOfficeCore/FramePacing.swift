@@ -1,8 +1,17 @@
-/// Ofisin kare hızı (spec §6): RealityKit'in kare başına sabit maliyeti olduğundan tek ayar düğmesi.
+/// Ofisin kare hızı (spec v4 §1): hareket ya da jest varken ekranın yenileme hızı, sadece döngü animasyonları
+/// varken 12 fps, mini ofiste en fazla 12, görünmezken ya da canlandırılacak bir şey yokken dur.
 public enum FramePacing {
-    public static func fps(moving: Bool, interacting: Bool, visible: Bool, mini: Bool) -> Double {
-        guard visible else { return 0 }
-        if mini { return 12 }
-        return moving || interacting ? 24 : 12
+    public enum Mode: Equatable, Sendable {
+        case native
+        case fixed(Double)
+        case paused
+    }
+
+    public static func mode(moving: Bool, interacting: Bool, animating: Bool, visible: Bool, mini: Bool) -> Mode {
+        guard visible else { return .paused }
+        let busy = moving || interacting
+        if mini { return busy || animating ? .fixed(12) : .paused }
+        if busy { return .native }
+        return animating ? .fixed(12) : .paused
     }
 }
