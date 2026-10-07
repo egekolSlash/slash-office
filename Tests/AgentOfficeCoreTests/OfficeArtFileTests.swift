@@ -42,6 +42,9 @@ import Testing
         let art = try OfficeArtFile.load(from: url)
         #expect(art.bones.count == 11)
         #expect(art.clips["walk"]?.frames == 24)
+        #expect(AvatarClip.allCases.count == 17)
+        #expect(AvatarClip.sofaSit.loops && !AvatarClip.cheer.loops && AvatarClip.sitSip.seated && !AvatarClip.drink.seated)
+        #expect(abs(AvatarClip.standUp.duration - 11.0 / 24) < 1e-9)
         for clip in AvatarClip.allCases {
             let data = try #require(art.clips[clip.rawValue])
             #expect(data.frames == clip.frames.count)

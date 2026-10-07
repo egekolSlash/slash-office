@@ -22,6 +22,8 @@ public enum AvatarActivity: Equatable, Sendable {
 /// Animasyon klipleri ve Blender zaman çizelgesindeki kareleri (24 fps).
 public enum AvatarClip: String, CaseIterable, Sendable {
     case idle, walk, sitType, sitDoze, wave
+    // v5 aşama 2: canlı köylüler (Blender zaman çizelgesi 171–638).
+    case lookAround, sitSip, sitThink, sitStretch, stretch, waitTap, cheer, inspect, drink, sitDown, standUp, sofaSit
 
     public var frames: ClosedRange<Int> {
         switch self {
@@ -30,8 +32,39 @@ public enum AvatarClip: String, CaseIterable, Sendable {
         case .sitType: 61...84
         case .sitDoze: 91...138
         case .wave: 141...164
+        case .lookAround: 171...218
+        case .sitSip: 221...268
+        case .sitThink: 271...318
+        case .sitStretch: 321...356
+        case .stretch: 361...396
+        case .waitTap: 401...424
+        case .cheer: 431...454
+        case .inspect: 461...508
+        case .drink: 511...546
+        case .sitDown: 551...562
+        case .standUp: 571...582
+        case .sofaSit: 591...638
         }
     }
+
+    /// Döngü mü (bitince baştan), tek seferlik mi (bitince davranış devam eder).
+    public var loops: Bool {
+        switch self {
+        case .idle, .walk, .sitType, .sitDoze, .wave, .lookAround, .sofaSit: true
+        default: false
+        }
+    }
+
+    /// Oturarak oynanır (taburede ya da koltukta).
+    public var seated: Bool {
+        switch self {
+        case .sitType, .sitDoze, .sitSip, .sitThink, .sitStretch, .sofaSit: true
+        default: false
+        }
+    }
+
+    /// Süre (sn): klipler 24 fps, son kare ilkine denk.
+    public var duration: Double { Double(frames.count - 1) / 24 }
 }
 
 public struct PlanPoint: Equatable, Sendable {

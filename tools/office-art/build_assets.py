@@ -5,7 +5,8 @@
 #  - Blender (x, y, z) -> uygulama (x, z, -y), Y yukarı. Köylü -Y'ye (uygulamada +z'ye, kameraya) bakar; ayakları z=0'da.
 #  - Köylü mesh'leri: Body, HairShort, HairPigtails, HairSpiky, HairBob, Glasses (saç modeli kodu 1…4, gözlük parça 4).
 #  - Değiştirilebilir malzemeler taban rengiyle tanınır: tişört (0.30,0.55,0.95), ten (0.99,0.84,0.72), saç (0.35,0.20,0.10).
-#  - Klipler (24 fps): idle 1-24, walk 31-54, sitType 61-84, sitDoze 91-138, wave 141-164 (AvatarClip.frames).
+#  - Klipler (24 fps): idle 1-24, walk 31-54, sitType 61-84, sitDoze 91-138, wave 141-164 ve v5 aşama 2'nin
+#    klipleri 171-638 (CLIP_RANGES; AvatarClip.frames ile aynı).
 #  - Eşyalar orijinde, zeminde. Masa takımında köylü +Y tarafında (uygulamada -z) oturur; tabure y=+0.32 (DeskGeometry.seatOffset).
 #    Masa üstü 0.565; tabure üstü 0.46.
 #    Duvara yaslanan eşyalar (kitaplık, pencere, perde) +X'e bakar.
@@ -191,7 +192,77 @@ for f, n in ((91, 0), (103, 0.6), (115, 1), (127, 0.6), (138, 0)):
 for f, w in ((141, 0), (147, 1), (153, -1), (159, 1), (164, 0)):
     # Kollar kısa: ön kol -35..+15 dışında el kafanın içine girer (ölçüldü); hafif zıplama okunurluğu artırır.
     key(f, UpperArmR=R(z=-125), ForeArmR=R(z=-10 + 25 * w), Head=R(z=4 * w), ForeArmL=R(x=-8), Hips=up(0.015 * abs(w)))
-scn.frame_start, scn.frame_end = 1, 164
+# ---- v5 aşama 2: canlı köylü klipleri (AvatarClip.frames ile aynı kareler)
+TYPE = dict(UpperArmL=R(x=-70), UpperArmR=R(x=-70), ForeArmL=R(x=-20), ForeArmR=R(x=-20), Head=R(x=6))
+LAP = dict(UpperArmL=R(x=-20), UpperArmR=R(x=-20), ForeArmL=R(x=-55), ForeArmR=R(x=-55))
+REST = dict(ForeArmL=R(x=-8), ForeArmR=R(x=-8))
+def merge(*ds):
+    out = {}
+    for d in ds: out.update(d)
+    return out
+# lookAround 171-218: baş sola ve sağa döner (kemik ekseni etrafında)
+for f, y in ((171, 0), (183, 35), (195, 0), (207, -35), (218, 0)):
+    key(f, **REST, Head=R(y=y), Hips=up(0.008 * abs(y) / 35))
+# sitSip 221-268: sağ el ağza (kahve), baş hafif geriye
+SIP = dict(UpperArmR=R(x=-60), ForeArmR=R(x=-115))
+key(221, **SIT, **TYPE)
+key(231, **merge(SIT, TYPE, SIP, dict(Head=R(x=-4))))
+key(250, **merge(SIT, TYPE, SIP, dict(Head=R(x=-10))))
+key(259, **merge(SIT, TYPE, SIP, dict(Head=R(x=-4))))
+key(268, **SIT, **TYPE)
+# sitThink 271-318: el çenede, baş yana eğik
+THINK = dict(UpperArmR=R(x=-50), ForeArmR=R(x=-125))
+key(271, **SIT, **TYPE)
+key(281, **merge(SIT, TYPE, THINK, dict(Head=R(x=4, z=8))))
+key(295, **merge(SIT, TYPE, THINK, dict(Head=R(x=6, z=-6))))
+key(308, **merge(SIT, TYPE, THINK, dict(Head=R(x=4, z=8))))
+key(318, **SIT, **TYPE)
+# sitStretch 321-356: iki kol yukarı gerinme
+UP = dict(UpperArmL=R(z=150), UpperArmR=R(z=-150), Head=R(x=-10))
+key(321, **SIT, **TYPE)
+key(333, **merge(SIT, UP))
+key(345, **merge(SIT, UP, dict(Head=R(x=-14, z=5))))
+key(356, **SIT, **TYPE)
+# stretch 361-396: ayakta gerinme
+key(361, **REST)
+key(373, **UP, Hips=up(0.025))
+key(385, **merge(UP, dict(Head=R(x=-12, z=6))), Hips=up(0.03))
+key(396, **REST)
+# waitTap 401-424: eller belde, sağ ayak yere vurur
+HIPS = dict(UpperArmL=R(z=30), UpperArmR=R(z=-30), ForeArmL=R(x=-70), ForeArmR=R(x=-70), Head=R(z=-4))
+for f, tap in ((401, 0), (404, 1), (407, 0), (410, 1), (413, 0), (416, 1), (419, 0), (422, 1), (424, 0)):
+    key(f, **HIPS, ThighR=R(x=-12 * tap), ShinR=R(x=10 * tap))
+# cheer 431-454: çömel, zıpla (kollar yukarı), in
+key(431, **REST)
+key(435, Root=up(-0.05), ThighL=R(x=-35), ThighR=R(x=-35), ShinL=R(x=60), ShinR=R(x=60), UpperArmL=R(x=20), UpperArmR=R(x=20))
+key(441, Root=up(0.18), UpperArmL=R(z=150), UpperArmR=R(z=-150), Head=R(x=-10))
+key(447, Root=up(-0.04), ThighL=R(x=-28), ThighR=R(x=-28), ShinL=R(x=50), ShinR=R(x=50), UpperArmL=R(z=120), UpperArmR=R(z=-120))
+key(454, **REST)
+# inspect 461-508: öne eğilip bakar (bacaklar dik kalsın diye uyluklar telafi eder), sağ el işaret
+LEAN = dict(Hips=((0, 0, 0), (20, 0, 0)), ThighL=R(x=-20), ThighR=R(x=-20), UpperArmR=R(x=-35))
+key(461, **REST)
+key(471, **LEAN, Head=R(x=15))
+key(485, **LEAN, Head=R(x=18, z=10))
+key(497, **LEAN, Head=R(x=15, z=-6))
+key(508, **REST)
+# drink 511-546: ayakta bardaktan içer
+key(511, **REST)
+key(520, **SIP, Head=R(x=-4), ForeArmL=R(x=-8))
+key(535, **SIP, Head=R(x=-12), ForeArmL=R(x=-8))
+key(546, **REST)
+# sitDown 551-562 ve standUp 571-582: ayakta ↔ oturur (kollar kucakta)
+key(551, **REST)
+key(556, Root=up(0.06), ThighL=R(x=-50), ThighR=R(x=-50), ShinL=R(x=55), ShinR=R(x=55), UpperArmL=R(x=-25), UpperArmR=R(x=-25))
+key(562, **SIT, **LAP)
+key(571, **SIT, **LAP)
+key(577, Root=up(0.06), ThighL=R(x=-50), ThighR=R(x=-50), ShinL=R(x=55), ShinR=R(x=55), UpperArmL=R(x=-25), UpperArmR=R(x=-25))
+key(582, **REST)
+# sofaSit 591-638: koltukta (tabureden 4 cm alçak) arkasına yaslanmış, baş yavaşça bakınır
+SOFA = dict(Root=up(0.12), ThighL=R(x=-90), ThighR=R(x=-90), ShinL=R(x=90), ShinR=R(x=90),
+            UpperArmL=R(x=-15, z=12), UpperArmR=R(x=-15, z=-12), ForeArmL=R(x=-45), ForeArmR=R(x=-45))
+for f, y in ((591, 0), (603, 12), (615, 0), (627, -12), (638, 0)):
+    key(f, **SOFA, Head=R(x=-4, y=y), Hips=((0, 0.006 * abs(y) / 12, 0), (-6, 0, 0)))
+scn.frame_start, scn.frame_end = 1, 638
 
 # Doğrulama: el ve kalça konumları (sayısal) + her klipten bir kare (Workbench)
 def tail(name, frame):
@@ -207,7 +278,9 @@ cam = bpy.data.objects.new("Preview", cd); scn.collection.objects.link(cam); scn
 cam.location = Vector((0, 0, 0.6)) + Vector((1, -1, 0.9)).normalized() * 6
 cam.rotation_euler = (Vector((0, 0, 0.6)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
 for h in hairs[1:] + [glasses]: h.hide_render = True
-for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115), ("wave", 147)):
+for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115), ("wave", 147),
+                    ("lookAround", 183), ("sitSip", 250), ("sitThink", 295), ("sitStretch", 340), ("stretch", 380),
+                    ("waitTap", 404), ("cheer", 441), ("inspect", 485), ("drink", 535), ("sitDown", 556), ("sofaSit", 603)):
     scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"pose_{name}.png"); bpy.ops.render.render(write_still=True)
 for h in hairs[1:] + [glasses]: h.hide_render = False
 bpy.data.objects.remove(cam, do_unlink=True)
@@ -466,7 +539,10 @@ arm.data.pose_position = 'REST'
 bpy.context.view_layer.update()
 villager_json = mesh_json([body, *hairs, glasses], villager=True)
 arm.data.pose_position = 'POSE'
-CLIP_RANGES = {"idle": (1, 24), "walk": (31, 54), "sitType": (61, 84), "sitDoze": (91, 138), "wave": (141, 164)}
+CLIP_RANGES = {"idle": (1, 24), "walk": (31, 54), "sitType": (61, 84), "sitDoze": (91, 138), "wave": (141, 164),
+               "lookAround": (171, 218), "sitSip": (221, 268), "sitThink": (271, 318), "sitStretch": (321, 356),
+               "stretch": (361, 396), "waitTap": (401, 424), "cheer": (431, 454), "inspect": (461, 508),
+               "drink": (511, 546), "sitDown": (551, 562), "standUp": (571, 582), "sofaSit": (591, 638)}
 yup_inv = YUP.inverted()
 clips = {}
 for clip, (first, last) in CLIP_RANGES.items():
