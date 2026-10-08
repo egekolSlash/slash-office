@@ -24,6 +24,8 @@ public enum AvatarClip: String, CaseIterable, Sendable {
     case idle, walk, sitType, sitDoze, wave
     // v5 aşama 2: canlı köylüler (Blender zaman çizelgesi 171–638).
     case lookAround, sitSip, sitThink, sitStretch, stretch, waitTap, cheer, inspect, drink, sitDown, standUp, sofaSit
+    // Ofis hayatı: masa başı (oturarak) ve eşya klipleri (Blender 641–1062).
+    case sitDraw, sitWrite, sitRead, readBook, playArcade, drawBoard, stepBackLook, brewCoffee
 
     public var frames: ClosedRange<Int> {
         switch self {
@@ -44,13 +46,21 @@ public enum AvatarClip: String, CaseIterable, Sendable {
         case .sitDown: 551...562
         case .standUp: 571...582
         case .sofaSit: 591...638
+        case .sitDraw: 641...688
+        case .sitWrite: 691...738
+        case .sitRead: 741...788
+        case .readBook: 791...862
+        case .playArcade: 865...912
+        case .drawBoard: 915...962
+        case .stepBackLook: 965...1012
+        case .brewCoffee: 1015...1062
         }
     }
 
     /// Döngü mü (bitince baştan), tek seferlik mi (bitince davranış devam eder).
     public var loops: Bool {
         switch self {
-        case .idle, .walk, .sitType, .sitDoze, .wave, .lookAround, .sofaSit: true
+        case .idle, .walk, .sitType, .sitDoze, .wave, .lookAround, .sofaSit, .readBook, .playArcade, .drawBoard: true
         default: false
         }
     }
@@ -58,7 +68,7 @@ public enum AvatarClip: String, CaseIterable, Sendable {
     /// Oturarak oynanır (taburede ya da koltukta).
     public var seated: Bool {
         switch self {
-        case .sitType, .sitDoze, .sitSip, .sitThink, .sitStretch, .sofaSit: true
+        case .sitType, .sitDoze, .sitSip, .sitThink, .sitStretch, .sofaSit, .sitDraw, .sitWrite, .sitRead: true
         default: false
         }
     }

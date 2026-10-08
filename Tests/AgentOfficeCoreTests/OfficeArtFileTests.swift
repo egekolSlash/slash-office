@@ -42,9 +42,14 @@ import Testing
         let art = try OfficeArtFile.load(from: url)
         #expect(art.bones.count == 11)
         #expect(art.clips["walk"]?.frames == 24)
-        #expect(AvatarClip.allCases.count == 17)
+        #expect(AvatarClip.allCases.count == 25)
         #expect(AvatarClip.sofaSit.loops && !AvatarClip.cheer.loops && AvatarClip.sitSip.seated && !AvatarClip.drink.seated)
         #expect(abs(AvatarClip.standUp.duration - 11.0 / 24) < 1e-9)
+        // Ofis hayatı: masa başı ve eşya klipleri.
+        #expect(AvatarClip.sitDraw.seated && AvatarClip.sitWrite.seated && AvatarClip.sitRead.seated)
+        #expect(AvatarClip.readBook.loops && AvatarClip.playArcade.loops && AvatarClip.drawBoard.loops)
+        #expect(!AvatarClip.stepBackLook.loops && !AvatarClip.brewCoffee.loops && !AvatarClip.brewCoffee.seated)
+        #expect(AvatarClip.sitDraw.frames.lowerBound == 641 && AvatarClip.brewCoffee.frames.upperBound == 1062)
         for clip in AvatarClip.allCases {
             let data = try #require(art.clips[clip.rawValue])
             #expect(data.frames == clip.frames.count)
@@ -61,7 +66,12 @@ import Testing
         }
         #expect(Set(art.props.keys).isSuperset(of: ["desk_set", "terminal_set", "bookshelf", "plant", "lamp",
                                                     "tree", "flower", "window", "curtain",
-                                                    "sofa", "coffee_table", "water_cooler", "cliff_a", "cliff_b", "cliff_c", "tree_b", "cedar"]))
+                                                    "sofa", "coffee_table", "water_cooler", "cliff_a", "cliff_b", "cliff_c", "tree_b", "cedar",
+                                                    "arcade", "whiteboard", "coffee_machine"]))
+        // Büyüyen masa: üstü yerel x boyunca ~0.95, y (uygulamada z) boyunca ~0.55.
+        let desk = try #require(art.props["desk_set"])
+        let xs = stride(from: 0, to: desk.positions.count, by: 3).map { desk.positions[$0] }
+        #expect(xs.max()! - xs.min()! > 0.9)
         // Kayalıklar bükülme için z'de sık bölünmüş olmalı: hiçbir üçgen z'de 1 m'den uzun değil.
         for name in ["cliff_a", "cliff_b", "cliff_c"] {
             let hill = try #require(art.props[name])

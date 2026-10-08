@@ -262,7 +262,55 @@ SOFA = dict(Root=up(0.12), ThighL=R(x=-90), ThighR=R(x=-90), ShinL=R(x=90), Shin
             UpperArmL=R(x=-15, z=12), UpperArmR=R(x=-15, z=-12), ForeArmL=R(x=-45), ForeArmR=R(x=-45))
 for f, y in ((591, 0), (603, 12), (615, 0), (627, -12), (638, 0)):
     key(f, **SOFA, Head=R(x=-4, y=y), Hips=((0, 0.006 * abs(y) / 12, 0), (-6, 0, 0)))
-scn.frame_start, scn.frame_end = 1, 638
+# ---- ofis hayatı: masa başı (oturarak) ve eşya klipleri (AvatarClip.frames ile aynı kareler)
+# sitDraw 641-688: tablete çizer (sağ ön kol küçük daireler), arada kalemi kaldırıp bakar
+DRAW = dict(UpperArmL=R(x=-55), ForeArmL=R(x=-30), UpperArmR=R(x=-62), Head=R(x=14))
+for f, (a, b) in zip(range(641, 677, 4), ((0, 0), (8, 6), (0, 10), (-8, 6), (0, 0), (8, -6), (0, -10), (-8, -6), (0, 0))):
+    key(f, **merge(SIT, DRAW, dict(ForeArmR=R(x=-25 + a, z=b))))
+key(682, **merge(SIT, DRAW, dict(ForeArmR=R(x=-60), Head=R(x=2, z=6))))
+key(688, **merge(SIT, DRAW, dict(ForeArmR=R(x=-25))))
+# sitWrite 691-738: sol el kâğıdı tutar, sağ el satır satır yazar
+WRITE = dict(UpperArmL=R(x=-50, z=10), ForeArmL=R(x=-40), UpperArmR=R(x=-58), Head=R(x=16, z=-4))
+for i, f in enumerate(range(691, 735, 4)):
+    key(f, **merge(SIT, WRITE, dict(ForeArmR=R(x=-28, z=-12 + 6 * (i % 5)))))
+key(738, **merge(SIT, WRITE, dict(ForeArmR=R(x=-28, z=-12))))
+# sitRead 741-788: kâğıdı iki elle göz hizasına kaldırıp okur, baş satırları izler
+READ = dict(UpperArmL=R(x=-75, z=8), UpperArmR=R(x=-75, z=-8), ForeArmL=R(x=-80), ForeArmR=R(x=-80))
+key(741, **SIT, **TYPE)
+for f, y in ((751, 6), (763, -6), (775, 6)):
+    key(f, **merge(SIT, READ, dict(Head=R(x=8, y=y))))
+key(788, **SIT, **TYPE)
+# readBook 791-862 (döngü): ayakta kitabı göğüs hizasında tutar, okur, ortada sayfa çevirir
+BOOK = dict(UpperArmL=R(x=-55, z=10), UpperArmR=R(x=-55, z=-10), ForeArmL=R(x=-75), ForeArmR=R(x=-75))
+key(791, **merge(BOOK, dict(Head=R(x=18, y=4))))
+key(809, **merge(BOOK, dict(Head=R(x=18, y=-4))))
+key(822, **merge(BOOK, dict(Head=R(x=16), ForeArmR=R(x=-75, z=-35))))
+key(830, **merge(BOOK, dict(Head=R(x=16), ForeArmR=R(x=-75, z=20))))
+key(845, **merge(BOOK, dict(Head=R(x=18, y=4))))
+key(862, **merge(BOOK, dict(Head=R(x=18, y=4))))
+# playArcade 865-912 (döngü): eller öndeki kumandada, hızlı kol ve beden hareketi
+ARC = dict(UpperArmL=R(x=-62, z=8), UpperArmR=R(x=-62, z=-8), Head=R(x=4))
+for i, f in enumerate(range(865, 913, 4)):
+    j = (-1) ** i
+    key(f, **merge(ARC, dict(ForeArmL=R(x=-30 + 10 * j, z=8 * j), ForeArmR=R(x=-30 - 12 * j),
+                             Hips=((0, 0.008 * (i % 2), 0), (0, 4 * j, 0)))))
+key(912, **merge(ARC, dict(ForeArmL=R(x=-30), ForeArmR=R(x=-30))))
+# drawBoard 915-962 (döngü): sağ kol öne-yukarı, tahtada yana çizer; baş çizgiyi izler
+for f, s_ in ((915, -1), (927, 1), (939, -1), (951, 1), (962, -1)):
+    key(f, UpperArmR=R(x=-125, z=-20 * s_), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=-8, y=8 * s_))
+# stepBackLook 965-1012: tahtadan geri çekilir, el çenede bakar, geri gelir
+key(965, UpperArmR=R(x=-125), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=-8))
+key(977, Root=((0, 0, -0.18), Z), **THINK, Head=R(x=-6, z=8))
+key(1000, Root=((0, 0, -0.18), Z), **THINK, Head=R(x=-6, z=-6))
+key(1012, UpperArmR=R(x=-125), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=-8))
+# brewCoffee 1015-1062: makineye uzanıp düğmeye basar, bekler, bardağı alıp göğse getirir
+key(1015, **REST)
+key(1023, UpperArmR=R(x=-85), ForeArmR=R(x=-10), ForeArmL=R(x=-8), Head=R(x=8))
+key(1027, UpperArmR=R(x=-85), ForeArmR=R(x=-25), ForeArmL=R(x=-8), Head=R(x=8))
+key(1040, **merge(HIPS, dict(Head=R(z=-6))))
+key(1050, UpperArmR=R(x=-70), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=10))
+key(1062, UpperArmR=R(x=-40), ForeArmR=R(x=-100), ForeArmL=R(x=-8), Head=R(x=-4))
+scn.frame_start, scn.frame_end = 1, 1062
 
 # Doğrulama: el ve kalça konumları (sayısal) + her klipten bir kare (Workbench)
 def tail(name, frame):
@@ -280,7 +328,9 @@ cam.rotation_euler = (Vector((0, 0, 0.6)) - cam.location).to_track_quat('-Z', 'Y
 for h in hairs[1:] + [glasses]: h.hide_render = True
 for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115), ("wave", 147),
                     ("lookAround", 183), ("sitSip", 250), ("sitThink", 295), ("sitStretch", 340), ("stretch", 380),
-                    ("waitTap", 404), ("cheer", 441), ("inspect", 485), ("drink", 535), ("sitDown", 556), ("sofaSit", 603)):
+                    ("waitTap", 404), ("cheer", 441), ("inspect", 485), ("drink", 535), ("sitDown", 556), ("sofaSit", 603),
+                    ("sitDraw", 653), ("sitWrite", 703), ("sitRead", 763), ("readBook", 826), ("playArcade", 877),
+                    ("drawBoard", 927), ("stepBackLook", 990), ("brewCoffee", 1025)):
     scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"pose_{name}.png"); bpy.ops.render.render(write_still=True)
 for h in hairs[1:] + [glasses]: h.hide_render = False
 bpy.data.objects.remove(cam, do_unlink=True)
@@ -302,15 +352,28 @@ P = dict(
 )
 
 def desk(device):
-    box((0.70, 0.44, 0.05), (0, 0, 0.54), P["woodL"], 0.02)
-    for dx in (-0.3, 0.3):
-        for dy in (-0.17, 0.17): cyl(0.03, 0.52, (dx, dy, 0.26), P["wood"])
+    # Ofis hayatı: masa büyüdü (0.95 × 0.55); köylü +Y'deki taburede, −Y'ye bakar. Dünyada masa koridora döner.
+    paper = mat("Paper", (0.97, 0.96, 0.92), 0.6)
+    box((0.95, 0.55, 0.05), (0, 0, 0.54), P["woodL"], 0.02)
+    for dx in (-0.42, 0.42):
+        for dy in (-0.22, 0.22): cyl(0.03, 0.52, (dx, dy, 0.26), P["wood"])
     device()
-    cyl(0.04, 0.09, (0.25, -0.05, 0.61), P["mug"], 0.01)
-    cyl(0.19, 0.09, (0, 0.32, 0.415), P["cushion"], 0.03)  # tabure: üstü 0.46
+    cyl(0.04, 0.09, (0.36, 0.06, 0.61), P["mug"], 0.01)
+    box((0.17, 0.23, 0.03), (-0.31, 0.08, 0.58), paper, 0.005)
+    box((0.17, 0.23, 0.012), (-0.30, 0.07, 0.601), paper, 0.004)
+    cyl(0.032, 0.09, (-0.38, -0.17, 0.61), P["dark"], 0.008)
+    for dx, c in ((-0.39, "book1"), (-0.37, "book2")):
+        cyl(0.006, 0.12, (dx, -0.17, 0.68), P[c])
+    cyl(0.05, 0.015, (0.38, -0.18, 0.572), P["dark"], 0.004)
+    cyl(0.008, 0.22, (0.38, -0.18, 0.68), P["dark"])
+    bpy.ops.mesh.primitive_cone_add(radius1=0.07, radius2=0.03, depth=0.08, location=(0.38, -0.15, 0.79), vertices=20)
+    finish(bpy.context.active_object, P["shade"])
+    cyl(0.035, 0.06, (0.22, -0.19, 0.6), P["pot"], 0.006)
+    sphere(0.05, (0.22, -0.19, 0.66), P["leaf"])
+    cyl(0.19, 0.09, (0, 0.40, 0.415), P["cushion"], 0.03)  # tabure: üstü 0.46
     for a in range(3):
         ang = a * 2.094
-        cyl(0.025, 0.38, (0.12 * math.cos(ang), 0.32 + 0.12 * math.sin(ang), 0.19), P["wood"])
+        cyl(0.025, 0.38, (0.12 * math.cos(ang), 0.40 + 0.12 * math.sin(ang), 0.19), P["wood"])
 def laptop():
     box((0.34, 0.24, 0.02), (0, 0.04, 0.575), P["laptop"], 0.008)
     box((0.34, 0.02, 0.22), (0, -0.08, 0.69), P["laptop"], 0.008)
@@ -442,13 +505,52 @@ def tree_b():
     sphere(0.42, (0.42, -0.2, 1.2), crown2)
     sphere(0.38, (-0.4, 0.15, 1.75), crown2)
 
+def arcade():
+    # +X'e bakar: kabin, eğik ekran, kumanda paneli, çubuk ve düğmeler, ışıklı başlık.
+    body = mat("ArcadeBody", (0.42, 0.30, 0.78), 0.5)
+    side = mat("ArcadeSide", (0.98, 0.45, 0.62), 0.5)
+    scr = mat("ArcadeScreen", (0.05, 0.05, 0.08), 0.2, emit=(0.45, 0.85, 1.0), es=2.2)
+    marquee = mat("ArcadeMarquee", (1.0, 0.85, 0.3), 0.4, emit=(1.0, 0.8, 0.35), es=2.0)
+    box((0.5, 0.56, 1.45), (0, 0, 0.725), body, 0.03)
+    for dy in (-0.285, 0.285): box((0.48, 0.02, 0.5), (0, dy, 0.55), side, 0.01)
+    box((0.03, 0.44, 0.34), (0.255, 0, 1.13), scr, 0)
+    box((0.24, 0.52, 0.07), (0.33, 0, 0.92), P["dark"], 0.02)
+    cyl(0.012, 0.08, (0.38, -0.12, 0.99), P["dark"])
+    sphere(0.028, (0.38, -0.12, 1.04), mat("ArcadeBall", (0.95, 0.30, 0.30), 0.3))
+    for dy, c in ((0.02, (0.35, 0.75, 0.98)), (0.09, (1.0, 0.85, 0.3)), (0.16, (0.45, 0.85, 0.45))):
+        cyl(0.022, 0.025, (0.38, dy, 0.965), mat(f"ArcadeBtn{dy}", c, 0.3), 0.005)
+    box((0.08, 0.56, 0.16), (0.21, 0, 1.38), marquee, 0.01)
+def whiteboard():
+    # +X'e bakar, duvara asılı: çerçeve, beyaz yüzey, renkli karalamalar, kalem rafı.
+    alu = mat("BoardFrame", (0.78, 0.80, 0.82), 0.3)
+    white = mat("BoardWhite", (0.98, 0.98, 0.97), 0.2)
+    box((0.04, 1.24, 0.82), (0, 0, 1.16), alu, 0.01)
+    box((0.02, 1.14, 0.72), (0.022, 0, 1.16), white, 0)
+    for dy, dz, w, c in ((-0.35, 1.38, 0.32, (0.25, 0.45, 0.85)), (-0.3, 1.28, 0.22, (0.25, 0.45, 0.85)),
+                         (0.1, 1.36, 0.4, (0.85, 0.30, 0.30)), (0.2, 1.05, 0.3, (0.30, 0.65, 0.35)),
+                         (-0.2, 1.0, 0.26, (0.85, 0.30, 0.30)), (0.32, 1.22, 0.16, (0.25, 0.45, 0.85))):
+        box((0.005, w, 0.018), (0.034, dy, dz), mat(f"Ink{c}", c, 0.4), 0)
+    box((0.09, 0.62, 0.025), (0.055, 0, 0.77), alu, 0.005)
+    for dy, c in ((-0.1, (0.25, 0.45, 0.85)), (0.0, (0.85, 0.30, 0.30)), (0.1, (0.30, 0.65, 0.35))):
+        cyl(0.01, 0.1, (0.07, dy, 0.79), mat(f"Marker{c}", c, 0.4))
+def coffee_machine():
+    # +X'e bakar: tezgâh, üstünde makine, damlama ızgarası, bardaklar.
+    box((0.45, 0.56, 0.8), (0, 0, 0.4), P["woodL"], 0.02)
+    box((0.47, 0.58, 0.03), (0, 0, 0.815), P["wood"], 0.01)
+    box((0.28, 0.26, 0.4), (-0.02, -0.05, 1.03), P["dark"], 0.03)
+    box((0.02, 0.2, 0.12), (0.125, -0.05, 1.12), mat("MachineLed", (0.1, 0.1, 0.1), 0.2, emit=(0.4, 1.0, 0.6), es=1.5), 0)
+    box((0.12, 0.08, 0.04), (0.1, -0.05, 0.95), P["dark"], 0.01)
+    box((0.14, 0.16, 0.02), (0.1, -0.05, 0.84), mat("Drip", (0.7, 0.7, 0.72), 0.3), 0.005)
+    cyl(0.035, 0.07, (0.1, -0.05, 0.885), P["mug"], 0.008)
+    for i in range(3): cyl(0.035, 0.07, (0.02, 0.17, 0.865 + 0.06 * i), P["mug"], 0.008)
+
 PROPS = dict(desk_set=lambda: desk(laptop), terminal_set=lambda: desk(monitor), bookshelf=bookshelf, plant=plant,
              lamp=lamp, tree=tree, flower=flower, window=window, curtain=curtain,
              sofa=sofa, coffee_table=coffee_table, water_cooler=water_cooler,
              cliff_a=lambda: cliff([(5.0, 2.4, 1.3, 0.0), (3.4, 1.6, 1.2, 0.9)], 1.0),
              cliff_b=lambda: cliff([(6.5, 2.8, 1.5, 0.0), (4.2, 1.8, 1.3, 1.1)], 2.3),
              cliff_c=lambda: cliff([(4.0, 2.2, 1.2, 0.0), (2.6, 1.4, 1.1, 0.8), (1.6, 0.9, 0.9, 1.3)], 3.7),
-             tree_b=tree_b, cedar=cedar)
+             tree_b=tree_b, cedar=cedar, arcade=arcade, whiteboard=whiteboard, coffee_machine=coffee_machine)
 PROP_OBJS = {}
 for name, build in PROPS.items():
     PARTS.clear(); build()
@@ -542,7 +644,9 @@ arm.data.pose_position = 'POSE'
 CLIP_RANGES = {"idle": (1, 24), "walk": (31, 54), "sitType": (61, 84), "sitDoze": (91, 138), "wave": (141, 164),
                "lookAround": (171, 218), "sitSip": (221, 268), "sitThink": (271, 318), "sitStretch": (321, 356),
                "stretch": (361, 396), "waitTap": (401, 424), "cheer": (431, 454), "inspect": (461, 508),
-               "drink": (511, 546), "sitDown": (551, 562), "standUp": (571, 582), "sofaSit": (591, 638)}
+               "drink": (511, 546), "sitDown": (551, 562), "standUp": (571, 582), "sofaSit": (591, 638),
+               "sitDraw": (641, 688), "sitWrite": (691, 738), "sitRead": (741, 788), "readBook": (791, 862),
+               "playArcade": (865, 912), "drawBoard": (915, 962), "stepBackLook": (965, 1012), "brewCoffee": (1015, 1062)}
 yup_inv = YUP.inverted()
 clips = {}
 for clip, (first, last) in CLIP_RANGES.items():
