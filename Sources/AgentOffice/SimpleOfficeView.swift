@@ -134,7 +134,7 @@ struct SettingsView: View {
             Text("The sky and light follow your computer's clock: sunrise, day, sunset and a starry night. When off, it is always daytime.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Mini office auto-focus", isOn: $autoFocus).disabled(!richOffice)
-            Text("In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, finished but unseen, or working. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.")
+            Text("In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, working, or finished but unseen. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Energy saving", isOn: $energySaving).disabled(!richOffice)
             Text("On: villagers animate at 12–30 fps and the mini office at 12 fps. Off: the office always draws at your display's refresh rate (smoother, more CPU). Either way it stops while hidden.")

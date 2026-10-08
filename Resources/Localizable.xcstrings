@@ -681,12 +681,12 @@
         }
       }
     },
-    "In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, finished but unseen, or working. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.": {
+    "In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, working, or finished but unseen. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, işi bitip görülmemiş, çalışan. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür."
+            "value": "Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, çalışan, işi bitip görülmemiş. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür."
           }
         }
       }
