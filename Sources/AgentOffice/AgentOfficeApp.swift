@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in await OfficeSnapshot.run(arguments: CommandLine.arguments, model: model) }
             return
         }
+        if OnboardingView.snapshot(arguments: CommandLine.arguments, model: model) { exit(0) }
         // `--office-window`: demo ofisini yüzen pencerede gösterip kare hızı ve CPU ölçer.
         if OfficeMeasureWindow.requested(CommandLine.arguments) {
             OfficeMeasureWindow.run(arguments: CommandLine.arguments, model: model)
@@ -103,6 +104,9 @@ struct AgentOfficeApp: App {
                     if let id = model.layout.focused { model.closePane(id) }
                 }
                 .shortcut("pane.close")
+            }
+            CommandGroup(replacing: .help) {
+                Button("Welcome Guide…") { delegate.model.openOnboarding() }
             }
         }
         Settings { SettingsView(runningAgents: { [delegate] in delegate.model.runningAgentCount }) }

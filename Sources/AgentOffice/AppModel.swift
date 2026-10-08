@@ -17,7 +17,13 @@ final class AppModel {
     var mode: WorkspaceMode = .work { didSet { markFocusedSeen() } }
     var errorMessage: String?
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
-    var showPermissions = !UserDefaults.standard.bool(forKey: "permissionsShown")
+    /// Agents > Permissions… ile açılan izin ekranı (ilk açılışta izinleri rehber ister).
+    var showPermissions = false
+    /// İlk açılış rehberi: bitirilene ya da atlanana kadar her açılışta; Help > Welcome Guide… ile her zaman.
+    var showOnboarding = !UserDefaults.standard.bool(forKey: Onboarding.completedKey)
+        && ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO"] != "1"
+    /// Rehber menüden açılınca baştan başlar.
+    var onboardingReopened = false
     /// "Yeni" panelde gösterilen son projeler (en yenisi başta).
     private(set) var recentProjects: [String] = UserDefaults.standard.stringArray(forKey: "recentProjects") ?? []
     /// Ghostty'nin config'i ve teması; uygulama açılırken okunur.
@@ -427,7 +433,7 @@ final class AppModel {
         return env
     }
 
-    private func findClaude() -> String? {
+    func findClaude() -> String? {
         ExecutableLocator.find("claude", searchDirectories:
             ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH))
     }
@@ -802,6 +808,32 @@ extension AppModel {
 
     static func launcherStartsWithClaude(_ id: String) -> Bool {
         id.hasPrefix(TerminalLayout.launcherPrefix + "claude-")
+    }
+
+    func openOnboarding() {
+        onboardingReopened = true
+        showOnboarding = true
+    }
+
+    /// Rehberdeki Claude Code adımı: `claude` yolu ve `claude --version` (en çok 3 sn).
+    func claudeStatus() async -> (path: String?, version: String?) {
+        guard let claude = findClaude() else { return (nil, nil) }
+        let version = await Task.detached { () -> String? in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: claude)
+            process.arguments = ["--version"]
+            let output = Pipe()
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            process.standardInput = FileHandle.nullDevice
+            do { try process.run() } catch { return nil }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 3) { if process.isRunning { process.terminate() } }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            return String(decoding: data, as: UTF8.self).split(separator: " ").first.map(String.init)
+        }.value
+        return (claude, version)
     }
 
     func finishPermissions() {

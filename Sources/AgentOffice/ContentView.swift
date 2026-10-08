@@ -66,6 +66,9 @@ struct ContentView: View {
         .sheet(isPresented: $model.showPermissions) {
             PermissionsView { model.finishPermissions() }
         }
+        .sheet(isPresented: $model.showOnboarding) {
+            OnboardingView(model: model)
+        }
         .sheet(isPresented: Binding(get: { model.editingAvatar != nil }, set: { if !$0 { model.editingAvatar = nil } })) {
             if let id = model.editingAvatar { AvatarEditorSheet(model: model, id: id) }
         }

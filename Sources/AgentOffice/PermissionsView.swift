@@ -4,10 +4,30 @@ import CoreGraphics
 import SwiftUI
 import UserNotifications
 
-/// İlk açılışta (ve Ajanlar > İzinler… ile) gösterilen izin ekranı: macOS pencereleri çalışma sırasında
+/// Agents > Permissions… ile açılan izin ekranı (rehberde de aynı liste): macOS pencereleri çalışma sırasında
 /// tek tek çıkmasın diye hepsi başta istenir.
 struct PermissionsView: View {
     let onDone: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Permissions").font(.title2.bold())
+            Text("Ajanlar senin klasörlerinde çalışıyor. macOS'un çalışma sırasında tek tek sormaması için izinleri şimdi ver.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            PermissionsList()
+            HStack {
+                Spacer()
+                Button("OK", action: onDone).keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 520)
+    }
+}
+
+/// İzin satırları ve durumları; Ayarlar'dan dönünce yenilenir.
+struct PermissionsList: View {
     @State private var notifications: PermissionStatus = .unknown
     @State private var microphone: PermissionStatus = .unknown
     @State private var fullDisk: PermissionStatus = .unknown
@@ -15,10 +35,6 @@ struct PermissionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("İzinler").font(.title2.bold())
-            Text("Ajanlar senin klasörlerinde çalışıyor. macOS'un çalışma sırasında tek tek sormaması için izinleri şimdi ver.")
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
 
             PermissionRow(title: "Tam Disk Erişimi", symbol: "internaldrive",
                           detail: "Belgeler, Masaüstü, İndirilenler ve diğer uygulamaların verileri için tekrar tekrar çıkan dosya erişimi pencerelerini kaldırır. Ayarlar'da Slash Office'i aç; sonra uygulamayı yeniden başlat.",
@@ -54,14 +70,7 @@ struct PermissionsView: View {
                 }
                 Task { await refresh() }
             }
-
-            HStack {
-                Spacer()
-                Button("Tamam", action: onDone).keyboardShortcut(.defaultAction)
-            }
         }
-        .padding(24)
-        .frame(width: 520)
         .task { await refresh() }
         // Ayarlar'dan dönünce durum güncellensin.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -98,11 +107,11 @@ enum PermissionStatus {
 }
 
 private struct PermissionRow: View {
-    let title: String
+    let title: LocalizedStringKey
     let symbol: String
-    let detail: String
+    let detail: LocalizedStringKey
     let status: PermissionStatus
-    let action: String
+    let action: LocalizedStringKey
     let perform: () -> Void
 
     var body: some View {
