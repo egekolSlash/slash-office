@@ -1,17 +1,28 @@
 # Slash Office
 
-Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and terminal sessions side by side on your Mac — and watch your agents work in a little office.
+A lightweight Mac workspace for running many [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agents in parallel — and a little office where you can watch them work.
+
+Slash Office belongs to the same family as the multi-agent workspaces and agent managers: you start several Claude Code sessions across your projects, keep them side by side in split panes, see at a glance which one is working, which one is waiting for you and which one is done, jump straight to the one that needs you, resume sessions later, and review what each agent changed. It does that as a small native app — no Electron, no server, no account, and Slash Office itself sends nothing over the network.
 
 ![The Slash Office office view](docs/images/office.png)
 
-Every project gets a room and every session a villager at a desk. A villager types while its agent works, stands up with a **?** when the agent asks a question or needs permission, and shows a **✓** when it finished while you were looking elsewhere. Click a villager to jump to its terminal.
+## What it does
 
-- **Embedded terminals** — up to four panes; drag a session from the list (or a pane by its header) onto an edge of another pane to split it.
-- **Agent status at a glance** — working, asking, done, idle and stopped, in the session list, the office and notifications.
-- **Mini office** in Work mode that turns to the agent that needs you.
-- **Resume** stopped sessions, including ones Claude Code keeps running in the background.
-- **Changes and todos** of the focused session in the inspector.
+- **Parallel agents** — start Claude Code sessions in any project folder; each runs in its own embedded terminal. Plain terminals work too.
+- **Split panes** — up to four panes; drag a session from the list (or a pane by its header) onto an edge of another pane to split it.
+- **Attention routing** — every session shows whether it's working, asking a question, waiting for permission, done or stopped. Notifications and ⌘J take you to the agent that's waiting.
+- **Resume** stopped sessions where they left off, including ones Claude Code keeps running in the background.
+- **Review** the focused session's changes (git diff, including just its last turn) and its todo list in the inspector.
+- **The office** — an optional view where every project is a room and every session a villager. A villager types while its agent works, stands up with a **?** when it needs you and shows a **✓** when it finished while you were looking elsewhere. Click a villager to open its terminal; give villagers names and their own look.
 - English and Turkish.
+
+## Lightweight by design
+
+- Native Swift and Metal; the whole app is under 20 MB.
+- Agent state comes from Claude Code hooks, so idle agents cost nothing; plain terminals are checked once a second.
+- The office draws only while it's visible and stops completely when hidden or minimized. With **Energy saving** on (the default) villagers animate at 12–30 fps; the mini office in Work mode runs at 12 fps.
+- Turn the office off entirely (**Settings › Office view**) and Slash Office is just a fast agent terminal.
+- No background daemons, analytics or network calls of its own; your Claude Code settings are left untouched.
 
 ## Requirements
 
@@ -79,6 +90,7 @@ A short guide walks you through the language, the Claude Code check, permissions
 | Resume session / resume all stopped | ⌘R / ⇧⌘R |
 | Remove stopped session | ⇧⌘⌫ |
 | Close pane | ⌘W |
+| Customize agents (names and looks) | ⇧⌘A |
 | Bigger / smaller / actual text size | ⌘+ (or ⌘=) / ⌘− / ⌘0 |
 
 Session and pane navigation use the arrow keys, so they sit in the same place on every keyboard layout.
