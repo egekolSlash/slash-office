@@ -23,8 +23,9 @@ class SlashOffice < Formula
     <<~EOS
       Slash Office was installed to:
         #{opt_prefix}/SlashOffice.app
-      To find it in Launchpad and Spotlight, link it into ~/Applications:
-        mkdir -p ~/Applications && ln -sf #{opt_prefix}/SlashOffice.app ~/Applications/SlashOffice.app
+      Homebrew can't write to /Applications. Open it with:
+        open #{opt_prefix}/SlashOffice.app
+      and keep it in the Dock (right-click its icon › Options › Keep in Dock).
     EOS
   end
 

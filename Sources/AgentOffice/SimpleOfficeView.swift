@@ -127,13 +127,13 @@ struct SettingsView: View {
                 }
             }
             Divider()
-            Toggle("Detailed office", isOn: $richOffice)
+            Toggle("Office view", isOn: $richOffice)
             Text("When on, the office is drawn with rooms and animation, and you can navigate it. When off, it shows plain cards without animation (less CPU and GPU).")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Toggle("Day/night cycle", isOn: $dayNight).disabled(!richOffice)
+            Toggle("Day and night", isOn: $dayNight).disabled(!richOffice)
             Text("The sky and light follow your computer's clock: sunrise, day, sunset and a starry night. When off, it is always daytime.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Toggle("Auto focus in the mini office", isOn: $autoFocus).disabled(!richOffice)
+            Toggle("Mini office auto-focus", isOn: $autoFocus).disabled(!richOffice)
             Text("In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, finished but unseen, or working. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Energy saving", isOn: $energySaving).disabled(!richOffice)

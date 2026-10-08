@@ -121,16 +121,6 @@
         }
       }
     },
-    "Auto focus in the mini office": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mini ofiste otomatik odak"
-          }
-        }
-      }
-    },
     "Auto focus paused": {
       "localizations": {
         "tr": {
@@ -367,26 +357,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gece ve gündüz"
-          }
-        }
-      }
-    },
-    "Day/night cycle": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gece/gündüz döngüsü"
-          }
-        }
-      }
-    },
-    "Detailed office": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detaylı ofis"
           }
         }
       }

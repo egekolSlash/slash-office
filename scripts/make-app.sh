@@ -9,7 +9,9 @@
 set -eu
 cd "$(dirname "$0")/.."
 APP=${1:-build/SlashOffice.app}
-STAGE=$(mktemp -d)/SlashOffice.app
+STAGE_ROOT=$(mktemp -d)
+trap 'rm -rf "$STAGE_ROOT"' EXIT
+STAGE="$STAGE_ROOT/SlashOffice.app"
 # Her mimari ayrı derlenip lipo ile birleştirilir (tek komutta çok mimari SwiftPM'i Xcode derleyicisine geçirir;
 # o da SwiftTerm'in eklentisini çözemiyor).
 # Mimari başına çıktı klasörleri konumsal parametrelerde (boşluklu yollar bölünmesin).

@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/egekolSlash/slash-office/main/insta
 
 **Update:** run the same command again; it quits a running Slash Office and replaces it.
 
-**Uninstall:** delete `SlashOffice.app` from Applications. Settings and session history live in `~/Library/Application Support/AgentOffice`.
+**Uninstall:** delete `SlashOffice.app` from Applications. To remove everything, also delete the settings (`~/Library/Preferences/io.github.egekolslash.slashoffice.plist`) and the session history (`~/Library/Application Support/AgentOffice`).
 
 ### Homebrew
 
@@ -39,13 +39,13 @@ brew tap egekolSlash/tap
 brew install slash-office          # or: brew install --HEAD slash-office
 ```
 
-**How it works:** the formula builds Slash Office from source on your Mac (so it needs Xcode 26) and installs the app into Homebrew's prefix. A locally built app isn't quarantined. Homebrew can't write to `/Applications`, so link the app once to find it in Launchpad and Spotlight:
+**How it works:** the formula builds Slash Office from source on your Mac (so it needs Xcode 26) and installs the app into Homebrew's prefix. A locally built app isn't quarantined. Homebrew can't write to `/Applications`, so open it from the prefix and keep it in the Dock (right-click its Dock icon › Options › Keep in Dock):
 
 ```sh
-mkdir -p ~/Applications && ln -sf "$(brew --prefix)/opt/slash-office/SlashOffice.app" ~/Applications/SlashOffice.app
+open "$(brew --prefix)/opt/slash-office/SlashOffice.app"
 ```
 
-**Update:** `brew upgrade slash-office`. **Uninstall:** `brew uninstall slash-office` and remove the link.
+**Update:** `brew upgrade slash-office`. **Uninstall:** `brew uninstall slash-office`.
 
 ### Build from source
 

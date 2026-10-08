@@ -50,11 +50,19 @@ if pgrep -qf "$BINARY"; then
     pgrep -qf "$BINARY" && fail "Slash Office is still running; quit it and run the installer again."
 fi
 
-# Replace in two steps so a failed copy never leaves a half-installed app behind.
-rm -rf "$DEST/$APP_NAME.new"
-ditto "$TMP/unpacked/$APP_NAME" "$DEST/$APP_NAME.new" || fail "could not copy into $DEST."
-rm -rf "$DEST/$APP_NAME"
-mv "$DEST/$APP_NAME.new" "$DEST/$APP_NAME"
+# Copy next to the old app, move the old one aside, then swap: a failure at any step leaves a working app behind.
+NEW="$DEST/$APP_NAME.new"
+OLD="$DEST/$APP_NAME.old"
+rm -rf "$NEW" "$OLD"
+ditto "$TMP/unpacked/$APP_NAME" "$NEW" || { rm -rf "$NEW"; fail "could not copy into $DEST."; }
+if [ -e "$DEST/$APP_NAME" ]; then
+    mv "$DEST/$APP_NAME" "$OLD" || { rm -rf "$NEW"; fail "could not replace $DEST/$APP_NAME (is it owned by another user?)."; }
+fi
+if ! mv "$NEW" "$DEST/$APP_NAME"; then
+    [ -e "$OLD" ] && mv "$OLD" "$DEST/$APP_NAME"
+    fail "could not install into $DEST."
+fi
+rm -rf "$OLD" 2>/dev/null || say "Note: could not remove the previous copy at $OLD; delete it when convenient."
 
 version=$(defaults read "$DEST/$APP_NAME/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "?")
 say "Installed Slash Office $version in $DEST."
