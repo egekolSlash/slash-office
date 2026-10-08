@@ -41,5 +41,12 @@ import Testing
         #expect(AppLanguage.stored(in: defaults, domain: suite) == .system)
         #expect(defaults.persistentDomain(forName: suite)?["AppleLanguages"] == nil)
     }
+
+    /// Ayarlar'daki "Restart Now" sadece seçim açılıştaki dilden farklıyken görünür.
+    @Test func needsRestartOnlyWhenDifferentFromLaunch() {
+        #expect(AppLanguage.turkish.needsRestart(launched: .english))
+        #expect(!AppLanguage.english.needsRestart(launched: .english))
+        #expect(!AppLanguage.system.needsRestart(launched: .system))
+    }
 }
 

@@ -106,7 +106,6 @@ struct SettingsView: View {
     /// Yeniden başlatmadan önce uyarmak için çalışan ajan sayısı.
     var runningAgents: () -> Int = { 0 }
     @State private var language = AppRestart.language
-    @State private var languageChanged = false
     @AppStorage("richOffice") private var richOffice = false
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
     @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
@@ -119,11 +118,8 @@ struct SettingsView: View {
                     if option == .system { Text("System") } else { Text(verbatim: option.displayName) }
                 }
             }
-            .onChange(of: language) {
-                AppRestart.apply(language)
-                languageChanged = true
-            }
-            if languageChanged {
+            .onChange(of: language) { AppRestart.apply(language) }
+            if language.needsRestart(launched: AppRestart.launchedLanguage) {
                 HStack {
                     Text("The new language is used after a restart.").font(.callout).foregroundStyle(.secondary)
                     Spacer()

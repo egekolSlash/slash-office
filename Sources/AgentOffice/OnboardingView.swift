@@ -121,7 +121,6 @@ private struct LanguageStep: View {
     let model: AppModel
     @Binding var guide: Onboarding
     @State private var language = AppRestart.language
-    private let initial = AppRestart.language
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -135,7 +134,7 @@ private struct LanguageStep: View {
             .pickerStyle(.radioGroup)
             // Seçim hemen kaydedilir: Continue'ya basılsa da sonraki açılışta geçerli olur.
             .onChange(of: language) { AppRestart.apply(language) }
-            if language != initial {
+            if language.needsRestart(launched: AppRestart.launchedLanguage) {
                 HStack {
                     Text("Slash Office restarts to switch the language, then continues from the next step.")
                         .font(.callout).foregroundStyle(.secondary)
@@ -143,9 +142,9 @@ private struct LanguageStep: View {
                     Button("Restart") {
                         // Sadece onaylanınca: açılışta rehber sonraki adımdan devam eder.
                         AppRestart.relaunch(runningAgents: model.runningAgentCount) {
-                            var resumed = guide
-                            resumed.resumeAfterRestart()
-                            UserDefaults.standard.set(resumed.savedStep, forKey: Onboarding.stepKey)
+                            let state = guide.stateForRestart
+                            UserDefaults.standard.set(state.step, forKey: Onboarding.stepKey)
+                            UserDefaults.standard.set(state.completed, forKey: Onboarding.completedKey)
                         }
                     }
                 }

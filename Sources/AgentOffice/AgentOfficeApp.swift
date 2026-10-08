@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     override init() {
         // Model ayarları okumadan önce: eski bundle kimliğinin ayarları bir kez taşınır.
         SettingsMigration.run(bundleID: Bundle.main.bundleIdentifier)
+        _ = AppRestart.launchedLanguage
         model = AppModel()
         super.init()
     }

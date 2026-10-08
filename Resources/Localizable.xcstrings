@@ -21,16 +21,6 @@
         }
       }
     },
-    "%lld running agents will be stopped. You can resume them after the restart.": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Çalışan %lld ajan durdurulacak. Yeniden başlatınca devam ettirebilirsin."
-          }
-        }
-      }
-    },
     "A 3D office you can pan and zoom, with animated villagers. Off: simple cards (less CPU and GPU).": {
       "localizations": {
         "tr": {
@@ -1477,6 +1467,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Halı"
+          }
+        }
+      }
+    },
+    "Running agents will be stopped. You can resume them after the restart.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan ajanlar durdurulacak. Yeniden başlattıktan sonra kaldıkları yerden devam ettirebilirsin."
           }
         }
       }

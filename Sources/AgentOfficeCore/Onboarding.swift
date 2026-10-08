@@ -38,4 +38,12 @@ public struct Onboarding: Equatable, Sendable {
     public mutating func resumeAfterRestart() {
         if current == .language { next() }
     }
+
+    /// Dil değişince yeniden başlatmadan önce saklanacak durum: rehber (Help'ten açılmış, tamamlanmış olsa da)
+    /// açılışta tekrar görünür ve dil adımından sonraki adımdan devam eder.
+    public var stateForRestart: (step: Int, completed: Bool) {
+        var resumed = self
+        resumed.resumeAfterRestart()
+        return (resumed.savedStep, false)
+    }
 }

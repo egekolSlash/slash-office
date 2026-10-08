@@ -54,4 +54,14 @@ import Testing
         let guide = Onboarding.reopened()
         #expect(guide.current == .language && !guide.isCompleted)
     }
+
+    /// Help'ten yeniden açılan (tamamlanmış) rehberde dil değişip uygulama yeniden başlarsa rehber yine açılır ve
+    /// dil adımından sonraki adımdan devam eder.
+    @Test func reopenedGuideComesBackAfterLanguageRestart() {
+        let saved = Onboarding.reopened().stateForRestart
+        #expect(saved.completed == false)
+        let after = Onboarding(savedStep: saved.step, completed: saved.completed)
+        #expect(after.current == .claude && !after.isCompleted)
+    }
 }
+

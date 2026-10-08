@@ -9,6 +9,9 @@ enum AppRestart {
 
     static func apply(_ language: AppLanguage) { language.store(in: .standard) }
 
+    /// Bu açılışın dili (AppDelegate açılışta okur; sonraki seçimler yeniden başlatınca geçerli olur).
+    static let launchedLanguage = language
+
     /// Yeniden başlatma onaylandı: çıkışta ikinci kez sorulmaz, çıkış kesinleşince yeniden açıcı başlar.
     private(set) static var relaunchConfirmed = false
 
@@ -20,7 +23,7 @@ enum AppRestart {
         if runningAgents > 0 {
             let alert = NSAlert()
             alert.messageText = String(localized: "Restart Slash Office?")
-            alert.informativeText = String(localized: "\(runningAgents) running agents will be stopped. You can resume them after the restart.")
+            alert.informativeText = String(localized: "Running agents will be stopped. You can resume them after the restart.")
             alert.addButton(withTitle: String(localized: "Restart"))
             alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return true }

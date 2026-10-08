@@ -46,4 +46,7 @@ public enum AppLanguage: String, CaseIterable, Sendable {
         let values = domain.flatMap { defaults.persistentDomain(forName: $0) }?["AppleLanguages"] as? [String]
         return from(appleLanguages: values)
     }
+
+    /// Seçim açılıştaki dilden farklı: yeni dil yeniden başlatınca geçerli olur.
+    public func needsRestart(launched: AppLanguage) -> Bool { self != launched }
 }
