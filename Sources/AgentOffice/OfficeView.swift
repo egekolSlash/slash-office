@@ -56,7 +56,8 @@ struct OfficeView: View {
             onRightClick: { x, y in handleRightClick(x: x, y: y, plan: plan, camera: camera) },
             onPan: { dx, dy in camera.pan(dx: dx, dy: dy) },
             onZoom: { factor, x, y in camera.zoom(by: factor, anchorX: x, anchorY: y) },
-            onResetKey: { camera.resetToFit() })
+            onResetKey: { camera.resetToFit() },
+            onVillagers: { villagers = $0 })
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
             camera.viewSize = (Double(size.width), Double(size.height))
             camera.fit(plan)
@@ -78,26 +79,19 @@ struct OfficeView: View {
         .onChange(of: autoFocusKey(plan: plan, desks: desks), initial: true) {
             applyAutoFocus(autoFocusTarget(plan: plan, desks: desks), plan: plan, camera: camera)
         }
-        // Elle hareketten sonraki bekleme bitince odak yeniden uygulansın.
-        .task(id: interactive) {
-            guard !interactive else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
-                applyAutoFocus(autoFocusTarget(plan: model.officePlan(), desks: deskInfos(model.officePlan())),
-                               plan: model.officePlan(), camera: camera)
-            }
+        // Elle hareketten sonraki bekleme bitince odak bir kez yeniden uygulanır (sürekli yoklama yok).
+        .task(id: camera.lastManualMove) {
+            guard !interactive, camera.lastManualMove != nil else { return }
+            try? await Task.sleep(for: .seconds(OfficeAutoFocus.manualPause + 0.1))
+            guard !Task.isCancelled else { return }
+            applyAutoFocus(autoFocusTarget(plan: model.officePlan(), desks: deskInfos(model.officePlan())),
+                           plan: model.officePlan(), camera: camera)
         }
         .overlay {
             OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: interactive,
                         villagers: villagers)
         }
-        .task {
-            while !Task.isCancelled {
-                let now = OfficeSharedScene.shared.positions()
-                if now != villagers { villagers = now }
-                try? await Task.sleep(for: .milliseconds(200))
-            }
-        }
+
         .overlay(alignment: .bottomLeading) {
             if !interactive, OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) {
                 // Elle gezinince kendiliğinden odak bir süre bekler (sorular hariç).

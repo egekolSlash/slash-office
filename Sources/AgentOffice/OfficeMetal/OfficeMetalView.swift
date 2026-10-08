@@ -17,6 +17,8 @@ final class OfficeMetalView: NSView {
     var onPan: ((_ dx: Double, _ dy: Double) -> Void)?
     var onZoom: ((_ factor: Double, _ x: Double, _ y: Double) -> Void)?
     var onResetKey: (() -> Void)?
+    /// Köylü konumları değişti (çizim döngüsünden, ana thread'de).
+    var onVillagers: (([String: AvatarSim.Position]) -> Void)?
 
     private let metalLayer = CAMetalLayer()
     private let loop: OfficeRenderLoop
@@ -42,6 +44,13 @@ final class OfficeMetalView: NSView {
         wantsLayer = true
         layer = metalLayer
         observeCamera()
+        loop.onVillagers = { [weak self] positions in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.camera.villagersMoved(positions)
+                self.onVillagers?(positions)
+            }
+        }
         loop.start()
         // Gece/gündüz: dakikada bir saatin ışığı; ayar değişince hemen.
         postLighting()
@@ -139,6 +148,7 @@ final class OfficeMetalView: NSView {
             _ = camera.viewport
             _ = camera.viewSize
             _ = camera.target
+            _ = camera.follow
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.cameraChanged()
@@ -149,13 +159,26 @@ final class OfficeMetalView: NSView {
     }
 
     private func cameraChanged() {
-        loop.post(viewport: camera.viewport, viewSize: camera.viewSize, cameraMoving: camera.target != nil)
+        // Takipten gelen kamera hareketi jest değil: yerinde hareket gibi (enerji tasarrufunda 12/30 fps).
+        let following = camera.follow != nil
+        loop.post(viewport: camera.viewport, viewSize: camera.viewSize,
+                  cameraMoving: camera.target != nil && !following, following: camera.target != nil && following)
+        if let cameraLink { cameraLink.preferredFrameRateRange = Self.linkRate(following: following, mini: mini) }
         if camera.target != nil, cameraLink == nil, window != nil {
             DebugLog.write("office camera transition start (mini: \(mini)) to \(camera.target.map { "\($0.targetX),\($0.targetZ) z\($0.zoom)" } ?? "-")")
             let link = displayLink(target: self, selector: #selector(stepCamera))
+            link.preferredFrameRateRange = Self.linkRate(following: following, mini: mini)
             link.add(to: .main, forMode: .common)
             cameraLink = link
         }
+    }
+
+    /// Kamera adım hızı: takipte kare hızıyla aynı sınır (enerji tasarrufunda mini 12, ofis 30), elle geçişte ekran hızı.
+    private static func linkRate(following: Bool, mini: Bool) -> CAFrameRateRange {
+        let saving = UserDefaults.standard.object(forKey: energySavingKey) == nil || UserDefaults.standard.bool(forKey: energySavingKey)
+        guard following, saving else { return .default }
+        let fps: Float = mini ? 12 : 30
+        return CAFrameRateRange(minimum: fps, maximum: fps, preferred: fps)
     }
 
     @objc private func stepCamera(_ link: CADisplayLink) {
@@ -309,6 +332,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
         var viewSize: OfficeViewport.ViewSize = (800, 500)
         var cameraMoving = false
+        /// Kamera bir köylüyü takip ederek kayıyor (jest sayılmaz).
+        var following = false
         var interactionUntil = 0.0
         var visible = false
         var mini = false
@@ -316,6 +341,9 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var drawableSize: CGSize?
         var lighting: OfficeDaylight.Lighting?
         var dirty = true
+        /// Sabit kare hızında bekleyen döngüyü hemen uyandırsın mı (jest, görünürlük, yeni dünya…). Takip adımları
+        /// ve sahne güncellemeleri acil değil: bir sonraki karede işlenir.
+        var urgent = false
     }
     private var mailbox = Mailbox()
 
@@ -342,16 +370,17 @@ final class OfficeRenderLoop: @unchecked Sendable {
         send { $0.running = false }
     }
 
-    private func send(_ change: (inout Mailbox) -> Void) {
+    private func send(urgent: Bool = true, _ change: (inout Mailbox) -> Void) {
         lock.lock()
         change(&mailbox)
         mailbox.dirty = true
+        if urgent { mailbox.urgent = true }
         lock.unlock()
         wake.signal()
     }
 
     /// Paylaşılan sahne değişti (ana thread uyguladı): döngü uyansın, gerekirse bir kare çizsin.
-    func postSceneChanged() { send { _ in } }
+    func postSceneChanged() { send(urgent: false) { _ in } }
 
     func post(world: OfficeMesh, bounds: PlanRect, generation: Int) {
         send { box in
@@ -359,8 +388,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
         }
     }
 
-    func post(viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, cameraMoving: Bool) {
-        send { $0.viewport = viewport; $0.viewSize = viewSize; $0.cameraMoving = cameraMoving }
+    func post(viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, cameraMoving: Bool, following: Bool = false) {
+        send(urgent: cameraMoving) { $0.viewport = viewport; $0.viewSize = viewSize; $0.cameraMoving = cameraMoving; $0.following = following }
     }
 
     func post(visible: Bool, mini: Bool) { send { $0.visible = visible; $0.mini = mini } }
@@ -391,7 +420,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
             let state = scene.peek()
             let animating = !state.instances.isEmpty
             let moving = state.moving
-            var mode = FramePacing.mode(moving: moving, acting: state.acting,
+            var mode = FramePacing.mode(moving: moving, acting: state.acting || box.following,
                                         interacting: box.cameraMoving || now < box.interactionUntil,
                                         animating: animating, visible: box.visible, mini: box.mini,
                                         saving: box.saving)
@@ -419,9 +448,17 @@ final class OfficeRenderLoop: @unchecked Sendable {
                 autoreleasepool { frame() }
                 guard fps > 0 else { continue }
                 let next = start + 1 / fps
-                let wait = next - CACurrentMediaTime()
-                // Bildirim gelirse erken uyanır (jest, yeni durum).
-                if wait > 0 { _ = wake.wait(timeout: .now() + wait) }
+                // Acil bildirimde (jest, görünürlük, yeni dünya) erken uyanır; takip adımları ve sahne güncellemeleri
+                // bir sonraki karede işlenir (her biri fazladan kare çizdirmesin).
+                while true {
+                    let wait = next - CACurrentMediaTime()
+                    guard wait > 0, wake.wait(timeout: .now() + wait) == .success else { break }
+                    lock.lock()
+                    let urgent = mailbox.urgent || !mailbox.running
+                    mailbox.urgent = false
+                    lock.unlock()
+                    if urgent { break }
+                }
             }
         }
     }
@@ -446,10 +483,24 @@ final class OfficeRenderLoop: @unchecked Sendable {
     private var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
     private var viewSize: OfficeViewport.ViewSize = (800, 500)
 
+    /// Köylü konumları değişince (en çok 0,2 sn'de bir) ana thread'e: kartlar ve kamera takibi. Sadece kare
+    /// çizilirken sorulur; görünüm gizliyken döngü durduğundan hiçbir şey çalışmaz.
+    var onVillagers: (@Sendable ([String: AvatarSim.Position]) -> Void)?
+    private var lastPositionsCheck = 0.0
+    private var lastPositions: [String: AvatarSim.Position] = [:]
+
     private func frame() {
         let now = CACurrentMediaTime()
         lastFrame = now
         let state = scene.advance(now: now)
+        if now - lastPositionsCheck >= 0.2, let onVillagers {
+            lastPositionsCheck = now
+            let positions = scene.positions()
+            if positions != lastPositions {
+                lastPositions = positions
+                DispatchQueue.main.async { onVillagers(positions) }
+            }
+        }
         guard let drawable = layer.nextDrawable(), let cb = gpu.queue.makeCommandBuffer() else { return }
         renderer.encode(to: drawable.texture, viewport: viewport, viewSize: viewSize, avatars: state.instances,
                         time: state.time, commandBuffer: cb)
@@ -469,6 +520,7 @@ struct OfficeMetalRepresentable: NSViewRepresentable {
     var onPan: (Double, Double) -> Void = { _, _ in }
     var onZoom: (Double, Double, Double) -> Void = { _, _, _ in }
     var onResetKey: () -> Void = {}
+    var onVillagers: ([String: AvatarSim.Position]) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSView {
         guard let view = try? OfficeMetalView(gpu: gpu, camera: camera) else {
@@ -488,6 +540,7 @@ struct OfficeMetalRepresentable: NSViewRepresentable {
         view.onPan = onPan
         view.onZoom = onZoom
         view.onResetKey = onResetKey
+        view.onVillagers = onVillagers
         view.update(scene)
     }
 }
