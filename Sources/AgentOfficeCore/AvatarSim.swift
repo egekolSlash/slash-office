@@ -224,12 +224,12 @@ public struct AvatarSim: Sendable {
         let room = avatar.room, desk = avatar.desk
         switch goal {
         case .seat(let loop):
-            return Target(point: room.seat(for: desk), facing: 0, loop: loop, seat: room.seat(for: desk))
+            return Target(point: room.seat(for: desk), facing: room.seatFacing(for: desk), loop: loop, seat: room.seat(for: desk))
         case .stand(let loop):
-            return Target(point: room.standSpot(for: desk), facing: 0, loop: loop)
+            return Target(point: room.standSpot(for: desk), facing: room.seatFacing(for: desk), loop: loop)
         case .spot(let kind, let loop, let oneShot, _):
             guard let spot = room.spots.first(where: { $0.kind == kind }) else {
-                return Target(point: room.seat(for: desk), facing: 0, loop: .sitDoze, seat: room.seat(for: desk))
+                return Target(point: room.seat(for: desk), facing: room.seatFacing(for: desk), loop: .sitDoze, seat: room.seat(for: desk))
             }
             let a = room.approach(to: spot)
             return Target(point: a.stand, facing: a.facing, loop: loop ?? .idle, oneShot: oneShot, seat: a.seat)

@@ -83,142 +83,85 @@ public struct PlanPoint: Equatable, Sendable {
     func distance(to other: PlanPoint) -> Double { hypot(x - other.x, z - other.z) }
 }
 
-/// Masa takımının ölçüleri (karo): köylü masanın arkasında (küçük z) oturur, +z'ye bakar.
+/// Masa takımının ölçüleri (ofis hayatı): masa koridora döner; uzun kenarı z boyunca. Köylü masanın koridordan
+/// uzak tarafındaki taburede oturur ve koridora bakar.
 public enum DeskGeometry {
-    public static let deskHalfWidth = 0.35
-    public static let deskHalfDepth = 0.22
-    public static let seatOffset = 0.32
+    /// x boyunca (koridora dik) yarı genişlik ve z boyunca yarı derinlik.
+    public static let deskHalfWidth = 0.275
+    public static let deskHalfDepth = 0.475
+    /// Masa merkezinden taburenin uzaklığı (dışa doğru).
+    public static let seatOffset = 0.40
 }
 
-/// Odanın dinlenme köşesindeki ilgi noktası (v5 spec §4): eşya burada durur, köylüler (aşama 2) burada oyalanır.
+/// Odadaki ilgi noktası (v5 spec §4, ofis hayatı §B2): eşya burada durur, köylüler burada oyalanır.
 public struct RoomSpot: Equatable, Sendable {
-    public enum Kind: String, Sendable { case sofa, coffeeTable, waterCooler, plant }
+    public enum Kind: String, CaseIterable, Sendable {
+        case sofa, coffeeTable, waterCooler, plant, bookshelf, arcade, whiteboard, coffeeMachine
+
+        var furniture: RoomFurniture { RoomFurniture(rawValue: rawValue)! }
+    }
     public var kind: Kind
     public var x: Double
     public var z: Double
     /// Eşyanın baktığı yön: y ekseni etrafında radyan, 0 = +z.
     public var facing: Double
+
+    /// Eşyanın tabanı: bakış yönü boyunca ve ona dik yarı uzunluklar; dairesel olanlarda yarıçap.
+    var footprint: (along: Double, across: Double, round: Bool) {
+        switch kind {
+        case .sofa: (0.275, 0.575, false)
+        case .coffeeTable: (0.28, 0.28, true)
+        case .waterCooler: (0.16, 0.16, false)
+        case .plant: (0.15, 0.15, true)
+        case .bookshelf: (0.16, 0.46, false)
+        case .arcade: (0.3, 0.29, false)
+        case .whiteboard: (0.12, 0.62, false)
+        case .coffeeMachine: (0.235, 0.29, false)
+        }
+    }
 }
 
 extension OfficePlan.Room {
     public var doorInside: PlanPoint { PlanPoint(x: corridorEdgeX + outward * 0.35, z: doorZ) }
     public var doorOutside: PlanPoint { PlanPoint(x: corridorEdgeX - outward * 0.6, z: doorZ) }
-    public func seat(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: desk.x, z: desk.z - DeskGeometry.seatOffset) }
-    /// Masanın koridor tarafındaki boşluk (iki masa sütunu arası ya da koridor duvarının dibi): köylüler masaya
-    /// buradan yürür, beklerken burada durur.
-    public func aisleX(for desk: OfficePlan.Desk) -> Double { desk.x - outward * OfficePlan.columnSpacing / 2 }
-    public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint { PlanPoint(x: aisleX(for: desk), z: desk.z + 0.1) }
+    public func seat(for desk: OfficePlan.Desk) -> PlanPoint {
+        PlanPoint(x: desk.x + outward * DeskGeometry.seatOffset, z: desk.z)
+    }
+    /// Masada (oturan ya da yanında duran) köylünün yönü: koridora (sol oda +x, sağ oda −x). Masa da bu açıyla döner.
+    public func seatFacing(for desk: OfficePlan.Desk) -> Double { -outward * Double.pi / 2 }
+    /// Taburenin arkasındaki boşluk (bir sonraki masa sütununa kadar): köylüler masaya buradan yürür.
+    public func aisleX(for desk: OfficePlan.Desk) -> Double { desk.x + outward * OfficePlan.columnSpacing / 2 }
+    /// Masanın koridor tarafı: köylü beklerken burada ayakta durur.
+    public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint {
+        PlanPoint(x: desk.x - outward * (DeskGeometry.deskHalfWidth + 0.35), z: desk.z)
+    }
 
-    /// Dinlenme köşesi: dış duvar dibinde koltuk (içe bakar), koltuğun arkasında bitki, önünde ve biraz yanda
-    /// sehpa (koltuğa yaklaşma yolunu kapatmaz), koridor tarafındaki ön köşede sebil.
+    /// Eşyalar (açık olanlar): koridor tarafındaki arka köşede ayaklı beyaz tahta (arka penceresi ve oda tabelası
+    /// ortada), dış duvarın arka
+    /// köşesinde kitaplık, ön tarafta dış duvar dibinde koltuk (önünde sehpa, arkasında saksı) ve dış köşede
+    /// arcade, koridor tarafındaki ön köşede sebil ve kahve makinesi.
     public var spots: [RoomSpot] {
         let outer = corridorEdgeX + outward * width
         let inward = outward > 0 ? -Double.pi / 2 : Double.pi / 2
-        return [
+        let all = [
             RoomSpot(kind: .sofa, x: outer - outward * 0.45, z: z + 4.95, facing: inward),
             RoomSpot(kind: .coffeeTable, x: outer - outward * 1.25, z: z + 5.75, facing: 0),
             RoomSpot(kind: .plant, x: outer - outward * 0.4, z: z + 3.95, facing: 0),
             RoomSpot(kind: .waterCooler, x: corridorEdgeX + outward * 0.4, z: z + 5.75, facing: -inward),
+            RoomSpot(kind: .coffeeMachine, x: corridorEdgeX + outward * 0.35, z: z + 6.75, facing: -inward),
+            RoomSpot(kind: .arcade, x: outer - outward * 0.35, z: z + 6.8, facing: inward),
+            RoomSpot(kind: .bookshelf, x: outer - outward * 0.17, z: z + 0.75, facing: inward),
+            RoomSpot(kind: .whiteboard, x: corridorEdgeX + outward * 0.85, z: z + 0.3, facing: 0),
         ]
+        return all.filter { furniture.contains($0.kind.furniture) }
     }
 }
 
-public enum AvatarSpot: Equatable, Sendable { case outside, seat, stand }
-
-/// Dik açılı yol (v5 spec §4): masa alanında masanın koridor tarafındaki boşlukta, önde yürüme şeridinde yürünür;
-/// masaların içinden geçmez. Oda dışına sadece kapıdan çıkılır.
+/// Yürüme hızı (m/sn); yol `RoomNav`'dan gelir (v5 aşama 2).
 public enum AvatarRoute {
     public static let speed = 1.4
-
-    static func point(_ spot: AvatarSpot, desk: OfficePlan.Desk, room: OfficePlan.Room) -> PlanPoint {
-        switch spot {
-        case .outside: room.doorOutside
-        case .seat: room.seat(for: desk)
-        case .stand: room.standSpot(for: desk)
-        }
-    }
-
-    public static func route(from start: PlanPoint, to spot: AvatarSpot, desk: OfficePlan.Desk, room: OfficePlan.Room) -> [PlanPoint] {
-        let aisle = room.aisleX(for: desk), walkway = room.doorZ
-        var path = [start]
-        func go(_ p: PlanPoint) { path.append(p) }
-        // Kapının dışındaysa önce içeri gir.
-        if start == room.doorOutside { go(room.doorInside) }
-        var here = path.last!
-        // Masanın boşluğuna geç: masa alanındaysa (ör. tabureden) yana, öndeyse önce yürüme şeridine.
-        if abs(here.x - aisle) > 0.01 {
-            if here.z < walkway - 0.01 {
-                go(PlanPoint(x: aisle, z: here.z))
-            } else {
-                if abs(here.z - walkway) > 0.01 { go(PlanPoint(x: here.x, z: walkway)) }
-                go(PlanPoint(x: aisle, z: walkway))
-            }
-        }
-        here = path.last!
-        switch spot {
-        case .outside:
-            go(PlanPoint(x: aisle, z: walkway))
-            go(room.doorInside)
-            go(room.doorOutside)
-        case .seat:
-            let seat = room.seat(for: desk)
-            go(PlanPoint(x: aisle, z: seat.z))
-            go(seat)
-        case .stand:
-            go(room.standSpot(for: desk))
-        }
-        // Ardışık aynı noktaları at.
-        return path.reduce(into: []) { result, p in
-            if let last = result.last, last.distance(to: p) < 0.01 { return }
-            result.append(p)
-        }
-    }
 }
 
-public struct AvatarPose: Equatable, Sendable {
-    public var point: PlanPoint
-    public var roomKey: String
-    /// Köylünün bulunduğu odanın o anki yeri; oda kayar ya da büyürse köylü ışınlanır (duvardan yürümesin).
-    public var room: PlanRect?
-    public init(point: PlanPoint, roomKey: String, room: PlanRect? = nil) {
-        self.point = point; self.roomKey = roomKey; self.room = room
-    }
-}
-
-public enum AvatarStep: Equatable, Sendable {
-    case place(PlanPoint, AvatarClip, facing: Double)
-    case walk([PlanPoint], then: AvatarClip, facing: Double, hideAtEnd: Bool)
-    case hide
-}
-
-/// Planlayıcı: köylünün bulunduğu yer ve ajanın durumu → yerleştir, yürü ya da gizle.
-/// `facing`: y ekseni etrafında radyan; 0 = +z (kameraya doğru).
-public enum AvatarPlanner {
-    public static func plan(current: AvatarPose?, activity: AvatarActivity, desk: OfficePlan.Desk,
-                            room: OfficePlan.Room, live: Bool) -> AvatarStep {
-        let (spot, clip): (AvatarSpot, AvatarClip) = switch activity {
-        case .typing: (.seat, .sitType)
-        case .dozing: (.seat, .sitDoze)
-        case .waving: (.stand, .wave)
-        case .away: (.outside, .idle)
-        }
-        let target = AvatarRoute.point(spot, desk: desk, room: room)
-        guard live else { return activity == .away ? .hide : .place(target, clip, facing: 0) }
-        // İlk kez beliren köylü kapıdan girer.
-        guard let current else {
-            if activity == .away { return .hide }
-            return .walk(AvatarRoute.route(from: room.doorOutside, to: spot, desk: desk, room: room), then: clip, facing: 0, hideAtEnd: false)
-        }
-        // Oda değişti ya da masa çok uzaklaştı: ışınla (odalar arası yürüme yok).
-        let roomMoved = current.room.map { $0 != room.rect } ?? false
-        if current.roomKey != room.key || roomMoved || !room.rect.insetBy(-0.7).contains(x: current.point.x, z: current.point.z) {
-            return activity == .away ? .hide : .place(target, clip, facing: 0)
-        }
-        if current.point.distance(to: target) < 0.05 { return .place(target, clip, facing: 0) }
-        return .walk(AvatarRoute.route(from: current.point, to: spot, desk: desk, room: room),
-                     then: clip, facing: 0, hideAtEnd: activity == .away)
-    }
-}
 
 extension PlanRect {
     /// Negatif değer dikdörtgeni büyütür.

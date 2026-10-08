@@ -19,7 +19,7 @@ import Testing
     @Test func roomsGrowSidewaysWithFixedDepth() {
         let rooms = [1, 2, 3, 4, 5, 8].map { n in plan((0..<n).map { ("s\($0)", "/a") }).rooms[0] }
         #expect(rooms.allSatisfy { $0.depth == OfficePlan.roomDepth })
-        #expect(zip(rooms.map(\.width), [4.2, 4.2, 4.2, 4.2, 5.8, 7.4]).allSatisfy { abs($0 - $1) < 1e-9 })
+        #expect(zip(rooms.map(\.width), [4.8, 4.8, 4.8, 4.8, 6.7, 8.6]).allSatisfy { abs($0 - $1) < 1e-9 })
         // Sol oda koridora dayanır, sola (dışa) büyür.
         #expect(rooms.allSatisfy { abs($0.x + $0.width - OfficePlan.corridorX) < 1e-9 })
     }
@@ -82,10 +82,11 @@ import Testing
     @Test func spotsAreInTheLoungeStripAwayFromDoorAndEachOther() {
         for n in [1, 3, 6] {
             for room in plan((0..<n).map { ("s\($0)", "/a") } + [("x", "/b")]).rooms {
-                #expect(Set(room.spots.map(\.kind)) == [.sofa, .coffeeTable, .waterCooler, .plant])
+                #expect(Set(room.spots.map(\.kind)) == Set(RoomSpot.Kind.allCases))
                 for spot in room.spots {
                     #expect(room.rect.contains(x: spot.x, z: spot.z))
-                    #expect(spot.z - room.z > OfficePlan.frontRowZ + 0.5)
+                    // Tahta ve kitaplık arka tarafta (masa sütunları arası, dış köşe); diğerleri ön şeritte.
+                    if spot.kind != .whiteboard && spot.kind != .bookshelf { #expect(spot.z - room.z > OfficePlan.frontRowZ + 0.5) }
                     #expect(hypot(spot.x - room.doorInside.x, spot.z - room.doorInside.z) > 0.6)
                 }
                 for (i, a) in room.spots.enumerated() {

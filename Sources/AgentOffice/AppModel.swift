@@ -641,7 +641,8 @@ extension AppModel {
         let members = store.sessions.map { OfficePlan.Member(id: $0.id, roomKey: roomKey(for: $0.cwd)) }
         deskSlots = OfficePlan.assignSlots(members, previous: deskSlots)
         roomOrder = OfficePlan.roomOrder(members, previous: roomOrder)
-        return OfficePlan.make(members, slots: deskSlots, order: roomOrder)
+        let plan = OfficePlan.make(members, slots: deskSlots, order: roomOrder)
+        return plan.applying(furniture: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, style(for: $0.key).furniture) }))
     }
 
     /// Henüz bakılmamış proje klasörlerinin ikonunu arka planda bulur.

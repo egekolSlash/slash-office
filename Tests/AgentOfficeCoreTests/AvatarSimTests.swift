@@ -145,7 +145,8 @@ import simd
         run(&s, 8) { if clips.last != $0.instances[0].clip { clips.append($0.instances[0].clip) } }
         #expect(clips.contains(.sitDown))
         #expect(near(s.instances[0].position, room.seat(for: room.desks[0])))
-        #expect(s.instances[0].clip.seated && s.instances[0].facing == 0)
+        // Masada koridora bakar.
+        #expect(s.instances[0].clip.seated && abs(Double(s.instances[0].facing) - room.seatFacing(for: room.desks[0])) < 1e-5)
     }
 
     @Test func walkingFacesTheDirectionOfTravel() {

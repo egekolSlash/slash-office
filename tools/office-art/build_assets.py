@@ -521,9 +521,12 @@ def arcade():
         cyl(0.022, 0.025, (0.38, dy, 0.965), mat(f"ArcadeBtn{dy}", c, 0.3), 0.005)
     box((0.08, 0.56, 0.16), (0.21, 0, 1.38), marquee, 0.01)
 def whiteboard():
-    # +X'e bakar, duvara asılı: çerçeve, beyaz yüzey, renkli karalamalar, kalem rafı.
+    # +X'e bakar, ayaklı (arka duvarı alçak odalarda da durur): çerçeve, beyaz yüzey, karalamalar, kalem rafı.
     alu = mat("BoardFrame", (0.78, 0.80, 0.82), 0.3)
     white = mat("BoardWhite", (0.98, 0.98, 0.97), 0.2)
+    for dy in (-0.6, 0.6):
+        cyl(0.02, 1.56, (0, dy, 0.78), alu)
+        box((0.42, 0.05, 0.03), (0, dy, 0.015), alu, 0.01)
     box((0.04, 1.24, 0.82), (0, 0, 1.16), alu, 0.01)
     box((0.02, 1.14, 0.72), (0.022, 0, 1.16), white, 0)
     for dy, dz, w, c in ((-0.35, 1.38, 0.32, (0.25, 0.45, 0.85)), (-0.3, 1.28, 0.22, (0.25, 0.45, 0.85)),

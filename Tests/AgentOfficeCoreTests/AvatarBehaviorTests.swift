@@ -100,7 +100,11 @@ import Testing
         b.setActivity(.typing, finishedNow: false)
         _ = run(&b, seconds: 1, spots: [])
         b.setActivity(.dozing, finishedNow: true)
-        let goals = run(&b, seconds: 120, spots: []).compactMap { d -> AvatarGoal? in if case .goal(let g) = d { g } else { nil } }
+        // Sim her hedefe varışı bildirir (sevinç süresi varınca başlar).
+        var goals: [AvatarGoal] = []
+        for _ in 0..<1200 {
+            if case .goal(let g)? = b.advance(dt: 0.1, freeSpots: []) { goals.append(g); b.arrived() }
+        }
         #expect(goals.first == .stand(loop: .idle))
         #expect(goals.last == .seat(loop: .sitDoze))
     }

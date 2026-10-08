@@ -32,18 +32,22 @@ public struct RoomNav: Sendable {
         var obstacles: [Obstacle] = []
         let b = Self.body
         for desk in room.desks {
-            // Masa: yanlardan gövde payı; önden ve arkadan az (tabure masanın hemen arkasında).
-            obstacles.append(Obstacle(x: desk.x, z: desk.z, shape: .rect(halfX: DeskGeometry.deskHalfWidth + b,
-                                                                           halfZ: DeskGeometry.deskHalfDepth + 0.05), soft: false))
+            // Masa (koridora dönük): koridor ve yan taraflardan gövde payı; tabure tarafında az.
+            obstacles.append(Obstacle(x: desk.x, z: desk.z, shape: .rect(halfX: DeskGeometry.deskHalfWidth + 0.05,
+                                                                           halfZ: DeskGeometry.deskHalfDepth + b), soft: false))
             let seat = room.seat(for: desk)
             obstacles.append(Obstacle(x: seat.x, z: seat.z, shape: .circle(radius: 0.19 + 0.12), soft: true))
         }
         for spot in room.spots {
-            switch spot.kind {
-            case .sofa: obstacles.append(Obstacle(x: spot.x, z: spot.z, shape: .rect(halfX: 0.275 + b, halfZ: 0.575 + b), soft: false))
-            case .coffeeTable: obstacles.append(Obstacle(x: spot.x, z: spot.z, shape: .circle(radius: 0.28 + b), soft: false))
-            case .waterCooler: obstacles.append(Obstacle(x: spot.x, z: spot.z, shape: .rect(halfX: 0.16 + b, halfZ: 0.16 + b), soft: false))
-            case .plant: obstacles.append(Obstacle(x: spot.x, z: spot.z, shape: .circle(radius: 0.15 + b), soft: false))
+            let f = spot.footprint
+            if f.round {
+                obstacles.append(Obstacle(x: spot.x, z: spot.z, shape: .circle(radius: f.along + b), soft: false))
+            } else {
+                // Bakış yönü x boyuncaysa (±π/2) "along" x'e düşer.
+                let alongX = abs(sin(spot.facing)) > 0.5
+                obstacles.append(Obstacle(x: spot.x, z: spot.z,
+                                          shape: .rect(halfX: (alongX ? f.along : f.across) + b, halfZ: (alongX ? f.across : f.along) + b),
+                                          soft: false))
             }
         }
         self.obstacles = obstacles
@@ -178,19 +182,25 @@ extension OfficePlan.Room {
     public func approach(to spot: RoomSpot) -> (stand: PlanPoint, facing: Double, seat: PlanPoint?) {
         let inward = -outward   // dış duvardan koridora doğru
         func toward(_ from: PlanPoint) -> Double { atan2(spot.x - from.x, spot.z - from.z) }
+        let ahead = (x: sin(spot.facing), z: cos(spot.facing))
+        func front(_ d: Double) -> PlanPoint { PlanPoint(x: spot.x + ahead.x * d, z: spot.z + ahead.z * d) }
         switch spot.kind {
         case .sofa:
-            let d = (x: sin(spot.facing), z: cos(spot.facing))
-            return (PlanPoint(x: spot.x + d.x * 0.65, z: spot.z + d.z * 0.65), spot.facing,
-                    PlanPoint(x: spot.x + d.x * 0.05, z: spot.z + d.z * 0.05))
+            return (front(0.65), spot.facing, front(0.05))
         case .plant:
             let p = PlanPoint(x: spot.x + inward * 0.6, z: spot.z)
             return (p, toward(p), nil)
         case .coffeeTable:
             let p = PlanPoint(x: spot.x + inward * 0.7, z: spot.z)
             return (p, toward(p), nil)
-        case .waterCooler:
-            let p = PlanPoint(x: spot.x + sin(spot.facing) * 0.55, z: spot.z + cos(spot.facing) * 0.55)
+        case .waterCooler, .coffeeMachine:
+            let p = front(0.55)
+            return (p, toward(p), nil)
+        case .bookshelf:
+            let p = front(0.55)
+            return (p, toward(p), nil)
+        case .arcade, .whiteboard:
+            let p = front(0.65)
             return (p, toward(p), nil)
         }
     }

@@ -101,6 +101,16 @@
         }
       }
     },
+    "Arcade": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oyun makinesi"
+          }
+        }
+      }
+    },
     "Asking": {
       "localizations": {
         "tr": {
@@ -167,6 +177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Küt"
+          }
+        }
+      }
+    },
+    "Bookshelf": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplık"
           }
         }
       }
@@ -327,6 +347,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paneli kapat (oturum çalışmaya devam eder)"
+          }
+        }
+      }
+    },
+    "Coffee machine": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kahve makinesi"
+          }
+        }
+      }
+    },
+    "Coffee table": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sehpa"
           }
         }
       }
@@ -567,6 +607,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tam Disk Erişimi"
+          }
+        }
+      }
+    },
+    "Furniture": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşyalar"
           }
         }
       }
@@ -1191,6 +1241,16 @@
         }
       }
     },
+    "Plant": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saksı"
+          }
+        }
+      }
+    },
     "Please restart Slash Office": {
       "localizations": {
         "tr": {
@@ -1661,6 +1721,16 @@
         }
       }
     },
+    "Sofa": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koltuk"
+          }
+        }
+      }
+    },
     "Spiky": {
       "localizations": {
         "tr": {
@@ -2041,6 +2111,16 @@
         }
       }
     },
+    "Water cooler": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Su sebili"
+          }
+        }
+      }
+    },
     "Welcome Guide…": {
       "localizations": {
         "tr": {
@@ -2087,6 +2167,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hangi renk?"
+          }
+        }
+      }
+    },
+    "Whiteboard": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beyaz tahta"
           }
         }
       }

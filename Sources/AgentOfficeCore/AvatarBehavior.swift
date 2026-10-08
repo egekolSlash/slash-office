@@ -81,7 +81,9 @@ public struct AvatarBehavior: Sendable {
             if pendingCheer, activity != .away {
                 pendingCheer = false
                 queued = (.cheer, 0.3)
-                timer = 0.3 + AvatarClip.cheer.duration + 0.2
+                // Süre köylü masanın yanına varınca başlar (yürüyüş uzun sürebilir; sevinç yarıda kalmasın).
+                pendingDwell = 0.3 + AvatarClip.cheer.duration + 0.2
+                timer = .infinity
                 atDesk = false
                 return .goal(.stand(loop: .idle))
             }
@@ -160,6 +162,11 @@ public struct AvatarBehavior: Sendable {
         case .plant: goal = .spot(.plant, loop: .lookAround, oneShot: .inspect, dwell: AvatarClip.inspect.duration + random(3...6))
         case .waterCooler: goal = .spot(.waterCooler, loop: .idle, oneShot: .drink, dwell: AvatarClip.drink.duration + random(2...5))
         case .coffeeTable: goal = .spot(.coffeeTable, loop: .idle, oneShot: .stretch, dwell: AvatarClip.stretch.duration + random(2...5))
+        case .bookshelf: goal = .spot(.bookshelf, loop: .readBook, oneShot: nil, dwell: random(12...30))
+        case .arcade: goal = .spot(.arcade, loop: .playArcade, oneShot: nil, dwell: random(12...30))
+        case .whiteboard: goal = .spot(.whiteboard, loop: .drawBoard, oneShot: nil, dwell: random(12...30))
+        case .coffeeMachine: goal = .spot(.coffeeMachine, loop: .idle, oneShot: .brewCoffee,
+                                         dwell: AvatarClip.brewCoffee.duration + random(2...4))
         }
         // Kalma süresi köylü varınca başlar (`arrived`); o zamana kadar karar yok.
         if case .spot(_, _, _, let dwell) = goal { pendingDwell = dwell; timer = .infinity }

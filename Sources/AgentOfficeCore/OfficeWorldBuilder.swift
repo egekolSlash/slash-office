@@ -32,7 +32,10 @@ public enum OfficeWorldBuilder {
             buildRoom(room, style: style(room.key), color: projectColor(room.key), art: art, into: &mesh)
             for desk in room.desks {
                 let set = terminalDesks.contains(desk.id) ? "terminal_set" : "desk_set"
-                if let prop = art.props[set] { mesh.append(prop, at: SIMD3(Float(desk.x), 0, Float(desk.z))) }
+                // Masa koridora döner: takımın yerel +z'si (köylünün baktığı yön) koridora.
+                if let prop = art.props[set] {
+                    mesh.append(prop, at: SIMD3(Float(desk.x), 0, Float(desk.z)), yaw: Float(room.seatFacing(for: desk)))
+                }
             }
             // Oda içi: gece sıcak oda ışığı alır.
             for i in start..<mesh.vertices.count { mesh.vertices[i].part = OfficeVertex.interiorPart }
@@ -289,7 +292,9 @@ public enum OfficeWorldBuilder {
         let sideWindowX = Float(room.corridorEdgeX + room.outward * (room.width - 0.03))
         addWindow(at: SIMD3(sideWindowX, 1.15, z + 2.2), yaw: room.outward < 0 ? 0 : .pi, art: art, into: &mesh)
         // Dinlenme köşesi: eşyalar +x'e bakar; `facing` (0 = +z) için yaw = facing − π/2.
-        let props: [RoomSpot.Kind: String] = [.sofa: "sofa", .coffeeTable: "coffee_table", .waterCooler: "water_cooler", .plant: "plant"]
+        let props: [RoomSpot.Kind: String] = [.sofa: "sofa", .coffeeTable: "coffee_table", .waterCooler: "water_cooler", .plant: "plant",
+                                              .bookshelf: "bookshelf", .arcade: "arcade", .whiteboard: "whiteboard",
+                                              .coffeeMachine: "coffee_machine"]
         for spot in room.spots {
             guard let name = props[spot.kind], let prop = art.props[name] else { continue }
             mesh.append(prop, at: SIMD3(Float(spot.x), 0, Float(spot.z)), yaw: Float(spot.facing - .pi / 2))

@@ -25,8 +25,8 @@ public struct PlanRect: Equatable, Sendable {
 public struct OfficePlan: Equatable, Sendable {
     public static let corridorX = 3.0
     public static let corridorWidth = 2.0
-    public static let roomDepth = 6.2
-    public static let columnSpacing = 1.6
+    public static let roomDepth = 7.4
+    public static let columnSpacing = 1.9
     public static let sideMargin = 0.5
     /// Oda z'sine göre: arka ve ön masa sırası, kapının ve yürüme şeridinin hizası.
     public static let backRowZ = 1.3
@@ -77,6 +77,8 @@ public struct OfficePlan: Equatable, Sendable {
         public var depth: Double
         public var side: Side
         public var desks: [Desk]
+        /// Odadaki eşyalar (oda stilinden, `OfficePlan.applying(furniture:)`).
+        public var furniture: Set<RoomFurniture> = RoomFurniture.all
 
         public var title: String { (key as NSString).lastPathComponent }
         public var rect: PlanRect { PlanRect(minX: x, minZ: z, maxX: x + width, maxZ: z + depth) }

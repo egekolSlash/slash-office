@@ -82,6 +82,19 @@ struct RoomEditorSheet: View {
         (String(localized: "Tile"), (0.92, 0.74, 0.62)),
     ]
 
+    static func furnitureName(_ item: RoomFurniture) -> LocalizedStringKey {
+        switch item {
+        case .sofa: "Sofa"
+        case .coffeeTable: "Coffee table"
+        case .waterCooler: "Water cooler"
+        case .plant: "Plant"
+        case .bookshelf: "Bookshelf"
+        case .arcade: "Arcade"
+        case .whiteboard: "Whiteboard"
+        case .coffeeMachine: "Coffee machine"
+        }
+    }
+
     private var style: RoomStyle { model.style(for: roomKey) }
 
     private func update(_ change: (inout RoomStyle) -> Void) {
@@ -114,6 +127,16 @@ struct RoomEditorSheet: View {
                     Text("Plain").tag(RoomStyle.RugPattern.plain)
                 }
                 .pickerStyle(.segmented)
+                Section("Furniture") {
+                    // Kapalı eşya çizilmez; köylüler oraya gitmez.
+                    LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)]) {
+                        ForEach(RoomFurniture.allCases, id: \.self) { item in
+                            Toggle(Self.furnitureName(item), isOn: Binding(
+                                get: { style.furniture.contains(item) },
+                                set: { on in update { if on { $0.furniture.insert(item) } else { $0.furniture.remove(item) } } }))
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
             HStack {
