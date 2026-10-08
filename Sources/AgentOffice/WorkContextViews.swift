@@ -4,13 +4,15 @@ import SwiftUI
 /// "Bitti, görülmedi" rozeti: çalışırken işini bitirdi, kullanıcı henüz bakmadı.
 struct FinishedBadge: View {
     var compact = false
+    /// Liste satırlarında ipucu yok: macOS'ta satır içindeki ipucu tıklamayı yutar, satır seçilemez.
+    var tooltip = true
 
     var body: some View {
-        Label(compact ? "" : String(localized: "Finished"), systemImage: "checkmark.circle.fill")
+        let label = Label(compact ? "" : String(localized: "Finished"), systemImage: "checkmark.circle.fill")
             .labelStyle(compact ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
             .font(.caption.weight(.semibold))
             .foregroundStyle(.green)
-            .help("Finished working; you haven't looked yet")
+        if tooltip { label.help("Finished working; you haven't looked yet") } else { label }
     }
 }
 

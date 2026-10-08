@@ -20,7 +20,7 @@ struct TerminalPane: View {
         HStack(spacing: 8) {
             Text(TerminalLayout.isLauncher(id) ? String(localized: "New") : model.store.session(id)?.title ?? "?").font(.caption.bold())
             if let summary = model.workSummary(for: id) {
-                Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail).help(summary)
+                Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             if model.store.session(id)?.unseenFinish == true { FinishedBadge(compact: true) }
             if let state = model.store.session(id)?.state { StatusBadge(state: state, kind: model.kind(of: id)) }

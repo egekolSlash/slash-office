@@ -46,15 +46,17 @@ struct SessionList: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             Text(session.title).font(.headline)
-                            if session.unseenFinish { FinishedBadge() }
+                            if session.unseenFinish { FinishedBadge(tooltip: false) }
                         }
+                        // İpucu (`.help`) yok: satır içindeki ipucu tıklamayı yutar, satır seçilemezdi.
                         if let summary = session.workSummary {
                             Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
-                                .help(summary)
                         }
                         StatusBadge(state: session.state, kind: model.kind(of: session.id))
                     }
+                    Spacer(minLength: 0)
                 }
+                .contentShape(Rectangle())
                 .tag(session.id)
                 // Terminal alanındaki bir panelin kenarına sürükleyip bırakınca o yönden bölünür.
                 .onDrag { model.beginPaneDrag(session.id, fromList: true) }
