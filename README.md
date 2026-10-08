@@ -73,8 +73,8 @@ A short guide walks you through the language, the Claude Code check, permissions
 | New Claude session | ⌘N |
 | New pane / new pane beside | ⌘T / ⌘D |
 | Office / Work / Focus mode | ⌘1 / ⌘2 / ⌘3 |
-| Previous / next session in the focused pane | ⌥⌘← / ⌥⌘→ |
-| Previous / next pane | ⌥⌘↑ / ⌥⌘↓ |
+| Previous / next session in the focused pane | ⌥⌘↑ / ⌥⌘↓ |
+| Previous / next pane | ⌥⌘← / ⌥⌘→ |
 | Jump to the agent that's waiting | ⌘J |
 | Resume session / resume all stopped | ⌘R / ⇧⌘R |
 | Remove stopped session | ⇧⌘⌫ |
