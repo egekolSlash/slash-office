@@ -48,6 +48,8 @@ final class AppModel {
     var editingRoom: String?
     @ObservationIgnored private var iconLookups: Set<String> = []
     @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
+    /// Arka plan oturum listesi beklenen devam ettirmeler.
+    @ObservationIgnored private var resuming: Set<String> = []
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
 
@@ -245,7 +247,7 @@ final class AppModel {
     /// Shell oturumu aynı klasörde yeni bir shell olarak açılır.
     /// `show: false`: terminal açılır ama panel düzeni değişmez (toplu devam ettirme).
     func resume(_ id: String, show: Bool = true) {
-        guard var record = records[id] else { return }
+        guard let record = records[id] else { return }
         guard FileManager.default.fileExists(atPath: record.cwd) else {
             errorMessage = "Proje klasörü bulunamadı: \(record.cwd)\nKlasör taşındıysa oturumu kaldırıp yeniden aç."
             return
@@ -262,16 +264,57 @@ final class AppModel {
             if show { showTerminal(id) }
             return
         }
-        let projects = claudeProjectsDirectory
-        let plan = ResumePlan.decide(candidates: record.resumeCandidates,
-                                     transcriptExists: { ClaudeTranscript.exists(sessionID: $0, projectsDirectory: projects) },
-                                     freshID: { UUID().uuidString.lowercased() })
-        guard launch(record: record, claudeSessionID: plan.claudeSessionID, resume: plan.resume) else { return }
-        record.noteClaudeSession(plan.claudeSessionID)
+        // Uygulama kapanınca Claude oturumu arka planda sürebilir; o zaman `--resume` reddedilir, `attach` gerekir.
+        // Liste ana iş parçacığının dışında alınır; bu sırada ikinci bir devam ettirme yeni terminal açmasın.
+        guard !resuming.contains(id), let claude = locateClaude() else { return }
+        resuming.insert(id)
+        let environment = launchEnvironment
+        Task {
+            let agents = await Self.claudeAgents(claudePath: claude, environment: environment)
+            resuming.remove(id)
+            finishResume(id, agents: agents, show: show)
+        }
+    }
+
+    private func finishResume(_ id: String, agents: [ClaudeAgents.Entry], show: Bool) {
+        guard var record = records[id], terminals[id]?.process.running != true else { return }
+        if let target = ClaudeAgents.attachTarget(candidates: record.resumeCandidates, agents: agents) {
+            DebugLog.write("resume \(id): attach to background session \(target.attachID)")
+            guard attach(record: record, attachID: target.attachID) else { return }
+            record.noteClaudeSession(target.sessionID)
+        } else {
+            let projects = claudeProjectsDirectory
+            let plan = ResumePlan.decide(candidates: record.resumeCandidates,
+                                         transcriptExists: { ClaudeTranscript.exists(sessionID: $0, projectsDirectory: projects) },
+                                         freshID: { UUID().uuidString.lowercased() })
+            guard launch(record: record, claudeSessionID: plan.claudeSessionID, resume: plan.resume) else { return }
+            record.noteClaudeSession(plan.claudeSessionID)
+        }
         records[id] = record
         saveRecords()
         store.restart(id)
         if show { showTerminal(id) }
+    }
+
+    /// `claude agents --json`; hata ya da zaman aşımında boş liste (her zamanki `--resume` yolu).
+    private nonisolated static func claudeAgents(claudePath: String, environment: [String: String]) async -> [ClaudeAgents.Entry] {
+        await Task.detached {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: claudePath)
+            process.arguments = ["agents", "--json"]
+            process.environment = LaunchEnvironment.prepare(environment, sessionID: "", socketPath: nil)
+                .filter { $0.key != "AGENT_OFFICE_SESSION" }
+            let output = Pipe()
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            process.standardInput = FileHandle.nullDevice
+            do { try process.run() } catch { return [] }
+            let deadline = DispatchTime.now() + 3
+            DispatchQueue.global().asyncAfter(deadline: deadline) { if process.isRunning { process.terminate() } }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            return process.terminationStatus == 0 ? ClaudeAgents.parse(data) : []
+        }.value
     }
 
     /// Durmuş (süreci çalışmayan) oturumlar, liste sırasıyla.
@@ -341,15 +384,34 @@ final class AppModel {
         }
     }
 
-    @discardableResult
-    private func launch(record: SessionRecord, claudeSessionID: String, resume: Bool) -> Bool {
+    private var launchEnvironment: [String: String] {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = launchPATH
+        return env
+    }
+
+    private func locateClaude() -> String? {
         let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
         guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs) else {
             errorMessage = "`claude` bulunamadı. Aranan dizinler: \(dirs.joined(separator: ", "))"
-            return false
+            return nil
         }
+        return claude
+    }
+
+    /// Arka planda çalışan Claude oturumunu panelde açar.
+    private func attach(record: SessionRecord, attachID: String) -> Bool {
+        guard let claude = locateClaude() else { return false }
+        startTerminal(record: record, command: ClaudeLaunch.attachCommand(
+            claudePath: claude, attachID: attachID, cwd: record.cwd, socketPath: socketPath,
+            baseEnvironment: launchEnvironment, tag: record.id))
+        return true
+    }
+
+    @discardableResult
+    private func launch(record: SessionRecord, claudeSessionID: String, resume: Bool) -> Bool {
+        let env = launchEnvironment
+        guard let claude = locateClaude() else { return false }
         guard FileManager.default.isExecutableFile(atPath: hookBinaryPath) else {
             errorMessage = "Hook yardımcısı bulunamadı: \(hookBinaryPath)\nÖnce `swift build` çalıştır (sadece `swift run AgentOffice` onu derlemez)."
             return false

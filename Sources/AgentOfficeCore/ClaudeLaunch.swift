@@ -45,6 +45,15 @@ public enum ClaudeLaunch {
         let environment = LaunchEnvironment.prepare(baseEnvironment, sessionID: tag ?? sessionID, socketPath: socketPath)
         return LaunchCommand(executable: "/bin/zsh", args: ["-l", "-c", script], environment: environment, currentDirectory: cwd)
     }
+
+    /// Arka planda çalışan oturumu panelde açar (`claude attach`); oturum panel kapansa da çalışmaya devam eder.
+    /// Hook'ları arka plan sürecinin kendi ortamından gelir.
+    public static func attachCommand(claudePath: String, attachID: String, cwd: String, socketPath: String,
+                                     baseEnvironment: [String: String], tag: String) -> LaunchCommand {
+        let script = "exec \(shellQuote(claudePath)) attach \(shellQuote(attachID))"
+        let environment = LaunchEnvironment.prepare(baseEnvironment, sessionID: tag, socketPath: socketPath)
+        return LaunchCommand(executable: "/bin/zsh", args: ["-l", "-c", script], environment: environment, currentDirectory: cwd)
+    }
 }
 
 public enum LaunchEnvironment {
