@@ -7,3 +7,5 @@ xcuserdata/
 /scratch/
 .superpowers/
 build/
+tools/office-art/out/
+tools/engine-spike/.build/

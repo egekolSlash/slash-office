@@ -66,6 +66,12 @@ struct ContentView: View {
         .sheet(isPresented: $model.showPermissions) {
             PermissionsView { model.finishPermissions() }
         }
+        .sheet(isPresented: Binding(get: { model.editingAvatar != nil }, set: { if !$0 { model.editingAvatar = nil } })) {
+            if let id = model.editingAvatar { AvatarEditorSheet(model: model, id: id) }
+        }
+        .sheet(isPresented: Binding(get: { model.editingRoom != nil }, set: { if !$0 { model.editingRoom = nil } })) {
+            if let key = model.editingRoom { RoomEditorSheet(model: model, roomKey: key) }
+        }
         .alert("Hata", isPresented: .constant(model.errorMessage != nil)) {
             Button("Tamam") { model.errorMessage = nil }
         } message: {

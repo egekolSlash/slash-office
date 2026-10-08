@@ -7,6 +7,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // `--office-snapshot <png>`: demo ofisini ekran dışı çizip çık (hook sunucusu ve oturumlar başlamaz).
+        if OfficeSnapshot.requested(CommandLine.arguments) {
+            let model = self.model
+            Task { @MainActor in await OfficeSnapshot.run(arguments: CommandLine.arguments, model: model) }
+            return
+        }
+        // `--office-window`: demo ofisini yüzen pencerede gösterip kare hızı ve CPU ölçer.
+        if OfficeMeasureWindow.requested(CommandLine.arguments) {
+            OfficeMeasureWindow.run(arguments: CommandLine.arguments, model: model)
+            return
+        }
         // `swift run` ile bundle'sız çalışırken Dock'ta görünmesi ve klavye odağı alması için.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()

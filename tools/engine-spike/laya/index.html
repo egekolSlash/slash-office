@@ -1,0 +1,73 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;height:100%;background:#9ed1ff;overflow:hidden}</style>
+<script src="engine/laya.core.js"></script>
+<script src="engine/laya.webgl_2D.js"></script>
+<script src="engine/laya.d3.js"></script>
+<script src="engine/laya.webgl_3D.js"></script>
+</head><body>
+<script>
+// Ofis karmaşıklığında sahne (Metal moduyla aynı): ~500 parça, gölgeli güneş, 6 karakter × 11 hareketli parça.
+const FPS = Number(new URLSearchParams(location.search).get("fps") || 24);
+const log = (m) => { try { window.webkit.messageHandlers.log.postMessage(String(m)); } catch (e) {} };
+window.onerror = (m, s, l) => log("JS error: " + m + " @" + l);
+window.addEventListener("unhandledrejection", (e) => log("rejection: " + (e.reason && (e.reason.stack || e.reason))));
+Laya.Config.FPS = FPS;
+Laya.Config.fixedFrames = true;
+Laya.init(1200, 800).then(() => { try {
+  Laya.stage.scaleMode = "full";
+  const V = Laya.Vector3, C = Laya.Color;
+  const scene = Laya.stage.addChild(new Laya.Scene3D());
+  scene.ambientColor = new C(0.55, 0.6, 0.65, 1);
+  const cam = scene.addChild(new Laya.Camera(0, 0.1, 200));
+  cam.orthographic = true;
+  cam.orthographicVerticalSize = 12;
+  cam.clearColor = new C(0.62, 0.82, 1, 1);
+  cam.transform.position = new V(18, 18, 18);
+  cam.transform.lookAt(new V(3, 0, 3), new V(0, 1, 0), false);
+  const sun = scene.addChild(new Laya.Sprite3D());
+  const light = sun.addComponent(Laya.DirectionLightCom);
+  light.color = new C(1, 0.92, 0.8, 1);
+  sun.transform.rotate(new V(-50, 35, 0), false, false);
+  light.shadowMode = Laya.ShadowMode.SoftLow;
+  light.shadowDistance = 30;
+  const box = Laya.PrimitiveMesh.createBox(1, 1, 1);
+  const sphere = Laya.PrimitiveMesh.createSphere(0.5, 16, 16);
+  const mats = [];
+  for (let i = 0; i < 12; i++) {
+    const m = new Laya.BlinnPhongMaterial();
+    m.albedoColor = new C(0.4 + (i * 37 % 60) / 100, 0.4 + (i * 53 % 60) / 100, 0.3 + (i * 71 % 60) / 100, 1);
+    mats.push(m);
+  }
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 500; i++) {
+    const s = scene.addChild(new Laya.MeshSprite3D(i % 3 ? box : sphere));
+    s.meshRenderer.sharedMaterial = mats[i % mats.length];
+    s.meshRenderer.castShadow = true;
+    s.meshRenderer.receiveShadow = true;
+    s.transform.position = new V(rnd() * 10 - 2, rnd() * 1.2, rnd() * 9 - 2);
+    s.transform.localScale = new V(0.2 + rnd() * 0.6, 0.1 + rnd() * 0.8, 0.2 + rnd() * 0.6);
+  }
+  const parts = [];
+  for (let c = 0; c < 6; c++) {
+    const root = scene.addChild(new Laya.Sprite3D());
+    root.transform.position = new V(c * 1.2, 0, 4);
+    for (let p = 0; p < 11; p++) {
+      const s = root.addChild(new Laya.MeshSprite3D(p % 2 ? sphere : box));
+      s.meshRenderer.sharedMaterial = mats[(c + p) % mats.length];
+      s.meshRenderer.castShadow = true;
+      s.transform.localPosition = new V(Math.sin(p) * 0.2, 0.1 + p * 0.08, Math.cos(p) * 0.2);
+      s.transform.localScale = new V(0.18, 0.18, 0.18);
+      parts.push(s);
+    }
+  }
+  let t = 0, frames = 0, start = performance.now();
+  Laya.timer.frameLoop(1, null, () => {
+    t += 1 / FPS; frames++;
+    for (let i = 0; i < parts.length; i++) parts[i].transform.localRotationEulerX = Math.sin(t * 6 + i) * 30;
+    if (frames % (FPS * 2) === 0) log("laya fps=" + (frames / ((performance.now() - start) / 1000)).toFixed(1));
+  });
+  log("laya ready, fps=" + FPS);
+} catch (e) { log("setup error: " + (e.stack || e)); } });
+</script>
+</body></html>

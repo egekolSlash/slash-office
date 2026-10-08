@@ -50,6 +50,7 @@ private struct RoomCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(ProjectPalette.color(for: room.key).opacity(0.5)))
+        .contextMenu { Button("Odayı düzenle…") { model.editingRoom = room.key } }
     }
 }
 
@@ -84,6 +85,7 @@ private struct DeskRow: View {
         .background(Self.color(session.state).opacity(focused ? 0.35 : 0.15), in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(focused ? Color.white.opacity(0.7) : .clear))
         .contentShape(Rectangle())
+        .contextMenu { Button("Görünümü düzenle…") { model.editingAvatar = session.id } }
         .onTapGesture {
             if NSEvent.modifierFlags.contains(.shift) { model.addTerminal(session.id) } else { model.showTerminal(session.id) }
         }
@@ -102,11 +104,19 @@ private struct DeskRow: View {
 /// Ayarlar (⌘,).
 struct SettingsView: View {
     @AppStorage("richOffice") private var richOffice = false
+    @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
+    @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
 
     var body: some View {
         Form {
             Toggle("Detaylı ofis", isOn: $richOffice)
             Text("Açıkken ofis gezinilebilir, odalı ve animasyonlu çizilir. Kapalıyken animasyonsuz, sade kartlar gösterilir (daha az CPU ve GPU).")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Gece/gündüz döngüsü", isOn: $dayNight).disabled(!richOffice)
+            Text("Gökyüzü ve ışık bilgisayarın saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece. Kapalıyken hep gündüz.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Mini ofiste otomatik odak", isOn: $autoFocus).disabled(!richOffice)
+            Text("Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, işi bitip görülmemiş, çalışan. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)

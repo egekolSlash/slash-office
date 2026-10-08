@@ -19,11 +19,21 @@ public struct PlanRect: Equatable, Sendable {
     }
 }
 
-/// Ofisin kat planı (spec §3): oda = depo, odalar koridorun iki yanında, masalar sabit yerlerde.
-/// Küçük x ve z arkadadır (kamera (1,1,1) yönünden bakar).
+/// Ofisin kat planı (v5 spec §4): oda = depo, odalar koridorun iki yanında arka arkaya, masalar iki sırada ve
+/// sabit yerlerde. Oda masa ekledikçe koridordan dışa doğru genişler; derinliği sabittir. Küçük z arkadadır
+/// (kamera +z tarafından bakar).
 public struct OfficePlan: Equatable, Sendable {
     public static let corridorX = 3.0
-    public static let corridorWidth = 1.5
+    public static let corridorWidth = 2.0
+    public static let roomDepth = 6.2
+    public static let columnSpacing = 1.6
+    public static let sideMargin = 0.5
+    /// Oda z'sine göre: arka ve ön masa sırası, kapının ve yürüme şeridinin hizası.
+    public static let backRowZ = 1.3
+    public static let frontRowZ = 3.1
+    public static let walkwayZ = 4.4
+    /// Arsa tabelası arsanın arka tarafında (uzak görünümde arsanın sadece başı görünür).
+    public static let lotSignZ = 1.4
     public static let wallHeight = 1.6
     /// İç ve ön duvarlar alçak (Sims tarzı kesit): arkadaki odayı ve masaları örtmez.
     public static let lowWallHeight = 0.25
@@ -63,27 +73,29 @@ public struct OfficePlan: Equatable, Sendable {
         /// Arka köşe (en küçük x ve z).
         public var x: Double
         public var z: Double
-        public var width: Int
-        public var depth: Int
+        public var width: Double
+        public var depth: Double
         public var side: Side
         public var desks: [Desk]
 
         public var title: String { (key as NSString).lastPathComponent }
-        public var rect: PlanRect { PlanRect(minX: x, minZ: z, maxX: x + Double(width), maxZ: z + Double(depth)) }
-        /// Kapı koridora bakan duvarın ortasında.
-        public var doorX: Double { side == .left ? x + Double(width) : x }
-        public var doorZ: Double { z + Double(depth) / 2 }
-        /// Arka duvarların yüksekliği: tam boy sadece binanın dış arka kenarında (koridorun ilk odaları ve sol
-        /// taraftaki dış duvar); iç duvarlar alçak, yoksa öndeki odanın duvarı arkadakinin zeminini örter.
-        public var backWallHeights: (z: Double, x: Double) {
-            (z == 0 ? OfficePlan.wallHeight : OfficePlan.lowWallHeight,
-             side == .left ? OfficePlan.wallHeight : OfficePlan.lowWallHeight)
-        }
+        public var rect: PlanRect { PlanRect(minX: x, minZ: z, maxX: x + width, maxZ: z + depth) }
+        /// Koridora bakan duvarın x'i ve dışa doğru yön (sol oda −1, sağ oda +1).
+        public var corridorEdgeX: Double { side == .left ? x + width : x }
+        public var outward: Double { side == .left ? -1 : 1 }
+        /// Kapı koridora bakan duvarda, masa sıralarının önündeki yürüme şeridi hizasında.
+        public var doorX: Double { corridorEdgeX }
+        public var doorZ: Double { z + OfficePlan.walkwayZ }
+        /// Arka duvar sadece her taraftaki ilk odada tam boy: öndeki odanın arka duvarı arkadakini örtmesin.
+        /// Dış yan duvar tam boy; koridor tarafı ve ön duvar alçaktır.
+        public var backWallHeight: Double { z == 0 ? OfficePlan.wallHeight : OfficePlan.lowWallHeight }
     }
 
     public var rooms: [Room]
     public var corridor: PlanRect
     public var bounds: PlanRect
+    /// Sıradaki iki odanın yeri (sol, sağ): boş arsa olarak gösterilir.
+    public var lots: [PlanRect]
 
     /// Önceki yerini koruyan (aynı odadaysa) ve yenilere odadaki en küçük boş numarayı veren atama.
     public static func assignSlots(_ members: [Member], previous: [String: DeskSlot]) -> [String: DeskSlot] {
@@ -113,22 +125,17 @@ public struct OfficePlan: Equatable, Sendable {
         return order
     }
 
-    /// 1–2 masa 2×2, 3–4 masa 3×2, daha fazlası 3×3 (spec §3).
-    static func roomSize(slotCount: Int) -> (width: Int, depth: Int) {
-        switch slotCount {
-        case ...2: (2, 2)
-        case 3...4: (3, 2)
-        default: (3, 3)
-        }
+    /// Masa sütunu sayısına göre oda genişliği (en az iki sütunluk).
+    static func roomWidth(slotCount: Int) -> Double {
+        Double(max(2, (slotCount + 1) / 2)) * columnSpacing + 2 * sideMargin
     }
 
-    /// Masalar iki sütunda (duvar diplerinde), sıra sıra. Sıralar odaya sığmazsa aralarındaki mesafe daralır.
-    static func deskOffset(index: Int, slotCount: Int, width: Int, depth: Int) -> (x: Double, z: Double) {
-        let x = index % 2 == 0 ? 0.5 : Double(width) - 0.5
-        let row = index / 2
-        let rows = (slotCount + 1) / 2
-        guard rows > depth, rows > 1 else { return (x, 0.5 + Double(row)) }
-        return (x, 0.5 + Double(row) * (Double(depth) - 1) / Double(rows - 1))
+    /// Masa `index`: sütun `index / 2` (koridordan dışa doğru), sıra `index % 2` (arka, ön). Oda büyüyünce
+    /// mevcut masalar yerinde kalır.
+    static func deskPosition(index: Int, corridorEdgeX: Double, outward: Double, roomZ: Double) -> (x: Double, z: Double) {
+        let column = Double(index / 2)
+        return (corridorEdgeX + outward * (sideMargin + columnSpacing / 2 + column * columnSpacing),
+                roomZ + (index % 2 == 0 ? backRowZ : frontRowZ))
     }
 
     /// `order`: `roomOrder` sonucu; verilmezse odalar oturum listesinde ilk görüldükleri sırayla dizilir.
@@ -138,27 +145,41 @@ public struct OfficePlan: Equatable, Sendable {
         let order = roomOrder(members, previous: order ?? [])
         var rooms: [Room] = []
         var cursor: [Side: Double] = [.left: 0, .right: 0]
+        func origin(_ side: Side, width: Double) -> Double {
+            side == .left ? corridorX - width : corridorX + corridorWidth
+        }
         for (position, key) in order.enumerated() {
             let group = groups[key] ?? []
             let indices = group.map { slots[$0.id]?.index ?? 0 }
-            let slotCount = (indices.max() ?? 0) + 1
-            let size = roomSize(slotCount: slotCount)
+            let width = roomWidth(slotCount: (indices.max() ?? 0) + 1)
             let side: Side = position % 2 == 0 ? .left : .right
-            let x = side == .left ? corridorX - Double(size.width) : corridorX + corridorWidth
+            let x = origin(side, width: width)
             let z = cursor[side] ?? 0
-            cursor[side] = z + Double(size.depth)
-            let desks = zip(group, indices).map { member, index in
-                let offset = deskOffset(index: index, slotCount: slotCount, width: size.width, depth: size.depth)
-                return Desk(id: member.id, x: x + offset.x, z: z + offset.z)
+            cursor[side] = z + roomDepth
+            var room = Room(key: key, x: x, z: z, width: width, depth: roomDepth, side: side, desks: [])
+            room.desks = zip(group, indices).map { member, index in
+                let p = deskPosition(index: index, corridorEdgeX: room.corridorEdgeX, outward: room.outward, roomZ: z)
+                return Desk(id: member.id, x: p.x, z: p.z)
             }
-            rooms.append(Room(key: key, x: x, z: z, width: size.width, depth: size.depth, side: side, desks: desks))
+            rooms.append(room)
         }
         let length = max(cursor[.left] ?? 0, cursor[.right] ?? 0)
         let corridor = PlanRect(minX: corridorX, minZ: 0, maxX: corridorX + corridorWidth, maxZ: length)
         let bounds = rooms.isEmpty ? PlanRect.zero
             : PlanRect(minX: rooms.map(\.x).min() ?? 0, minZ: 0,
-                       maxX: rooms.map { $0.x + Double($0.width) }.max() ?? 0, maxZ: length)
-        return OfficePlan(rooms: rooms, corridor: corridor, bounds: bounds)
+                       maxX: rooms.map { $0.x + $0.width }.max() ?? 0, maxZ: length)
+        // Sıradaki oda: sayıca az olan taraf önce (eşitse sol); arsalar her iki tarafın sıradaki yerinde.
+        let lotWidth = roomWidth(slotCount: 1)
+        let lots = [Side.left, .right].map { side in
+            let x = origin(side, width: lotWidth), z = cursor[side] ?? 0
+            return PlanRect(minX: x, minZ: z, maxX: x + lotWidth, maxZ: z + roomDepth)
+        }
+        return OfficePlan(rooms: rooms, corridor: corridor, bounds: bounds, lots: lots)
+    }
+
+    /// Zemindeki noktanın denk geldiği arsa (`lots` sırası).
+    public func lot(atX x: Double, z: Double) -> Int? {
+        lots.firstIndex { $0.contains(x: x, z: z) }
     }
 
     /// Zemindeki noktaya en yakın masa (masanın yarım karo çevresinde).
@@ -171,16 +192,4 @@ public struct OfficePlan: Equatable, Sendable {
     public func room(atX x: Double, z: Double) -> Room? {
         rooms.first { $0.rect.contains(x: x, z: z) }
     }
-}
-
-/// Sahnedeki çizim sırası (SpriteKit `zPosition`). Aynı taraftaki odalar arka arkaya dizildiği için önce oda sırası,
-/// oda içinde zemin < arka duvarlar < masalar (önden arkaya) < ön duvarlar. Sol ve sağ odalar ekranda örtüşmez.
-public enum OfficeDepth {
-    static func base(_ room: OfficePlan.Room) -> Double { room.z * 100 }
-    public static func floor(_ room: OfficePlan.Room) -> Double { base(room) }
-    public static func backWalls(_ room: OfficePlan.Room) -> Double { base(room) + 1 }
-    public static func desk(_ desk: OfficePlan.Desk, in room: OfficePlan.Room) -> Double {
-        base(room) + 10 + (desk.x - room.x + desk.z - room.z) * 10
-    }
-    public static func frontWalls(_ room: OfficePlan.Room) -> Double { base(room) + 90 }
 }
