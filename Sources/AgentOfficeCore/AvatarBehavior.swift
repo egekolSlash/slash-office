@@ -19,7 +19,8 @@ public enum AvatarGoal: Equatable, Sendable {
 /// - Çalışıyor: masada `sitType`; 8–20 sn'de bir `sitSip` / `sitThink` / `sitStretch` / `sitDraw` / `sitWrite` / `sitRead`.
 /// - Bekliyor: masanın yanında `wave`; 2–3 el sallamada bir `waitTap` / `lookAround`.
 /// - Boşta (ofis hayatı): masada oturup beklemez; boş bir eşyaya gider, kalır, sonra başka bir eşyaya (son ikisini
-///   tekrar seçmez). Eşya kalmadıysa odada boş bir noktada etrafa bakar; o da yoksa masanın yanında ayakta bekler.
+///   tekrar seçmez; az eşyalı odada aynılarını tekrar kullanır). Boş eşya hiç yoksa odada boş bir noktada etrafa
+///   bakar; o da yoksa masanın yanında ayakta bekler.
 /// - İş bitince (görülmemiş): bir kez ayağa kalkıp `cheer`, sonra boşta kuralları.
 /// - Çıktı: kapıdan çıkar.
 public struct AvatarBehavior: Sendable {
@@ -169,8 +170,11 @@ public struct AvatarBehavior: Sendable {
     private mutating func wander(freeSpots: [RoomSpot.Kind], freePoints: [PlanPoint]) -> Decision? {
         atDesk = false
         extra = nil
+        // Son iki eşya dışında; yoksa bir öncekinden başka; o da yoksa aynı eşya tekrar (az eşyalı oda). Boş
+        // noktaya sadece hiç boş eşya yokken gidilir.
         var choices = freeSpots.filter { !recent.contains($0) }
-        if choices.isEmpty, freePoints.isEmpty { choices = freeSpots.filter { $0 != recent.last } }
+        if choices.isEmpty { choices = freeSpots.filter { $0 != recent.last } }
+        if choices.isEmpty { choices = freeSpots }
         guard !choices.isEmpty else {
             atSpot = nil
             let loop = pick([AvatarClip.lookAround, .stretch, .idle])

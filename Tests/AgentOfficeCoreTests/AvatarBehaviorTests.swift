@@ -110,6 +110,26 @@ import Testing
         }
     }
 
+    /// Odada tek eşya açıksa köylü aynı eşyayı tekrar tekrar kullanır; boş noktada beklemez, masaya dönmez.
+    @Test func singleFurnitureIsReused() {
+        var b = AvatarBehavior(id: "one")
+        b.setActivity(.dozing, finishedNow: false)
+        let gs = goals(run(&b, seconds: 600, spots: [.sofa], freePoints: points, arrive: true))
+        #expect(gs.count >= 10)
+        #expect(gs.allSatisfy { if case .spot(.sofa, _, _, _) = $0 { true } else { false } }, "\(gs)")
+    }
+
+    /// İki eşya açıksa sırayla ikisini kullanır.
+    @Test func twoFurnitureAlternate() {
+        var b = AvatarBehavior(id: "two")
+        b.setActivity(.dozing, finishedNow: false)
+        let kinds = goals(run(&b, seconds: 600, spots: [.arcade, .bookshelf], freePoints: points, arrive: true)).map { g -> RoomSpot.Kind? in
+            if case .spot(let k, _, _, _) = g { k } else { nil }
+        }
+        #expect(kinds.count >= 10 && !kinds.contains(nil))
+        for i in 1..<kinds.count { #expect(kinds[i] != kinds[i - 1]) }
+    }
+
     /// Bütün eşyalar doluysa odada boş bir noktaya gider ve orada etrafına bakar ya da gerinir.
     @Test func noFreeSpotWandersToAFreePoint() {
         var b = AvatarBehavior(id: "n")
