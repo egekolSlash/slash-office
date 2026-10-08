@@ -90,7 +90,8 @@ public struct AvatarBehavior: Sendable {
     }
 
     /// `freePoints`: eşya kalmadıysa gidilebilecek boş noktalar (sim önerir).
-    public mutating func advance(dt: Double, freeSpots: [RoomSpot.Kind], freePoints: [PlanPoint] = []) -> Decision? {
+    /// `freePoints` sadece yeni bir hedef seçilirken hesaplanır (her karede değil).
+    public mutating func advance(dt: Double, freeSpots: [RoomSpot.Kind], freePoints: @autoclosure () -> [PlanPoint] = []) -> Decision? {
         guard let activity else { return nil }
         if needGoal {
             needGoal = false
@@ -103,7 +104,7 @@ public struct AvatarBehavior: Sendable {
                 atDesk = false
                 return .goal(.stand(loop: .idle))
             }
-            if activity == .dozing { return wander(freeSpots: freeSpots, freePoints: freePoints) }
+            if activity == .dozing { return wander(freeSpots: freeSpots, freePoints: freePoints()) }
             return startGoal(for: activity)
         }
         if var q = queued {
@@ -136,7 +137,7 @@ public struct AvatarBehavior: Sendable {
             timer = clip.duration + AvatarClip.wave.duration * random(2...3)
             return .oneShot(clip)
         case .dozing:
-            return wander(freeSpots: freeSpots, freePoints: freePoints)
+            return wander(freeSpots: freeSpots, freePoints: freePoints())
         case .away:
             timer = .infinity
             return nil

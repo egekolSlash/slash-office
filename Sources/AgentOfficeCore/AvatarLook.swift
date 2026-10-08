@@ -80,12 +80,12 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
         (0.30, 0.55, 0.95), (0.98, 0.55, 0.25), (0.40, 0.75, 0.40), (0.95, 0.45, 0.55),
         (0.62, 0.45, 0.85), (0.98, 0.85, 0.35), (0.35, 0.75, 0.80), (0.95, 0.95, 0.95),
     ]
-    /// İlk renkler bugünkü pantolon ve ayakkabı.
+    /// İlk renkler bugünkü (Blender'da pişirilmiş) pantolon ve ayakkabının sRGB karşılığı; çizici boyamayı sRGB sayar.
     public static let pantsColors: [RGBA] = [
-        (0.25, 0.30, 0.45), (0.20, 0.20, 0.22), (0.55, 0.42, 0.30), (0.35, 0.50, 0.38), (0.70, 0.30, 0.30), (0.85, 0.82, 0.75),
+        (0.537, 0.584, 0.702), (0.20, 0.20, 0.22), (0.55, 0.42, 0.30), (0.35, 0.50, 0.38), (0.70, 0.30, 0.30), (0.85, 0.82, 0.75),
     ]
     public static let shoeColors: [RGBA] = [
-        (0.55, 0.32, 0.20), (0.15, 0.15, 0.17), (0.95, 0.95, 0.95), (0.90, 0.35, 0.30), (0.30, 0.50, 0.85), (0.95, 0.80, 0.30),
+        (0.773, 0.604, 0.485), (0.15, 0.15, 0.17), (0.95, 0.95, 0.95), (0.90, 0.35, 0.30), (0.30, 0.50, 0.85), (0.95, 0.80, 0.30),
     ]
 
     /// Oturum kimliğinden sabit görünüş: hash'in ayrı bitleri ayrı özellikleri seçer. Ofis hayatıyla gelen

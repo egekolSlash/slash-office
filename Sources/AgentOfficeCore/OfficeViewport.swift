@@ -442,8 +442,13 @@ extension OfficePlan {
         return (p.x, standing ? CameraFollow.standingBody : CameraFollow.seatedBody, p.z)
     }
 
+    /// `villagers`: köylülerin o anki yerleri (sim); verilmişse baş oradan (boştaki köylü bir eşyada olabilir).
     public func headAnchor(_ desk: Desk, standing: Bool, viewport: OfficeViewport,
-                           viewSize: OfficeViewport.ViewSize) -> (x: Double, y: Double) {
+                           viewSize: OfficeViewport.ViewSize, villagers: [String: AvatarSim.Position] = [:]) -> (x: Double, y: Double) {
+        if let v = villagers[desk.id], v.inRoom {
+            return viewport.project(x: v.x, y: v.seated ? OfficeOverlay.seatedHead : OfficeOverlay.standingHead, z: v.z,
+                                    viewSize: viewSize)
+        }
         guard let room = rooms.first(where: { $0.desks.contains(desk) }) else {
             return OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize)
         }
@@ -457,10 +462,10 @@ extension OfficePlan {
     /// (odaktaki terminal); kameranın baktığı masa da önce gelir.
     public func cardFrames(_ desks: [Desk], standing: Set<String>, bubbles: Set<String> = [], focused: [String] = [],
                            viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
-                           detail: OfficeDetail) -> [String: OfficeOverlay.CardFrame] {
+                           detail: OfficeDetail, villagers: [String: AvatarSim.Position] = [:]) -> [String: OfficeOverlay.CardFrame] {
         guard detail != .far else { return [:] }
         let anchors = desks.map { desk in
-            (desk.id, headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize))
+            (desk.id, headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize, villagers: villagers))
         }
         let scales = Dictionary(uniqueKeysWithValues: desks.map { desk in
             (desk.id, OfficeOverlay.cardScale(at: (desk.x, OfficeOverlay.seatedHead, desk.z), viewport: viewport, viewSize: viewSize))
@@ -481,7 +486,8 @@ extension OfficePlan {
     /// Tıklama: önce bekleyenlerin `?` balonu, sonra (uzak seviye değilse) masa kartı, sonra sahnedeki masa.
     /// Örtüşen balon ya da kartlarda öndeki (ekranda daha aşağıdaki) kazanır.
     public func desk(atViewX x: Double, y: Double, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
-                     detail: OfficeDetail, waiting: Set<String>, standing: Set<String> = [], focused: [String] = []) -> String? {
+                     detail: OfficeDetail, waiting: Set<String>, standing: Set<String> = [], focused: [String] = [],
+                     villagers: [String: AvatarSim.Position] = [:]) -> String? {
         let horizon = viewport.horizonZ(viewSize: viewSize)
         let desks = rooms.flatMap(\.desks).filter { desk in
             OfficeOverlay.isShown(z: desk.z, anchorY: OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize).y,
@@ -491,7 +497,8 @@ extension OfficePlan {
         func front(_ hits: [(id: String, y: Double)]) -> String? { hits.max { $0.y < $1.y }?.id }
         let bubbles = desks.compactMap { desk -> (id: String, y: Double)? in
             guard waiting.contains(desk.id) else { return nil }
-            let anchor = headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize)
+            let anchor = headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize,
+                                    villagers: villagers)
             let center = anchor.y - OfficeOverlay.bubbleOffset(detail)
             return hypot(x - anchor.x, y - center) <= radius + 4 ? (desk.id, anchor.y) : nil
         }
@@ -499,12 +506,22 @@ extension OfficePlan {
         if detail != .far {
             let size = OfficeOverlay.cardSize(detail)
             let frames = cardFrames(desks, standing: standing, bubbles: waiting, focused: focused, viewport: viewport,
-                                    viewSize: viewSize, detail: detail)
+                                    viewSize: viewSize, detail: detail, villagers: villagers)
             if let hit = frames.first(where: { abs(x - $0.value.x) <= size.width * $0.value.scale / 2
                                                && abs(y - $0.value.y) <= size.height * $0.value.scale / 2 }) {
                 return hit.key
             }
         }
+        // Köylünün kendisi (masasından uzakta olabilir): ayaklarından başının üstüne, gövde genişliğinde.
+        let bodies = desks.compactMap { desk -> (id: String, y: Double)? in
+            guard let v = villagers[desk.id], v.inRoom else { return nil }
+            let feet = viewport.project(x: v.x, y: 0, z: v.z, viewSize: viewSize)
+            let top = viewport.project(x: v.x, y: v.seated ? OfficeOverlay.seatedHead : OfficeOverlay.standingHead, z: v.z,
+                                       viewSize: viewSize)
+            let halfWidth = max(abs(feet.y - top.y) * 0.25, 6)
+            return abs(x - feet.x) <= halfWidth && y <= feet.y && y >= top.y ? (desk.id, feet.y) : nil
+        }
+        if let id = front(bodies) { return id }
         // Sahnedeki masa: ufkun arkasındakiler görünmez, seçilmez.
         guard let id = desk(atViewX: x, y: y, viewport: viewport, viewSize: viewSize),
               desks.contains(where: { $0.id == id }) else { return nil }

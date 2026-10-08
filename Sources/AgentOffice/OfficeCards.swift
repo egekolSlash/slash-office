@@ -9,6 +9,8 @@ struct OfficeCards: View {
     let camera: OfficeCamera
     let icons: [String: LoadedProjectIcon]
     let interactive: Bool
+    /// Köylülerin o anki yerleri: kart ve balon köylüyü izler (boştaki köylü masada değil).
+    var villagers: [String: AvatarSim.Position] = [:]
 
     var body: some View {
         let viewport = camera.viewport
@@ -40,11 +42,12 @@ struct OfficeCards: View {
             }.map(\.id))
             let focused = desks.values.filter(\.focused).map(\.id)
             let frames = plan.cardFrames(visibleDesks, standing: standing, bubbles: bubbles, focused: focused,
-                                         viewport: viewport, viewSize: size, detail: detail)
+                                         viewport: viewport, viewSize: size, detail: detail, villagers: villagers)
             let cardSize = OfficeOverlay.cardSize(detail)
             ForEach(visibleDesks, id: \.id) { desk in
                 if let info = desks[desk.id] {
-                    let anchor = plan.headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: size)
+                    let anchor = plan.headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: size,
+                                                 villagers: villagers)
                     if let frame = frames[desk.id] {
                         DeskCard(info: info, near: detail == .near, size: cardSize)
                             .scaleEffect(frame.scale)

@@ -108,5 +108,14 @@ import Testing
         look.name = "Ayşe"
         #expect(look.displayName(title: "juice-merge") == "Ayşe" && look.subtitle(title: "juice-merge") == "juice-merge")
     }
+
+    /// Paletin ilk pantolon ve ayakkabı rengi, Blender'da pişirilmiş bugünkü renklerin sRGB karşılığı (çizici
+    /// boyamayı sRGB sayar): mevcut köylülerin pantolonu ve ayakkabısı değişmez.
+    @Test func firstPantsAndShoeColorsMatchTheBakedOnes() {
+        func srgb(_ c: Double) -> Double { c <= 0.0031308 ? 12.92 * c : 1.055 * pow(c, 1 / 2.4) - 0.055 }
+        let pants = AvatarLook.pantsColors[0], shoes = AvatarLook.shoeColors[0]
+        #expect(abs(pants.red - srgb(0.25)) < 0.01 && abs(pants.green - srgb(0.30)) < 0.01 && abs(pants.blue - srgb(0.45)) < 0.01)
+        #expect(abs(shoes.red - srgb(0.55)) < 0.01 && abs(shoes.green - srgb(0.32)) < 0.01 && abs(shoes.blue - srgb(0.20)) < 0.01)
+    }
 }
 

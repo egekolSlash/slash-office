@@ -114,7 +114,8 @@ enum OfficeSnapshot {
         for _ in 0..<45 { await renderFrame(dt: 1.0 / 30) }
         let anchors = plan.rooms.flatMap(\.desks).map { OfficeOverlay.anchor($0, viewport: camera.viewport, viewSize: camera.viewSize) }
         // SwiftUI kart katmanı (tabelalar, kartlar, ? ve ✓ balonları) da resme eklenir.
-        let cards = ImageRenderer(content: OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: true)
+        let cards = ImageRenderer(content: OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: true,
+                                                   villagers: sim.positions)
             .frame(width: CGFloat(size.width), height: CGFloat(size.height)))
         cards.scale = 1
         do {

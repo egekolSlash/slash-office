@@ -436,5 +436,16 @@ import simd
         }
         #expect(Set(s.reservedSpots.values).count <= 1)
     }
+
+    /// Boş noktalar oda başına bir kez (eşitlemede) hesaplanır; her karede yeniden taranmaz.
+    @Test func freePointsAreScannedOncePerSync() {
+        var s = sim()
+        let ids = (0..<6).map { "f\($0)" }
+        s.sync(plan: plan(ids), desks: desks(ids.map { ($0, .idle) }), looks: [:], projectColors: [:], live: false)
+        let afterSync = s.freePointScans
+        #expect(afterSync == 1)
+        run(&s, 20)
+        #expect(s.freePointScans == afterSync)
+    }
 }
 

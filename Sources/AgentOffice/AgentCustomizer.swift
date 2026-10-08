@@ -37,7 +37,9 @@ struct AgentCustomizer: View {
             }
         }
         .onAppear { selection = model.customizingAgent ?? selection ?? model.store.sessions.first?.id }
+        // "Edit Appearance…" seçimi getirir; listeden seçmek de geri yazar (aynı köylüye tekrar gelinebilsin).
         .onChange(of: model.customizingAgent) { if let id = model.customizingAgent { selection = id } }
+        .onChange(of: selection) { if let selection { model.customizingAgent = selection } }
     }
 }
 

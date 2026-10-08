@@ -112,6 +112,7 @@ struct AgentOfficeApp: App {
                 Button(title("session.newClaude")) { model.openLauncher(beside: false, claude: true) }.shortcut("session.newClaude")
                 Button(title("pane.new")) { model.openLauncher(beside: false) }.shortcut("pane.new")
                 Button(title("pane.newBeside")) { model.openLauncher(beside: true) }.shortcut("pane.newBeside")
+                CustomizeAgentsButton()
                 Button("Permissions…") { model.showPermissions = true }
                 Divider()
                 Button(title("mode.office")) { model.mode = .office }.shortcut("mode.office")
@@ -135,9 +136,6 @@ struct AgentOfficeApp: App {
                     if let id = model.layout.focused { model.closePane(id) }
                 }
                 .shortcut("pane.close")
-            }
-            CommandGroup(after: .windowArrangement) {
-                CustomizeAgentsButton()
             }
             CommandGroup(replacing: .help) {
                 Button("Welcome Guide…") { delegate.model.openOnboarding() }

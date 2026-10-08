@@ -93,12 +93,14 @@ final class OfficeCamera {
 
     /// Bir zemin noktasına yumuşakça yaklaşır.
     func focus(x: Double, z: Double, zoom: Double) {
+        stopFollowing()
         userMoved = true
         target = OfficeViewport.focusing(x: x, z: z, zoom: min(max(zoom, limits.lowerBound), limits.upperBound), fit: fitViewport)
     }
 
     /// Yerden `y` yükseklikteki noktayı (köylünün gövdesi) ekranın ortasına getirerek yaklaşır.
     func focus(x: Double, y: Double, z: Double, zoom: Double) {
+        stopFollowing()
         userMoved = true
         target = OfficeViewport.focusing(x: x, y: y, z: z, zoom: min(max(zoom, limits.lowerBound), limits.upperBound),
                                          fit: fitViewport)

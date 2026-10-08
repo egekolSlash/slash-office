@@ -56,6 +56,10 @@ public struct AvatarSim: Sendable {
     public let skeleton: VillagerSkeleton
     private var avatars: [String: Avatar] = [:]
     private var navs: [String: RoomNav] = [:]
+    /// Odaların boş noktaları (eşitlemede bir kez hesaplanır).
+    private var points: [String: [PlanPoint]] = [:]
+    /// Kaç kez boş nokta taraması yapıldı (testler için).
+    public private(set) var freePointScans = 0
     public private(set) var clock: Double = 0
     public private(set) var instances: [AvatarInstance] = []
     /// Köylü → rezerve ettiği ilgi noktası (aynı odada ikinci bir köylü seçemez).
@@ -80,6 +84,11 @@ public struct AvatarSim: Sendable {
         }
     }
 
+    /// Bütün köylülerin o anki yerleri (kartlar ve tıklama için).
+    public var positions: [String: Position] {
+        Dictionary(uniqueKeysWithValues: avatars.keys.compactMap { id in position(of: id).map { (id, $0) } })
+    }
+
     public func position(of id: String) -> Position? {
         guard let avatar = avatars[id] else { return nil }
         let p = avatar.instance.position
@@ -98,6 +107,8 @@ public struct AvatarSim: Sendable {
                               projectColors: [String: AvatarLook.RGBA], live: Bool) {
         var seen = Set<String>()
         navs = Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, RoomNav(room: $0)) })
+        points = navs.mapValues(\.freePoints)
+        freePointScans += navs.count
         for room in plan.rooms {
             let projectColor = projectColors[room.key] ?? (0.6, 0.6, 0.6)
             for desk in room.desks {
@@ -183,7 +194,8 @@ public struct AvatarSim: Sendable {
     private mutating func decide(_ id: String, dt: Double, place: Bool, force: Bool = false) {
         guard var avatar = avatars[id] else { return }
         let free = freeSpots(for: id, in: avatar.room)
-        var decision = avatar.behavior.advance(dt: dt, freeSpots: free, freePoints: freePoints(for: id, in: avatar.room))
+        let room = avatar.room
+        var decision = avatar.behavior.advance(dt: dt, freeSpots: free, freePoints: freePoints(for: id, in: room))
         if decision == nil, force, let goal = avatar.goal {
             // Zorla yeniden yerleştirme: son hedef, yeni masa ve oda yerine göre.
             avatars[id] = avatar
@@ -223,9 +235,9 @@ public struct AvatarSim: Sendable {
 
     /// Odada boş noktalar; başka bir köylünün hedefine yakın olanlar hariç.
     private func freePoints(for id: String, in room: OfficePlan.Room) -> [PlanPoint] {
-        guard let nav = navs[room.key] else { return [] }
+        guard let roomPoints = points[room.key] else { return [] }
         let others = avatars.filter { $0.key != id && $0.value.room.key == room.key }.compactMap { $0.value.target?.point }
-        return nav.freePoints.filter { p in others.allSatisfy { $0.distance(to: p) > 0.7 } }
+        return roomPoints.filter { p in others.allSatisfy { $0.distance(to: p) > 0.7 } }
     }
 
     private func freeSpots(for id: String, in room: OfficePlan.Room) -> [RoomSpot.Kind] {

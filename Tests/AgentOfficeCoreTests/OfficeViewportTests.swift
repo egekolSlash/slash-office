@@ -191,6 +191,37 @@ import simd
         #expect(plan.desk(atViewX: 1, y: 1, viewport: viewport, viewSize: size) == nil)
     }
 
+    /// Kart ve balon köylünün o anki yerini izler (boştaki köylü masada değil, bir eşyada olabilir).
+    @Test func headAnchorFollowsTheVillager() {
+        let members = [OfficePlan.Member(id: "a", roomKey: "/a")]
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let desk = plan.rooms[0].desks[0]
+        let viewport = OfficeViewport.fitting(plan.bounds, height: OfficePlan.wallHeight, viewSize: size)
+        let away = AvatarSim.Position(x: desk.x - 1.5, z: desk.z + 3, seated: false, inRoom: true)
+        let anchor = plan.headAnchor(desk, standing: false, viewport: viewport, viewSize: size, villagers: ["a": away])
+        let expected = viewport.project(x: away.x, y: OfficeOverlay.standingHead, z: away.z, viewSize: size)
+        #expect(abs(anchor.x - expected.x) < 1e-9 && abs(anchor.y - expected.y) < 1e-9)
+        // Konum yoksa masadaki yer.
+        let seat = plan.rooms[0].seat(for: desk)
+        let atDesk = plan.headAnchor(desk, standing: false, viewport: viewport, viewSize: size)
+        let seatHead = viewport.project(x: seat.x, y: OfficeOverlay.seatedHead, z: seat.z, viewSize: size)
+        #expect(abs(atDesk.x - seatHead.x) < 1e-9)
+    }
+
+    /// Masasından uzakta dolaşan köylüye tıklamak onun oturumunu seçer.
+    @Test func clickOnAWanderingVillagerFindsItsDesk() {
+        let members = [OfficePlan.Member(id: "a", roomKey: "/a")]
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let desk = plan.rooms[0].desks[0]
+        let viewport = OfficeViewport.focusing(x: desk.x, z: desk.z + 2, zoom: 120,
+                                               fit: OfficeViewport.fitting(plan.bounds, height: 1.6, viewSize: size))
+        let away = AvatarSim.Position(x: desk.x - 1.2, z: desk.z + 3, seated: false, inRoom: true)
+        let body = viewport.project(x: away.x, y: 0.6, z: away.z, viewSize: size)
+        #expect(plan.desk(atViewX: body.x, y: body.y, viewport: viewport, viewSize: size, detail: .far, waiting: [],
+                          villagers: ["a": away]) == "a")
+        #expect(plan.desk(atViewX: body.x, y: body.y, viewport: viewport, viewSize: size, detail: .far, waiting: []) == nil)
+    }
+
     @Test func detailLevelsByZoom() {
         #expect(OfficeDetail.level(zoom: 20) == .far)
         #expect(OfficeDetail.level(zoom: 70) == .medium)

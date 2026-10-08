@@ -14,6 +14,8 @@ struct OfficeView: View {
     /// Mini ofisin kendiliğinden baktığı masa (`OfficeAutoFocus`).
     @State private var autoFocused: String?
     @State private var unavailable = false
+    /// Köylülerin yerleri: 0,2 sn'de bir okunur, sadece değişince güncellenir (dururken kartlar yeniden çizilmez).
+    @State private var villagers: [String: AvatarSim.Position] = [:]
 
     var body: some View {
         Group {
@@ -86,7 +88,15 @@ struct OfficeView: View {
             }
         }
         .overlay {
-            OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: interactive)
+            OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: interactive,
+                        villagers: villagers)
+        }
+        .task {
+            while !Task.isCancelled {
+                let now = OfficeSharedScene.shared.positions()
+                if now != villagers { villagers = now }
+                try? await Task.sleep(for: .milliseconds(200))
+            }
         }
         .overlay(alignment: .bottomLeading) {
             if !interactive, OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) {
@@ -196,7 +206,7 @@ struct OfficeView: View {
         })
         let focused = model.layout.focused.map { [$0] } ?? []
         return plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize, detail: detail,
-                         waiting: waiting, standing: standing, focused: focused)
+                         waiting: waiting, standing: standing, focused: focused, villagers: villagers)
     }
 
     private func handleClick(x: Double, y: Double, clickCount: Int, shift: Bool, plan: OfficePlan, camera: OfficeCamera) {
