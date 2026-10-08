@@ -82,6 +82,20 @@ struct OfficeView: View {
         .overlay {
             OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: interactive)
         }
+        .overlay(alignment: .bottomLeading) {
+            if !interactive, OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) {
+                // Elle gezinince kendiliğinden odak bir süre bekler (sorular hariç).
+                TimelineView(.periodic(from: .now, by: 5)) { context in
+                    if OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: context.date) {
+                        Label("Otomatik odak duraklatıldı", systemImage: "pause.circle")
+                            .font(.caption2).foregroundStyle(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(.black.opacity(0.5), in: Capsule())
+                            .padding(6)
+                    }
+                }
+            }
+        }
         .overlay {
             if plan.rooms.isEmpty {
                 ContentUnavailableView("Ofis boş", systemImage: "building.2", description: Text("⌘T ile yeni panel aç."))
@@ -91,19 +105,31 @@ struct OfficeView: View {
 
     /// Mini ofiste kameranın dönmesi gereken masa: soru soran > işi bitip görülmemiş > çalışan; panelde açık
     /// olmayan önce (ofis modunda kendiliğinden odak yok).
-    private func autoFocusTarget(plan: OfficePlan, desks: [String: OfficeDeskInfo]) -> String? {
-        guard !interactive else { return nil }
-        let candidates = desks.values.map { info in
+    private func autoFocusCandidates(_ desks: [String: OfficeDeskInfo]) -> [OfficeAutoFocus.Candidate] {
+        desks.values.map { info in
             OfficeAutoFocus.Candidate(id: info.id, state: info.state, unseenFinish: info.unseenFinish,
                                       openInPane: model.layout.visible.contains(info.id),
                                       lastEventAt: model.store.session(info.id)?.lastEventAt)
         }
-        return OfficeAutoFocus.pick(candidates, current: autoFocused)
+    }
+
+    private func autoFocusTarget(plan: OfficePlan, desks: [String: OfficeDeskInfo]) -> String? {
+        guard !interactive else { return nil }
+        return OfficeAutoFocus.pick(autoFocusCandidates(desks), current: autoFocused)
     }
 
     private func applyAutoFocus(_ target: String?, plan: OfficePlan, camera: OfficeCamera) {
-        guard !interactive, !OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) else { return }
-        guard target != autoFocused || (target != nil && camera.target == nil && !isLooking(at: target, plan: plan, camera: camera)) else { return }
+        guard !interactive else { return }
+        let candidates = autoFocusCandidates(deskInfos(plan))
+        let lookingElsewhere = target != nil && camera.target == nil && !isLooking(at: target, plan: plan, camera: camera)
+        let apply = OfficeAutoFocus.shouldApply(target: target, current: autoFocused, candidates: candidates,
+                                                lastManualMove: camera.lastManualMove, now: Date())
+            || (lookingElsewhere && !OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()))
+        guard apply else {
+            if target != autoFocused { DebugLog.write("office autofocus waits (manual move) for \(target ?? "-")") }
+            return
+        }
+        DebugLog.write("office autofocus \(autoFocused ?? "-") -> \(target ?? "-")")
         autoFocused = target
         guard let target, let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == target }) else {
             camera.resetToFit()

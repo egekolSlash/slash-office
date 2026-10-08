@@ -42,6 +42,16 @@ public enum OfficeAutoFocus {
         }?.id
     }
 
+    /// Seçilen hedef şimdi uygulanmalı mı: elle hareketten sonra beklenir, ama yeni bir soru (bekleyen oturum) bu
+    /// beklemeyi aşar (soru dikkat ister).
+    public static func shouldApply(target: String?, current: String?, candidates: [Candidate],
+                                   lastManualMove: Date?, now: Date) -> Bool {
+        guard target != current else { return false }
+        guard isPaused(lastManualMove: lastManualMove, now: now) else { return true }
+        guard let target, let c = candidates.first(where: { $0.id == target }), case .waiting = c.state else { return false }
+        return true
+    }
+
     public static func isPaused(lastManualMove: Date?, now: Date) -> Bool {
         guard let lastManualMove else { return false }
         return now.timeIntervalSince(lastManualMove) < manualPause

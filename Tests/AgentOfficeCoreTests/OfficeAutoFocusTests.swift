@@ -42,6 +42,21 @@ import Testing
         #expect(OfficeAutoFocus.pick([], current: "x") == nil)
     }
 
+    /// Elle hareketten sonraki duraklama sadece daha önemsiz geçişleri engeller: yeni bir soru yine kamerayı döndürür.
+    @Test func aNewQuestionOverridesTheManualPause() {
+        let now = t0
+        let paused = now.addingTimeInterval(-5)
+        let question = c("q", .waiting(.question("?")))
+        #expect(OfficeAutoFocus.shouldApply(target: "q", current: "w", candidates: [question, c("w", .working(tool: nil))],
+                                            lastManualMove: paused, now: now))
+        #expect(!OfficeAutoFocus.shouldApply(target: "w", current: nil, candidates: [c("w", .working(tool: nil))],
+                                             lastManualMove: paused, now: now))
+        // Zaten o soruya bakıyorsa tekrar uygulanmaz.
+        #expect(!OfficeAutoFocus.shouldApply(target: "q", current: "q", candidates: [question], lastManualMove: paused, now: now))
+        #expect(OfficeAutoFocus.shouldApply(target: "w", current: nil, candidates: [c("w", .working(tool: nil))],
+                                            lastManualMove: nil, now: now))
+    }
+
     @Test func manualMovePausesAutoFocusForAWhile() {
         let now = t0
         #expect(!OfficeAutoFocus.isPaused(lastManualMove: nil, now: now))

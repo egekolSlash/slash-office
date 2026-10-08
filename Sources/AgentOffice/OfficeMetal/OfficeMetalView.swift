@@ -135,6 +135,7 @@ final class OfficeMetalView: NSView {
     private func cameraChanged() {
         loop.post(viewport: camera.viewport, viewSize: camera.viewSize, cameraMoving: camera.target != nil)
         if camera.target != nil, cameraLink == nil, window != nil {
+            DebugLog.write("office camera transition start (mini: \(mini)) to \(camera.target.map { "\($0.targetX),\($0.targetZ) z\($0.zoom)" } ?? "-")")
             let link = displayLink(target: self, selector: #selector(stepCamera))
             link.add(to: .main, forMode: .common)
             cameraLink = link
@@ -144,6 +145,7 @@ final class OfficeMetalView: NSView {
     @objc private func stepCamera(_ link: CADisplayLink) {
         camera.step(dt: link.targetTimestamp - link.timestamp)
         if camera.target == nil {
+            DebugLog.write("office camera transition end at \(camera.viewport.targetX),\(camera.viewport.targetZ) z\(camera.viewport.zoom)")
             cameraLink?.invalidate()
             cameraLink = nil
         }

@@ -27,6 +27,16 @@ enum OfficeMeasureWindow {
         window.orderFrontRegardless()
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { _ in exit(0) }
 
+        // `--ask`: hiçbir soru yokken başlar; 4 sn sonra demo-2 soru sorar, 8 sn sonra cevaplanır (mini ofis odağı).
+        if arguments.contains("--ask") {
+            for id in ["demo-1"] { model.store.setState(.working(tool: "Edit"), for: id) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                MainActor.assumeIsolated { model.store.setState(.waiting(.question("?")), for: "demo-2") }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                MainActor.assumeIsolated { model.store.setState(.working(tool: "Edit"), for: "demo-2") }
+            }
+        }
         if arguments.contains("--walk") {
             var waiting = false
             Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { _ in
