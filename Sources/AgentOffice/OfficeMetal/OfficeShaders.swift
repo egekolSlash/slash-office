@@ -39,8 +39,11 @@ enum OfficeShaders {
     struct VillagerData {
         float4x4 model;
         float4 shirt;         // rgb (sRGB), w: tişört deseni katmanı
-        float4 skin;          // rgb (sRGB), w: saç modeli kodu (1…4)
-        float4 hair;          // rgb (sRGB), w: gözlük (0/1)
+        float4 skin;          // rgb (sRGB)
+        float4 hair;          // rgb (sRGB)
+        float4 pants;         // rgb (sRGB)
+        float4 shoes;         // rgb (sRGB)
+        uint4 variants;       // bayt g: VillagerVariant grubu g'nin seçili değeri
         uint boneBase;
         uint pad0, pad1, pad2;
     };
@@ -82,9 +85,13 @@ enum OfficeShaders {
 
     // MARK: Köylüler
 
-    /// Seçilmeyen saç modeli ve takılmayan gözlük köşeleri kırpma alanının dışına atılır (üçgen çizilmez).
+    /// Seçilmeyen varyantın (saç, şapka, yüz, gözlük) köşeleri kırpma alanının dışına atılır (üçgen çizilmez).
+    /// Köşe katmanı = grup << 8 | değer; grup 0 hep görünür.
     static bool hidden(VIn v, constant VillagerData &d) {
-        return (v.layer != 0 && float(v.layer) != d.skin.w) || (v.part == 4 && d.hair.w < 0.5);
+        uint group = uint(v.layer) >> 8;
+        if (group == 0) return false;
+        uint selected = (d.variants[group / 4] >> ((group % 4) * 8)) & 0xFF;
+        return selected != (uint(v.layer) & 0xFF);
     }
 
     static float4x4 skinMatrix(VIn v, constant VillagerData &d, constant float4x4 *bones) {
@@ -110,6 +117,8 @@ enum OfficeShaders {
         if (v.part == 1) { c = d.shirt.rgb; layer = ushort(d.shirt.w); }
         else if (v.part == 2) { c = d.skin.rgb; }
         else if (v.part == 3) { c = d.hair.rgb; }
+        else if (v.part == 6) { c = d.pants.rgb; }
+        else if (v.part == 7) { c = d.shoes.rgb; }
         o.color = float4(linear(c), v.color.a);
         o.lpos = u.lightViewProj * w;
         o.layer = layer;

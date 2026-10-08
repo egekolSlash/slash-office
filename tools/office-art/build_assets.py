@@ -98,12 +98,7 @@ J = dict(shoulder=0.155, elbow=0.19, hand=0.21, elbowZ=HIP + 0.05, handZ=HIP - 0
 PARTS.clear()
 capsule(0.14, (0, 0, HIP), (0, 0, HIP + 0.2), M["shirt"], "Hips")
 sphere(0.25, (0, 0, HZ), M["skin"], "Head", (1.0, 0.95, 0.92))
-for s in (-1, 1):
-    sphere(0.042, (s * 0.09, FY, HZ), M["eye"], "Head", (0.75, 0.35, 1.0))
-    sphere(0.012, (s * 0.09 + 0.012, FY - 0.012, HZ + 0.022), M["shine"], "Head")
-    sphere(0.04, (s * 0.15, FY + 0.04, HZ - 0.07), M["cheek"], "Head", (1.0, 0.35, 0.6))
 sphere(0.022, (0, FY - 0.02, HZ - 0.045), M["skin"], "Head")
-sphere(0.03, (0, FY + 0.005, HZ - 0.105), M["mouth"], "Head", (1.0, 0.3, 0.45))
 for s, side in ((-1, "L"), (1, "R")):
     sh, el, ha = (s * J["shoulder"], 0, SH), (s * J["elbow"], 0, J["elbowZ"]), (s * J["hand"], 0, J["handZ"])
     capsule(0.05, sh, el, M["shirt"], "UpperArm" + side)
@@ -115,27 +110,108 @@ for s, side in ((-1, "L"), (1, "R")):
     sphere(0.07, (s * J["leg"], -0.04, 0.06), M["shoe"], "Shin" + side, (1.0, 1.4, 0.7))
 body = join("Body", list(PARTS))
 
-def hair(name, extra):
-    PARTS.clear()
-    sphere(0.262, (0, 0.03, HZ + 0.05), M["hair"], "Head", (1.03, 1.0, 0.9))
+# ---- ofis hayatı §C2: varyantlar. Her nesne (grup, değer) taşır; çizici seçili olmayanları gizler.
+# Gruplar (VillagerVariant): 1 saç, 2 şapka, 3 göz, 4 kaş, 5 ağız, 6 çil, 7 allık, 8 gözlük, 9 saç tepesi, 10 tepe süsü.
+VARIANTS = {}
+def variant(name, group, value, build):
+    PARTS.clear(); build()
+    o = join(name, list(PARTS))
+    VARIANTS[name] = (group, value)
+    return o
+M["freckle"] = mat("Freckle", (0.62, 0.38, 0.28), 0.7)
+M["tongue"] = mat("Tongue", (0.95, 0.45, 0.50), 0.6)
+def eyes_round():
+    for s in (-1, 1):
+        sphere(0.042, (s * 0.09, FY, HZ), M["eye"], "Head", (0.75, 0.35, 1.0))
+        sphere(0.012, (s * 0.09 + 0.012, FY - 0.012, HZ + 0.022), M["shine"], "Head")
+def eyes_happy():
+    for s in (-1, 1):  # ^ ^
+        capsule(0.011, (s * 0.09 - 0.035, FY + 0.005, HZ - 0.01), (s * 0.09, FY - 0.012, HZ + 0.02), M["eye"], "Head")
+        capsule(0.011, (s * 0.09, FY - 0.012, HZ + 0.02), (s * 0.09 + 0.035, FY + 0.005, HZ - 0.01), M["eye"], "Head")
+def eyes_sleepy():
+    for s in (-1, 1):  # yarı kapalı: yassı göz, üstünde ten rengi kapak
+        sphere(0.042, (s * 0.09, FY, HZ - 0.012), M["eye"], "Head", (0.8, 0.35, 0.45))
+        capsule(0.012, (s * 0.09 - 0.035, FY - 0.006, HZ + 0.004), (s * 0.09 + 0.035, FY - 0.006, HZ + 0.004), M["skin"], "Head")
+def brows(r):
+    for s in (-1, 1):
+        capsule(r, (s * 0.09 - 0.03, FY + 0.012, HZ + 0.07), (s * 0.09 + 0.03, FY + 0.008, HZ + 0.078 + s * 0.004), M["hair"], "Head")
+def mouth_smile():
+    sphere(0.03, (0, FY + 0.005, HZ - 0.105), M["mouth"], "Head", (1.0, 0.3, 0.45))
+def mouth_open():
+    sphere(0.036, (0, FY + 0.004, HZ - 0.108), M["mouth"], "Head", (1.1, 0.35, 0.8))
+    sphere(0.018, (0, FY - 0.004, HZ - 0.122), M["tongue"], "Head", (1.0, 0.5, 0.5))
+def mouth_flat():
+    capsule(0.009, (-0.026, FY + 0.004, HZ - 0.105), (0.026, FY + 0.004, HZ - 0.105), M["mouth"], "Head")
+def freckles():
+    for s in (-1, 1):
+        for dx, dz in ((0.0, 0.0), (0.025, 0.012), (0.012, -0.018)):
+            sphere(0.008, (s * (0.14 + dx), FY + 0.035, HZ - 0.055 + dz), M["freckle"], "Head")
+def blush():
+    for s in (-1, 1):
+        sphere(0.04, (s * 0.15, FY + 0.04, HZ - 0.07), M["cheek"], "Head", (1.0, 0.35, 0.6))
+faces = [
+    variant("EyesRound", 3, 1, eyes_round), variant("EyesHappy", 3, 2, eyes_happy), variant("EyesSleepy", 3, 3, eyes_sleepy),
+    variant("BrowsThin", 4, 1, lambda: brows(0.008)), variant("BrowsBold", 4, 2, lambda: brows(0.016)),
+    variant("MouthSmile", 5, 1, mouth_smile), variant("MouthOpen", 5, 2, mouth_open), variant("MouthFlat", 5, 3, mouth_flat),
+    variant("Freckles", 6, 1, freckles), variant("Blush", 7, 1, blush),
+]
+
+def fringe():
     for dx in (-0.12, 0.0, 0.12):
         sphere(0.09, (dx, FY + 0.06, HZ + 0.15 - abs(dx) * 0.3), M["hair"], "Head", (1.2, 0.6, 0.8))
-    extra()
-    return join(name, list(PARTS))
+HAIR_STYLES = ["short", "pigtails", "spiky", "bob", "curly", "long", "bun"]
+def style(value, sides=lambda: None):
+    def build():
+        fringe(); sides()
+    return variant("Hair" + HAIR_STYLES[value - 1].capitalize(), 1, value, build)
 hairs = [
-    hair("HairShort", lambda: None),
-    hair("HairPigtails", lambda: [sphere(0.1, (s * 0.28, 0.05, HZ - 0.05), M["hair"], "Head", (0.8, 0.8, 1.2)) for s in (-1, 1)]),
-    hair("HairSpiky", lambda: [sphere(0.075, (dx, 0.04 + dy, HZ + 0.27), M["hair"], "Head", (0.7, 0.7, 1.5))
-                                for dx, dy in ((-0.12, 0.02), (0.0, -0.02), (0.12, 0.02), (0.0, 0.1))]),
-    hair("HairBob", lambda: [sphere(0.16, (s * 0.2, 0.04, HZ - 0.06), M["hair"], "Head", (0.8, 1.1, 1.3)) for s in (-1, 1)]),
+    variant("HairCap", 9, 1, lambda: sphere(0.262, (0, 0.03, HZ + 0.05), M["hair"], "Head", (1.03, 1.0, 0.9))),
+    style(1),
+    style(2, lambda: [sphere(0.1, (s * 0.28, 0.05, HZ - 0.05), M["hair"], "Head", (0.8, 0.8, 1.2)) for s in (-1, 1)]),
+    style(3),
+    variant("HairSpikyTop", 10, 3, lambda: [sphere(0.075, (dx, 0.04 + dy, HZ + 0.27), M["hair"], "Head", (0.7, 0.7, 1.5))
+                                            for dx, dy in ((-0.12, 0.02), (0.0, -0.02), (0.12, 0.02), (0.0, 0.1))]),
+    style(4, lambda: [sphere(0.16, (s * 0.2, 0.04, HZ - 0.06), M["hair"], "Head", (0.8, 1.1, 1.3)) for s in (-1, 1)]),
+    # Kıvırcık: yanlarda ve arkada küçük bukleler, tepede ayrıca (şapkayla gizlenir).
+    # Bukleler yanlardan arkaya (+Y arkadır; yüz −Y'de).
+    style(5, lambda: [sphere(0.075, (0.27 * math.sin(t), 0.06 + 0.24 * math.cos(t), HZ - 0.03 + 0.04 * math.cos(2 * t)), M["hair"], "Head")
+                      for t in [math.radians(-110 + 220 * i / 6) for i in range(7)]]),
+    variant("HairCurlyTop", 10, 5, lambda: [sphere(0.07, (dx, dy, HZ + 0.25), M["hair"], "Head")
+                                            for dx, dy in ((-0.13, 0.05), (0.0, 0.0), (0.13, 0.05), (-0.07, 0.15), (0.07, 0.15))]),
+    # Uzun: arkada omuzlara inen saç, yanlarda iki tutam.
+    style(6, lambda: [sphere(0.2, (0, 0.13, HZ - 0.16), M["hair"], "Head", (1.25, 0.7, 1.45))]
+                     + [sphere(0.08, (s * 0.24, -0.02, HZ - 0.16), M["hair"], "Head", (0.8, 0.9, 1.9)) for s in (-1, 1)]),
+    style(7),
+    variant("HairBunTop", 10, 7, lambda: [sphere(0.11, (0, 0.06, HZ + 0.3), M["hair"], "Head"),
+                                          sphere(0.06, (0, 0.05, HZ + 0.22), M["hair"], "Head", (1.4, 1.4, 0.6))]),
 ]
-PARTS.clear()
-for s in (-1, 1):
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.058, minor_radius=0.011, location=(s * 0.09, FY - 0.035, HZ),
-                                     rotation=(math.radians(90), 0, 0), major_segments=24, minor_segments=8)
-    o = bpy.context.active_object; bpy.ops.object.transform_apply(rotation=True); finish(o, M["frame"], "Head")
-capsule(0.008, (-0.035, FY - 0.04, HZ + 0.01), (0.035, FY - 0.04, HZ + 0.01), M["frame"], "Head")
-glasses = join("Glasses", list(PARTS))
+def beanie():
+    knit = mat("Beanie", (0.86, 0.32, 0.32), 0.9)
+    sphere(0.275, (0, 0.03, HZ + 0.12), knit, "Head", (1.04, 1.02, 0.8))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.258, minor_radius=0.035, location=(0, 0.03, HZ + 0.11), major_segments=32, minor_segments=10)
+    finish(bpy.context.active_object, mat("BeanieRim", (0.95, 0.90, 0.85), 0.9), "Head")
+    sphere(0.06, (0, 0.03, HZ + 0.35), mat("BeaniePom", (0.98, 0.95, 0.90), 0.9), "Head")
+def cap():
+    cloth = mat("Cap", (0.25, 0.45, 0.85), 0.7)
+    sphere(0.272, (0, 0.03, HZ + 0.07), cloth, "Head", (1.02, 1.02, 0.8))
+    sphere(0.16, (0, FY - 0.03, HZ + 0.11), cloth, "Head", (1.0, 1.1, 0.12))
+def headphones():
+    band = mat("HeadphoneBand", (0.16, 0.16, 0.18), 0.4)
+    # Bant kulaktan kulağa başın üstünden (XZ düzleminde: halkanın ekseni Y).
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.29, minor_radius=0.022, location=(0, 0.03, HZ + 0.02),
+                                     rotation=(math.radians(90), 0, 0), major_segments=32, minor_segments=8)
+    o = bpy.context.active_object; bpy.ops.object.transform_apply(rotation=True); finish(o, band, "Head")
+    for s in (-1, 1):
+        cyl(0.075, 0.05, (s * 0.28, 0.03, HZ - 0.02), mat("HeadphoneCup", (0.95, 0.50, 0.60), 0.5), rot=(0, math.radians(90), 0))
+        PARTS[-1].vertex_groups.new(name="Head").add(range(len(PARTS[-1].data.vertices)), 1.0, 'REPLACE')
+hats = [variant("HatBeanie", 2, 1, beanie), variant("HatCap", 2, 2, cap), variant("HatHeadphones", 2, 3, headphones)]
+def glasses_build():
+    for s in (-1, 1):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.058, minor_radius=0.011, location=(s * 0.09, FY - 0.035, HZ),
+                                         rotation=(math.radians(90), 0, 0), major_segments=24, minor_segments=8)
+        o = bpy.context.active_object; bpy.ops.object.transform_apply(rotation=True); finish(o, M["frame"], "Head")
+    capsule(0.008, (-0.035, FY - 0.04, HZ + 0.01), (0.035, FY - 0.04, HZ + 0.01), M["frame"], "Head")
+glasses = variant("Glasses", 8, 1, glasses_build)
 
 bpy.ops.object.armature_add(location=(0, 0, 0)); arm = bpy.context.active_object; arm.name = "Villager"
 bpy.ops.object.mode_set(mode='EDIT'); eb = arm.data.edit_bones
@@ -150,7 +226,7 @@ for s, side in ((-1, "L"), (1, "R")):
     bone("Thigh" + side, (s * J["leg"], 0, HIP), (s * J["leg"], 0, J["knee"]), "Hips")
     bone("Shin" + side, (s * J["leg"], 0, J["knee"]), (s * J["leg"], 0, J["ankle"]), "Thigh" + side, True)
 bpy.ops.object.mode_set(mode='OBJECT')
-meshes = [body, *hairs, glasses]
+meshes = [body, *faces, *hairs, *hats, glasses]
 for o in meshes:
     o.parent = arm
     mod = o.modifiers.new("Armature", "ARMATURE"); mod.object = arm
@@ -325,7 +401,8 @@ cd = bpy.data.cameras.new("Preview"); cd.type = 'ORTHO'; cd.ortho_scale = 1.9
 cam = bpy.data.objects.new("Preview", cd); scn.collection.objects.link(cam); scn.camera = cam
 cam.location = Vector((0, 0, 0.6)) + Vector((1, -1, 0.9)).normalized() * 6
 cam.rotation_euler = (Vector((0, 0, 0.6)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
-for h in hairs[1:] + [glasses]: h.hide_render = True
+DEFAULT_SHOWN = {"HairCap", "HairShort", "EyesRound", "MouthSmile", "Blush"}
+for h in [*faces, *hairs, *hats, glasses]: h.hide_render = h.name not in DEFAULT_SHOWN
 for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115), ("wave", 147),
                     ("lookAround", 183), ("sitSip", 250), ("sitThink", 295), ("sitStretch", 340), ("stretch", 380),
                     ("waitTap", 404), ("cheer", 441), ("inspect", 485), ("drink", 535), ("sitDown", 556), ("sofaSit", 603),
@@ -338,7 +415,24 @@ cd.ortho_scale = 1.6
 for name, frame in (("sitDraw", 653), ("sitWrite", 703), ("sitRead", 763), ("readBook", 826), ("playArcade", 877),
                     ("drawBoard", 927), ("stepBackLook", 990), ("brewCoffee", 1025), ("brewCoffee2", 1062)):
     scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"side_{name}.png"); bpy.ops.render.render(write_still=True)
-for h in hairs[1:] + [glasses]: h.hide_render = False
+# Varyantlar önden (yüz −Y'ye bakar): saç modelleri, şapkalar, yüz kombinasyonları.
+cam.location = Vector((0, -5, 0.9)); cam.rotation_euler = (Vector((0, 0, 0.9)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
+cd.ortho_scale = 0.75
+scn.frame_set(1)
+ALLV = [*faces, *hairs, *hats, glasses]
+def show(names, file):
+    for h in ALLV: h.hide_render = h.name not in names
+    scn.render.filepath = os.path.join(PREVIEW, file); bpy.ops.render.render(write_still=True)
+base = {"EyesRound", "MouthSmile", "Blush"}
+for i, st in enumerate(HAIR_STYLES):
+    cap_name = "Hair" + st.capitalize()
+    top = {"spiky": "HairSpikyTop", "curly": "HairCurlyTop", "bun": "HairBunTop"}.get(st)
+    show(base | {"HairCap", cap_name} | ({top} if top else set()), f"variant_hair{i + 1}.png")
+for hat in ("HatBeanie", "HatCap", "HatHeadphones"):
+    show(base | {"HairBob", hat}, f"variant_{hat}.png")
+show({"EyesHappy", "BrowsThin", "MouthOpen", "Freckles", "Blush", "HairCap", "HairShort", "Glasses"}, "variant_face1.png")
+show({"EyesSleepy", "BrowsBold", "MouthFlat", "HairCap", "HairLong"}, "variant_face2.png")
+for h in [*faces, *hairs, *hats, glasses]: h.hide_render = False
 bpy.data.objects.remove(cam, do_unlink=True)
 scn.frame_set(1)
 
@@ -572,8 +666,8 @@ for name, build in PROPS.items():
 # Blender (x, y, z) -> Y-yukarı (x, z, -y). Renkler sRGB 8 bit; alfa = emissive gücü.
 YUP = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
 BONES = ["Root", "Hips", "Head", "UpperArmL", "ForeArmL", "ThighL", "ShinL", "UpperArmR", "ForeArmR", "ThighR", "ShinR"]
-HAIR_CODES = {"HairShort": 1, "HairPigtails": 2, "HairSpiky": 3, "HairBob": 4}
-KEYS = {1: (0.30, 0.55, 0.95), 2: (0.99, 0.84, 0.72), 3: (0.35, 0.20, 0.10)}  # tişört, ten, saç
+KEYS = {1: (0.30, 0.55, 0.95), 2: (0.99, 0.84, 0.72), 3: (0.35, 0.20, 0.10),  # tişört, ten, saç
+        6: (0.25, 0.30, 0.45), 7: (0.55, 0.32, 0.20)}                         # pantolon, ayakkabı
 
 def lin_to_srgb(c):
     return 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
@@ -597,7 +691,7 @@ def mesh_json(objs, villager=False):
         me.calc_loop_triangles()
         uv_layer = me.uv_layers.active
         group_names = [g.name for g in obj.vertex_groups]
-        hair = HAIR_CODES.get(obj.name, 0)
+        vgroup, vvalue = VARIANTS.get(obj.name, (0, 0))
         world = YUP @ obj.matrix_world
         normal_m = world.to_3x3().inverted().transposed()
         for tri in me.loop_triangles:
@@ -605,12 +699,9 @@ def mesh_json(objs, villager=False):
             color, emit = material_info(mat)
             part = 0
             if villager:
-                if obj.name == "Glasses":
-                    part = 4
-                else:
-                    for code, key in KEYS.items():
-                        if all(abs(a - b) < 0.02 for a, b in zip(color, key)):
-                            part = code
+                for code, key in KEYS.items():
+                    if all(abs(a - b) < 0.02 for a, b in zip(color, key)):
+                        part = code
             rgba = tuple(int(round(lin_to_srgb(c) * 255)) for c in color) + (int(round(min(emit / 4.0, 1.0) * 255)),)
             for corner, loop in zip(range(3), tri.loops):
                 vi = tri.vertices[corner]
@@ -624,10 +715,10 @@ def mesh_json(objs, villager=False):
                         name = group_names[max(groups, key=lambda g: g.weight).group]
                         bone = BONES.index(name)
                 key = (round(p.x, 5), round(p.y, 5), round(p.z, 5), round(n.x, 3), round(n.y, 3), round(n.z, 3),
-                       round(uv[0], 4), round(uv[1], 4), rgba, bone, part, hair)
+                       round(uv[0], 4), round(uv[1], 4), rgba, bone, part, vgroup, vvalue)
                 if key not in index_of:
                     index_of[key] = len(verts)
-                    verts.append((p, n, uv, rgba, bone, part, hair))
+                    verts.append((p, n, uv, rgba, bone, part, vgroup, vvalue))
                 indices.append(index_of[key])
         ev.to_mesh_clear()
     count = len(verts)
@@ -642,13 +733,14 @@ def mesh_json(objs, villager=False):
     if villager:
         out["bones"] = b64(np.array([v[4] for v in verts], dtype=np.uint8))
         out["parts"] = b64(np.array([v[5] for v in verts], dtype=np.uint8))
-        out["hair"] = b64(np.array([v[6] for v in verts], dtype=np.uint8))
+        out["variantGroups"] = b64(np.array([v[6] for v in verts], dtype=np.uint8))
+        out["variantValues"] = b64(np.array([v[7] for v in verts], dtype=np.uint8))
     return out
 
 # Köylü dinlenme pozunda; klipler kare kare skinning matrisi (Y-yukarı uzayda).
 arm.data.pose_position = 'REST'
 bpy.context.view_layer.update()
-villager_json = mesh_json([body, *hairs, glasses], villager=True)
+villager_json = mesh_json(meshes, villager=True)
 arm.data.pose_position = 'POSE'
 CLIP_RANGES = {"idle": (1, 24), "walk": (31, 54), "sitType": (61, 84), "sitDoze": (91, 138), "wave": (141, 164),
                "lookAround": (171, 218), "sitSip": (221, 268), "sitThink": (271, 318), "sitStretch": (321, 356),

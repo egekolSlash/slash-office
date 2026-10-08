@@ -13,7 +13,8 @@ import Testing
      "villager": {"vertexCount": 3, "positions": "\(b64((0..<9).map(Float.init)))",
                   "normals": "\(b64([Float](repeating: 0, count: 9)))", "uvs": "\(b64([Float](repeating: 0.5, count: 6)))",
                   "colors": "\(b64([UInt8](repeating: 255, count: 12)))", "indices": "\(b64([UInt32]([0, 1, 2])))",
-                  "bones": "\(b64([UInt8]([0, 1, 1])))", "parts": "\(b64([UInt8]([0, 1, 4])))", "hair": "\(b64([UInt8]([0, 0, 2])))"},
+                  "bones": "\(b64([UInt8]([0, 1, 1])))", "parts": "\(b64([UInt8]([0, 1, 4])))", "variantGroups": "\(b64([UInt8]([0, 0, 1])))",
+                  "variantValues": "\(b64([UInt8]([0, 0, 2])))"},
      "props": {"lamp": {"vertexCount": 3, "positions": "\(b64([Float](repeating: 2, count: 9)))",
                         "normals": "\(b64([Float](repeating: 0, count: 9)))", "uvs": "\(b64([Float](repeating: 0, count: 6)))",
                         "colors": "\(b64([UInt8](repeating: 9, count: 12)))", "indices": "\(b64([UInt32]([2, 1, 0])))"}}}
@@ -26,13 +27,13 @@ import Testing
         #expect(art.clips["idle"]?.matrices.count == 32)
         #expect(art.villager.positions == (0..<9).map(Float.init))
         #expect(art.villager.parts == [0, 1, 4])
-        #expect(art.villager.hair == [0, 0, 2])
+        #expect(art.villager.variantGroups == [0, 0, 1] && art.villager.variantValues == [0, 0, 2])
         #expect(art.villager.bones == [0, 1, 1])
         #expect(art.villager.vertexCount == 3)
         let lamp = try #require(art.props["lamp"])
         #expect(lamp.indices == [2, 1, 0])
         #expect(lamp.colors.count == 12)
-        #expect(lamp.bones.isEmpty && lamp.parts.isEmpty && lamp.hair.isEmpty)
+        #expect(lamp.bones.isEmpty && lamp.parts.isEmpty && lamp.variantGroups.isEmpty)
     }
 
     @Test func realArtFileIsSane() throws {
@@ -55,8 +56,15 @@ import Testing
             #expect(data.frames == clip.frames.count)
             #expect(data.matrices.count == data.frames * art.bones.count * 16)
         }
-        #expect(Set(art.villager.parts) == [0, 1, 2, 3, 4])
-        #expect(Set(art.villager.hair) == [0, 1, 2, 3, 4])
+        // Parçalar: tişört, ten, saç, pantolon, ayakkabı (renk seçilir); 0 sabit renk.
+        #expect(Set(art.villager.parts) == [0, 1, 2, 3, 6, 7])
+        // Her varyant grubu ve değeri için köşe var (grup 0 her zaman görünür).
+        let pairs = Set(zip(art.villager.variantGroups, art.villager.variantValues).map { "\($0.0):\($0.1)" })
+        var expected: Set<String> = ["0:0", "6:1", "7:1", "8:1", "9:1", "10:3", "10:5", "10:7"]
+        for v in 1...7 { expected.insert("1:\(v)") }
+        for v in 1...3 { expected.insert("2:\(v)"); expected.insert("3:\(v)"); expected.insert("5:\(v)") }
+        for v in 1...2 { expected.insert("4:\(v)") }
+        #expect(pairs == expected, "\(pairs.symmetricDifference(expected).sorted())")
         #expect(art.villager.bones.allSatisfy { Int($0) < art.bones.count })
         for (name, mesh) in art.props.merging(["villager": art.villager], uniquingKeysWith: { a, _ in a }) {
             #expect(mesh.indices.count % 3 == 0, "\(name)")

@@ -225,13 +225,24 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         var shirt: SIMD4<Float>
         var skin: SIMD4<Float>
         var hair: SIMD4<Float>
+        var pants: SIMD4<Float>
+        var shoes: SIMD4<Float>
+        /// 16 bayt: `VillagerVariant` grubu → seçili değer (bayt g).
+        var variants: SIMD4<UInt32>
         var boneBase: UInt32
         var pad: (UInt32, UInt32, UInt32) = (0, 0, 0)
     }
 
+    /// 16 varyant baytı → 4 kelime (küçük uçlu: bayt g, kelime g/4'ün (g%4)·8. biti).
+    static func packVariants(_ bytes: [UInt8]) -> SIMD4<UInt32> {
+        var words = SIMD4<UInt32>(repeating: 0)
+        for (g, value) in bytes.prefix(16).enumerated() { words[g / 4] |= UInt32(value) << UInt32((g % 4) * 8) }
+        return words
+    }
+
     static func checkLayouts() {
-        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 128, Uniforms 272 bayt).
-        assert(MemoryLayout<VillagerData>.stride == 128 && MemoryLayout<Uniforms>.stride == 272)
+        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 176, Uniforms 272 bayt).
+        assert(MemoryLayout<VillagerData>.stride == 176 && MemoryLayout<Uniforms>.stride == 272)
     }
 
     /// Saatin ışığı (gece/gündüz döngüsü); varsayılan öğlen.
@@ -435,11 +446,15 @@ final class OfficeMetalRenderer: @unchecked Sendable {
             model.columns.3 = SIMD4(a.position, 1)
             let skin = AvatarLook.skinTones[a.look.skin % AvatarLook.skinTones.count]
             let hair = AvatarLook.hairColors[a.look.hairColor % AvatarLook.hairColors.count]
-            let hairCode = Float((AvatarLook.HairStyle.allCases.firstIndex(of: a.look.hairStyle) ?? 0) + 1)
+            let pants = AvatarLook.pantsColors[a.look.pantsColor % AvatarLook.pantsColors.count]
+            let shoes = AvatarLook.shoeColors[a.look.shoeColor % AvatarLook.shoeColors.count]
             vp[i] = VillagerData(model: model,
                                  shirt: SIMD4(a.shirtColor, Float(OfficeTextureLayer.shirt(a.look.shirtPattern))),
-                                 skin: SIMD4(Float(skin.red), Float(skin.green), Float(skin.blue), hairCode),
-                                 hair: SIMD4(Float(hair.red), Float(hair.green), Float(hair.blue), a.look.glasses ? 1 : 0),
+                                 skin: SIMD4(Float(skin.red), Float(skin.green), Float(skin.blue), 0),
+                                 hair: SIMD4(Float(hair.red), Float(hair.green), Float(hair.blue), 0),
+                                 pants: SIMD4(Float(pants.red), Float(pants.green), Float(pants.blue), 0),
+                                 shoes: SIMD4(Float(shoes.red), Float(shoes.green), Float(shoes.blue), 0),
+                                 variants: Self.packVariants(a.look.variantValues),
                                  boneBase: UInt32(i * bones))
             let pose = gpu.skeleton.pose(of: a)
             for b in 0..<bones { bp[i * bones + b] = b < pose.count ? pose[b] : matrix_identity_float4x4 }

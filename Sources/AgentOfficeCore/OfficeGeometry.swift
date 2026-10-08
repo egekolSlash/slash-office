@@ -148,7 +148,8 @@ public struct OfficeMesh: Sendable {
             if let recolor, Self.close(color, recolor.from) { color = recolor.to }
             vertices.append(OfficeVertex(position: position + rotate(p) * scale, normal: rotate(n),
                                          uv: SIMD2(art.uvs[2 * i], art.uvs[2 * i + 1]), color: color,
-                                         layer: skinned ? UInt16(art.hair[i]) : 0,
+                                         // Köylüde katman = varyant (üst bayt grup, alt bayt değer).
+                                         layer: skinned ? UInt16(art.variantGroups[i]) << 8 | UInt16(art.variantValues[i]) : 0,
                                          bone: skinned ? art.bones[i] : 0, part: skinned ? art.parts[i] : 0))
         }
         indices += art.indices.map { $0 + base }

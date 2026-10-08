@@ -53,7 +53,7 @@ public struct OfficeArtFile: Sendable {
     struct RawMesh: Decodable {
         var vertexCount: Int
         var positions, normals, uvs, colors, indices: String
-        var bones, parts, hair: String?
+        var bones, parts, variantGroups, variantValues: String?
     }
 }
 
@@ -71,10 +71,12 @@ public struct ArtMesh: Sendable {
     /// RGBA (sRGB); A = emissive × 255.
     public var colors: [UInt8]
     public var indices: [UInt32]
-    /// Köylüde: köşenin kemiği, parça kodu (0 sabit, 1 tişört, 2 ten, 3 saç, 4 gözlük) ve saç modeli (0 saç değil).
+    /// Köylüde: köşenin kemiği, parça kodu (0 sabit renk, 1 tişört, 2 ten, 3 saç, 6 pantolon, 7 ayakkabı) ve varyantı
+    /// (`VillagerVariant` grubu ve değeri; grup 0 her zaman görünür).
     public var bones: [UInt8] = []
     public var parts: [UInt8] = []
-    public var hair: [UInt8] = []
+    public var variantGroups: [UInt8] = []
+    public var variantValues: [UInt8] = []
 
     init(_ raw: OfficeArtFile.RawMesh, name: String, skinned: Bool, boneCount: Int = 0) throws {
         typealias F = OfficeArtFile
@@ -89,11 +91,16 @@ public struct ArtMesh: Sendable {
               indices.count % 3 == 0 else { throw F.Failure.badLength(name) }
         guard indices.allSatisfy({ Int($0) < n }) else { throw F.Failure.indexOutOfRange(name) }
         if skinned {
-            guard let b = raw.bones, let p = raw.parts, let h = raw.hair else { throw F.Failure.badLength(name) }
+            guard let b = raw.bones, let p = raw.parts, let g = raw.variantGroups, let v = raw.variantValues else {
+                throw F.Failure.badLength(name)
+            }
             bones = try F.array(b, name)
             parts = try F.array(p, name)
-            hair = try F.array(h, name)
-            guard bones.count == n, parts.count == n, hair.count == n else { throw F.Failure.badLength(name) }
+            variantGroups = try F.array(g, name)
+            variantValues = try F.array(v, name)
+            guard bones.count == n, parts.count == n, variantGroups.count == n, variantValues.count == n else {
+                throw F.Failure.badLength(name)
+            }
             guard bones.allSatisfy({ Int($0) < boneCount }) else { throw F.Failure.indexOutOfRange(name) }
         }
     }

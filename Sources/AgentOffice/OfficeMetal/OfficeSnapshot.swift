@@ -22,6 +22,11 @@ enum OfficeSnapshot {
             model.avatarLooks["demo-0"] = AvatarLook(hairStyle: .pigtails, hairColor: 5, skin: 2, shirtPattern: .dots, shirtColor: 3, glasses: true)
             model.roomStyles["/demo/juice-merge"] = RoomStyle(wallpaper: 2, floor: 2, rug: .plain)
         }
+        // `--random-looks`: demo köylülerine sabit tohumlu rastgele görünüm (şapka, saç, yüz varyantlarını görmek için).
+        if arguments.contains("--random-looks") {
+            var rng = SeededGenerator(seed: 7)
+            for session in model.store.sessions { model.avatarLooks[session.id] = AvatarLook.random(using: &rng) }
+        }
         guard let gpu = await OfficeGPU.shared(), let renderer = try? OfficeMetalRenderer(gpu: gpu) else {
             print("office snapshot: assets could not be loaded"); exit(1)
         }
@@ -148,5 +153,18 @@ enum OfficeSnapshot {
         }
         let rep = NSBitmapImageRep(cgImage: ctx.makeImage()!)
         try rep.representation(using: .png, properties: [:])!.write(to: url)
+    }
+}
+
+/// Snapshot için tekrarlanabilir rastgelelik (SplitMix64).
+struct SeededGenerator: RandomNumberGenerator {
+    var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E3779B97F4A7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        return z ^ (z >> 31)
     }
 }
