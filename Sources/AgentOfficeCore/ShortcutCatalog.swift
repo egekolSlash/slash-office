@@ -24,6 +24,16 @@ public struct Shortcut: Equatable, Sendable, Identifiable {
         public static let option = Modifiers(rawValue: 2)
         public static let shift = Modifiers(rawValue: 4)
         public static let command = Modifiers(rawValue: 8)
+
+        /// AppKit `NSEvent.ModifierFlags` ham değerinden (Caps Lock ve diğerleri yok sayılır).
+        public init(eventFlags: UInt) {
+            var modifiers: Modifiers = []
+            if eventFlags & (1 << 18) != 0 { modifiers.insert(.control) }
+            if eventFlags & (1 << 19) != 0 { modifiers.insert(.option) }
+            if eventFlags & (1 << 17) != 0 { modifiers.insert(.shift) }
+            if eventFlags & (1 << 20) != 0 { modifiers.insert(.command) }
+            self = modifiers
+        }
     }
 
     public enum Group: Sendable, CaseIterable { case sessions, panes, modes, text }
@@ -77,5 +87,17 @@ public enum ShortcutCatalog {
     public static func shortcut(_ id: String) -> Shortcut {
         guard let shortcut = all.first(where: { $0.id == id }) else { preconditionFailure("unknown shortcut \(id)") }
         return shortcut
+    }
+
+    /// ⌘= de yazıyı büyütür (menüde ⌘+ görünür; ABD klavyesinde + Shift ister). `=` Shift istiyorsa (Türkçe Q'da ⇧0)
+    /// ⌘⇧= de kabul edilir.
+    public static func isBiggerTextEquals(characters: String?, modifiers: Shortcut.Modifiers) -> Bool {
+        characters == "=" && modifiers.contains(.command) && modifiers.isSubset(of: [.command, .shift])
+    }
+
+    /// Rehberde yazıyı büyütmenin bu düzende basılışı: ⌘ + `=`'nin yazıldığı tuş. Düzen bilinmiyorsa ⌘+.
+    public static func biggerTextDisplay(equalsTyping: (modifiers: Shortcut.Modifiers, base: String)?) -> String {
+        guard let equalsTyping else { return shortcut("text.bigger").symbols }
+        return Shortcut.modifierSymbols(equalsTyping.modifiers.union(.command)) + equalsTyping.base.uppercased()
     }
 }

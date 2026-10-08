@@ -26,6 +26,9 @@ final class KeyboardLayout {
 
     /// Kısayolun bu düzendeki gösterimi: karakter Shift/Option istiyorsa nasıl yazılacağı da eklenir ("⌘+ (⇧4)").
     func display(_ shortcut: Shortcut) -> String {
+        if shortcut.id == "text.bigger" {
+            return ShortcutCatalog.biggerTextDisplay(equalsTyping: typing["="].map { ($0.modifiers, $0.base) })
+        }
         guard case .character(let c) = shortcut.key, let how = typing[c], !how.modifiers.isEmpty else {
             return shortcut.symbols
         }

@@ -41,4 +41,25 @@ import Testing
                    "session.resumeAll", "pane.close"]
         #expect(Set(ShortcutCatalog.all.map(\.id)) == Set(ids))
     }
+
+    /// ⌘= de yazıyı büyütür: Caps Lock açıkken de, `=` Shift istiyorsa (Türkçe Q'da ⇧0) Shift'le de.
+    @Test func biggerTextAcceptsCommandEquals() {
+        let capsLock: UInt = 1 << 16, shift: UInt = 1 << 17, control: UInt = 1 << 18, option: UInt = 1 << 19
+        let command: UInt = 1 << 20
+        #expect(Shortcut.Modifiers(eventFlags: command | capsLock) == .command)
+        #expect(Shortcut.Modifiers(eventFlags: command | shift | option | control) == [.command, .shift, .option, .control])
+        #expect(ShortcutCatalog.isBiggerTextEquals(characters: "=", modifiers: .command))
+        #expect(ShortcutCatalog.isBiggerTextEquals(characters: "=", modifiers: [.command, .shift]))
+        #expect(!ShortcutCatalog.isBiggerTextEquals(characters: "=", modifiers: [.command, .option]))
+        #expect(!ShortcutCatalog.isBiggerTextEquals(characters: "=", modifiers: []))
+        #expect(!ShortcutCatalog.isBiggerTextEquals(characters: "-", modifiers: .command))
+    }
+
+    /// Rehber yazıyı büyütmeyi düzende ⌘='nin basılışıyla gösterir (Türkçe Q'da "+" ⇧4 ister ve ⌘⇧4 ekran görüntüsüdür).
+    @Test func biggerTextDisplayUsesEqualsOnThisLayout() {
+        #expect(ShortcutCatalog.biggerTextDisplay(equalsTyping: ([], "=")) == "⌘=")
+        #expect(ShortcutCatalog.biggerTextDisplay(equalsTyping: (.shift, "0")) == "⇧⌘0")
+        #expect(ShortcutCatalog.biggerTextDisplay(equalsTyping: nil) == "⌘+")
+    }
 }
+

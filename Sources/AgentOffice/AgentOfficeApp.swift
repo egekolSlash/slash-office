@@ -33,10 +33,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Bildirim izni ilk açılıştaki izin ekranında istenir.
         if Notifier.canNotify { UNUserNotificationCenter.current().delegate = self }
         model.start()
-        // Shift'siz ⌘= de yazıyı büyütsün (ABD klavyesinde + Shift ister; menüde ⌘+ görünür).
+        // ⌘= de yazıyı büyütsün (ABD klavyesinde + Shift ister; menüde ⌘+ görünür). Gizli menü öğesi yerine dinleyici:
+        // gizli SwiftUI menü öğelerinin kısayolu güvenilir çalışmıyor.
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [model] event in
-            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-                  event.charactersIgnoringModifiers == "=" else { return event }
+            let modifiers = Shortcut.Modifiers(eventFlags: event.modifierFlags.rawValue)
+            guard ShortcutCatalog.isBiggerTextEquals(characters: event.charactersIgnoringModifiers, modifiers: modifiers) else {
+                return event
+            }
             MainActor.assumeIsolated { model.zoom(by: 1) }
             return nil
         }
