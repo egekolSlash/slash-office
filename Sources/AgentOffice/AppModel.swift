@@ -390,6 +390,9 @@ final class AppModel {
         }
     }
 
+    /// Panellerde süreci çalışan oturum sayısı (yeniden başlatma uyarısı için).
+    var runningAgentCount: Int { terminals.values.filter(\.process.running).count }
+
     func isRunning(_ id: String) -> Bool {
         terminals[id]?.process.running == true
     }

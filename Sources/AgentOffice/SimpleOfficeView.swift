@@ -103,6 +103,10 @@ private struct DeskRow: View {
 
 /// Ayarlar (⌘,).
 struct SettingsView: View {
+    /// Yeniden başlatmadan önce uyarmak için çalışan ajan sayısı.
+    var runningAgents: () -> Int = { 0 }
+    @State private var language = AppRestart.language
+    @State private var languageChanged = false
     @AppStorage("richOffice") private var richOffice = false
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
     @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
@@ -110,6 +114,23 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Picker("Language", selection: $language) {
+                ForEach(AppLanguage.allCases, id: \.self) { option in
+                    if option == .system { Text("System") } else { Text(verbatim: option.displayName) }
+                }
+            }
+            .onChange(of: language) {
+                AppRestart.apply(language)
+                languageChanged = true
+            }
+            if languageChanged {
+                HStack {
+                    Text("The new language is used after a restart.").font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Restart Now") { AppRestart.relaunch(runningAgents: runningAgents()) }
+                }
+            }
+            Divider()
             Toggle("Detaylı ofis", isOn: $richOffice)
             Text("Açıkken ofis gezinilebilir, odalı ve animasyonlu çizilir. Kapalıyken animasyonsuz, sade kartlar gösterilir (daha az CPU ve GPU).")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

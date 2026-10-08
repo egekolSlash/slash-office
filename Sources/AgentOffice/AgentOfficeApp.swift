@@ -105,6 +105,6 @@ struct AgentOfficeApp: App {
                 .shortcut("pane.close")
             }
         }
-        Settings { SettingsView() }
+        Settings { SettingsView(runningAgents: { [delegate] in delegate.model.runningAgentCount }) }
     }
 }
