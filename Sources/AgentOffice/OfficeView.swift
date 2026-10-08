@@ -156,11 +156,12 @@ struct OfficeView: View {
         guard let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == id }) else { return }
         let standing = if case .waiting = model.store.session(id)?.state { true } else { false }
         let body = plan.villagerFocus(desk, standing: standing)
-        camera.focus(x: body.x, y: body.y, z: body.z, zoom: zoom)
+        camera.follow(id, zoom: zoom, fallback: body)
     }
 
     /// Kamera zaten bu köylüye bakıyor mu (yeniden odaklamaya gerek yok): gövdesi ekranın ortasına yakın.
     private func isLooking(at id: String?, plan: OfficePlan, camera: OfficeCamera) -> Bool {
+        if let id, camera.follow == id { return true }
         guard let id, let desk = plan.rooms.flatMap(\.desks).first(where: { $0.id == id }) else { return false }
         let standing = if case .waiting = model.store.session(id)?.state { true } else { false }
         let body = plan.villagerFocus(desk, standing: standing)

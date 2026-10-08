@@ -439,7 +439,7 @@ extension OfficePlan {
     public func villagerFocus(_ desk: Desk, standing: Bool) -> (x: Double, y: Double, z: Double) {
         guard let room = rooms.first(where: { $0.desks.contains(desk) }) else { return (desk.x, 0.7, desk.z) }
         let p = standing ? room.standSpot(for: desk) : room.seat(for: desk)
-        return (p.x, standing ? 0.65 : 0.55, p.z)
+        return (p.x, standing ? CameraFollow.standingBody : CameraFollow.seatedBody, p.z)
     }
 
     public func headAnchor(_ desk: Desk, standing: Bool, viewport: OfficeViewport,

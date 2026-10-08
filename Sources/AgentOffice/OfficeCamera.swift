@@ -35,7 +35,48 @@ final class OfficeCamera {
     /// Son elle kamera hareketi (mini ofisin kendiliğinden odağı bir süre bekler).
     private(set) var lastManualMove: Date?
 
+    /// Takip edilen köylü: kamera onu yürürken de ortalar; elle gezinme ya da sığdırma bırakır.
+    private(set) var follow: String?
+    @ObservationIgnored private var followZoom = 0.0
+    @ObservationIgnored private var followTimer: Timer?
+
+    /// Köylüye yaklaşır ve onu takip eder (saniyede 10 kez yerine bakılır; dururken kamera kıpırdamaz).
+    func follow(_ id: String, zoom: Double, fallback: (x: Double, y: Double, z: Double)) {
+        if follow != id { DebugLog.write("office camera follow \(id)") }
+        follow = id
+        followZoom = min(max(zoom, limits.lowerBound), limits.upperBound)
+        userMoved = true
+        if let position = OfficeSharedScene.shared.position(of: id), CameraFollow.shouldContinue(position) {
+            target = CameraFollow.target(x: position.x, z: position.z, seated: position.seated, zoom: followZoom, fit: fitViewport)
+        } else {
+            target = OfficeViewport.focusing(x: fallback.x, y: fallback.y, z: fallback.z, zoom: followZoom, fit: fitViewport)
+        }
+        if followTimer == nil {
+            let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.stepFollow() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            followTimer = timer
+        }
+    }
+
+    func stopFollowing() {
+        if let follow { DebugLog.write("office camera follow ends \(follow)") }
+        follow = nil
+        followTimer?.invalidate()
+        followTimer = nil
+    }
+
+    private func stepFollow() {
+        guard let id = follow else { return stopFollowing() }
+        let position = OfficeSharedScene.shared.position(of: id)
+        guard CameraFollow.shouldContinue(position), let position else { return stopFollowing() }
+        let next = CameraFollow.target(x: position.x, z: position.z, seated: position.seated, zoom: followZoom, fit: fitViewport)
+        if CameraFollow.needsUpdate(current: target ?? viewport, next: next) { target = next }
+    }
+
     func pan(dx: Double, dy: Double) {
+        stopFollowing()
         target = nil
         userMoved = true
         lastManualMove = Date()
@@ -43,6 +84,7 @@ final class OfficeCamera {
     }
 
     func zoom(by factor: Double, anchorX: Double, anchorY: Double) {
+        stopFollowing()
         target = nil
         userMoved = true
         lastManualMove = Date()
@@ -64,6 +106,7 @@ final class OfficeCamera {
 
     /// Sığdırılmış görünüme yumuşakça döner.
     func resetToFit() {
+        stopFollowing()
         userMoved = false
         target = fitViewport
     }

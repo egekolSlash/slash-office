@@ -68,6 +68,24 @@ public struct AvatarSim: Sendable {
     }
 
     /// Yürüyen, geçiş ya da tek seferlik klip oynatan köylü var mı.
+    /// Köylünün o anki yeri (kamera takibi için).
+    public struct Position: Equatable, Sendable {
+        public var x: Double
+        public var z: Double
+        public var seated: Bool
+        /// Odadan çıkmıyor (away değil).
+        public var inRoom: Bool
+        public init(x: Double, z: Double, seated: Bool, inRoom: Bool) {
+            self.x = x; self.z = z; self.seated = seated; self.inRoom = inRoom
+        }
+    }
+
+    public func position(of id: String) -> Position? {
+        guard let avatar = avatars[id] else { return nil }
+        let p = avatar.instance.position
+        return Position(x: Double(p.x), z: Double(p.z), seated: avatar.seated, inRoom: avatar.target?.leave != true)
+    }
+
     public var isMoving: Bool { isWalking || isActing }
     /// Yürüyen köylü var mı (native kare hızı).
     public var isWalking: Bool { avatars.values.contains { !$0.path.isEmpty } }

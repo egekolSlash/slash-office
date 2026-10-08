@@ -44,6 +44,12 @@ final class OfficeSharedScene: @unchecked Sendable {
         return frame()
     }
 
+    /// Köylünün o anki yeri (kamera takibi, ana thread).
+    func position(of id: String) -> AvatarSim.Position? {
+        lock.lock(); defer { lock.unlock() }
+        return sim?.position(of: id)
+    }
+
     /// İlerletmeden anlık durum (kare hızı kararı için).
     func peek() -> Frame {
         lock.lock(); defer { lock.unlock() }
