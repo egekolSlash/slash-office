@@ -53,11 +53,27 @@ final class OfficeMetalView: NSView {
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.postLighting() }
+            MainActor.assumeIsolated {
+                self?.postLighting()
+                self?.postSaving()
+            }
         }
+        postSaving()
     }
 
     static let dayNightKey = "dayNightCycle"
+    /// Enerji tasarrufu (varsayılan açık): kapalıyken görünür ofis hep ekran hızında çizilir.
+    static let energySavingKey = "energySaving"
+
+    private func postSaving() {
+        let defaults = UserDefaults.standard
+        let saving = defaults.object(forKey: Self.energySavingKey) == nil ? true : defaults.bool(forKey: Self.energySavingKey)
+        guard saving != lastSaving else { return }
+        lastSaving = saving
+        loop.post(saving: saving)
+    }
+
+    private var lastSaving: Bool?
 
     /// Saatin ışığı (ayar kapalıysa öğlen). `OFFICE_HOUR` ortam değişkeni saati sabitler (deneme için).
     private func postLighting() {
@@ -296,6 +312,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var interactionUntil = 0.0
         var visible = false
         var mini = false
+        var saving = true
         var drawableSize: CGSize?
         var lighting: OfficeDaylight.Lighting?
         var dirty = true
@@ -347,6 +364,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
     }
 
     func post(visible: Bool, mini: Bool) { send { $0.visible = visible; $0.mini = mini } }
+    func post(saving: Bool) { send { $0.saving = saving } }
     func post(lighting: OfficeDaylight.Lighting) { send { $0.lighting = lighting } }
     func post(drawableSize: CGSize) { send { $0.drawableSize = drawableSize } }
     /// Jest sonrası yarım saniye tam hız (kaydırma ve yakınlaştırma akıcı olsun).
@@ -375,7 +393,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
             let moving = state.moving
             var mode = FramePacing.mode(moving: moving, acting: state.acting,
                                         interacting: box.cameraMoving || now < box.interactionUntil,
-                                        animating: animating, visible: box.visible, mini: box.mini)
+                                        animating: animating, visible: box.visible, mini: box.mini,
+                                        saving: box.saving)
             // Duraklamadan önce son durumu bir kez çiz (ör. köylüsüz ofiste plan değişti, boş ofiste gökyüzü).
             let drawOnce = mode == .paused && box.dirty && box.visible
             if mode != lastMode {

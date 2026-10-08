@@ -21,6 +21,29 @@ import Testing
     }
 }
 
+/// Enerji tasarrufu kapalıyken görünür ve canlı ofis her zaman ekran hızında (mini dahil); gizliyken yine durur.
+@Suite struct FramePacingSavingTests {
+    @Test(arguments: [false, true]) func withoutSavingEverythingVisibleIsNative(mini: Bool) {
+        #expect(FramePacing.mode(moving: false, interacting: false, animating: true, visible: true, mini: mini, saving: false) == .native)
+        #expect(FramePacing.mode(moving: false, acting: true, interacting: false, animating: true, visible: true, mini: mini, saving: false) == .native)
+        #expect(FramePacing.mode(moving: true, interacting: false, animating: true, visible: true, mini: mini, saving: false) == .native)
+    }
+
+    @Test(arguments: [false, true]) func hiddenPausesEvenWithoutSaving(mini: Bool) {
+        #expect(FramePacing.mode(moving: true, acting: true, interacting: true, animating: true, visible: false, mini: mini, saving: false) == .paused)
+    }
+
+    @Test func nothingToAnimatePausesEvenWithoutSaving() {
+        #expect(FramePacing.mode(moving: false, interacting: false, animating: false, visible: true, mini: false, saving: false) == .paused)
+        #expect(FramePacing.mode(moving: false, interacting: false, animating: false, visible: true, mini: true, saving: false) == .paused)
+    }
+
+    @Test func savingKeepsTodaysRules() {
+        #expect(FramePacing.mode(moving: false, acting: true, interacting: false, animating: true, visible: true, mini: false, saving: true) == .fixed(30))
+        #expect(FramePacing.mode(moving: false, interacting: false, animating: true, visible: true, mini: true, saving: true) == .fixed(12))
+    }
+}
+
 @Suite struct OfficeArtLocationTests {
     @Test func prefersBundleThenRepoThenNil() {
         let bundle = URL(fileURLWithPath: "/App.app/Contents/Resources")

@@ -106,6 +106,7 @@ struct SettingsView: View {
     @AppStorage("richOffice") private var richOffice = false
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
     @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
+    @AppStorage(OfficeMetalView.energySavingKey) private var energySaving = true
 
     var body: some View {
         Form {
@@ -117,6 +118,9 @@ struct SettingsView: View {
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Mini ofiste otomatik odak", isOn: $autoFocus).disabled(!richOffice)
             Text("Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, işi bitip görülmemiş, çalışan. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Energy saving", isOn: $energySaving).disabled(!richOffice)
+            Text("On: villagers animate at 12–30 fps and the mini office at 12 fps. Off: the office always draws at your display's refresh rate (smoother, more CPU). Either way it stops while hidden.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)
