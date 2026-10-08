@@ -1,0 +1,2206 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ · Appearance": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Görünüm"
+          }
+        }
+      }
+    },
+    "%@ · Room": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Oda"
+          }
+        }
+      }
+    },
+    "%lld running agents will be stopped. You can resume them after the restart.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan %lld ajan durdurulacak. Yeniden başlatınca devam ettirebilirsin."
+          }
+        }
+      }
+    },
+    "A 3D office you can pan and zoom, with animated villagers. Off: simple cards (less CPU and GPU).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydırıp yakınlaştırabildiğin, köylülerin canlandığı 3B bir ofis. Kapalıyken: sade kartlar (daha az CPU ve GPU)."
+          }
+        }
+      }
+    },
+    "A ✓ when the agent finished while you weren't looking.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sen bakmazken ajan işini bitirdiyse ✓ görünür."
+          }
+        }
+      }
+    },
+    "Actual Size": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerçek boyut"
+          }
+        }
+      }
+    },
+    "Add API pagination": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API sayfalamasını ekle"
+          }
+        }
+      }
+    },
+    "Agents": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanlar"
+          }
+        }
+      }
+    },
+    "Agents are running": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan ajanlar var"
+          }
+        }
+      }
+    },
+    "Agents work in your folders. Grant permissions now so macOS doesn't ask one by one while they work.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanlar senin klasörlerinde çalışıyor. macOS'un çalışma sırasında tek tek sormaması için izinleri şimdi ver."
+          }
+        }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin ver"
+          }
+        }
+      }
+    },
+    "Asking": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soruyor"
+          }
+        }
+      }
+    },
+    "Asking a question": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soru soruyor"
+          }
+        }
+      }
+    },
+    "Auto focus in the mini office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mini ofiste otomatik odak"
+          }
+        }
+      }
+    },
+    "Auto focus paused": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik odak duraklatıldı"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri"
+          }
+        }
+      }
+    },
+    "Bigger Text": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazıyı büyüt"
+          }
+        }
+      }
+    },
+    "Binary file": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Binary dosya"
+          }
+        }
+      }
+    },
+    "Bob": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Küt"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vazgeç"
+          }
+        }
+      }
+    },
+    "Changes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklikler"
+          }
+        }
+      }
+    },
+    "Check Again": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrar Kontrol Et"
+          }
+        }
+      }
+    },
+    "Choose Folder for Terminal…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal için klasör seç…"
+          }
+        }
+      }
+    },
+    "Choose a Folder and Start Claude": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasör Seç ve Claude'u Başlat"
+          }
+        }
+      }
+    },
+    "Choose a project": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje seç"
+          }
+        }
+      }
+    },
+    "Choose one with Other Folder…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka klasör… ile seç."
+          }
+        }
+      }
+    },
+    "Claude": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude"
+          }
+        }
+      }
+    },
+    "Claude Code": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code"
+          }
+        }
+      }
+    },
+    "Claude Code isn't installed.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code kurulu değil."
+          }
+        }
+      }
+    },
+    "Claude Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude oturumu"
+          }
+        }
+      }
+    },
+    "Claude: choose a project": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude: proje seç"
+          }
+        }
+      }
+    },
+    "Click a villager to open its terminal, ⇧-click to open it beside the current pane, click an empty lot to start a new session.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminalini açmak için bir köylüye tıkla, mevcut panelin yanında açmak için ⇧ ile tıkla, yeni oturum başlatmak için boş bir araziye tıkla."
+          }
+        }
+      }
+    },
+    "Click an agent in the office or press ⌘T to open a new pane.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofisten bir ajana tıkla ya da ⌘T ile yeni panel aç."
+          }
+        }
+      }
+    },
+    "Close Pane": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paneli kapat"
+          }
+        }
+      }
+    },
+    "Close pane (the session keeps running)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paneli kapat (oturum çalışmaya devam eder)"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam"
+          }
+        }
+      }
+    },
+    "Cream stripes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Krem çizgili"
+          }
+        }
+      }
+    },
+    "Day and night": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gece ve gündüz"
+          }
+        }
+      }
+    },
+    "Day/night cycle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gece/gündüz döngüsü"
+          }
+        }
+      }
+    },
+    "Detailed office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detaylı ofis"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitti"
+          }
+        }
+      }
+    },
+    "Dozing at the desk or wandering around the room.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masada uyuklar ya da odada dolaşır."
+          }
+        }
+      }
+    },
+    "Edit Appearance…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görünümü düzenle…"
+          }
+        }
+      }
+    },
+    "Edit Room…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odayı düzenle…"
+          }
+        }
+      }
+    },
+    "Energy saving": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enerji tasarrufu"
+          }
+        }
+      }
+    },
+    "Error": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hata"
+          }
+        }
+      }
+    },
+    "Every project gets a room and every session a villager at a desk. Their pose tells you what the agent is doing.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her projenin bir odası, her oturumun masasında bir köylüsü var. Duruşu ajanın ne yaptığını gösterir."
+          }
+        }
+      }
+    },
+    "Everything is committed.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her şey commit edilmiş."
+          }
+        }
+      }
+    },
+    "Files the agent touches will be listed here.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanın dokunduğu dosyalar burada listelenecek."
+          }
+        }
+      }
+    },
+    "Files: %lld": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dosya"
+          }
+        }
+      }
+    },
+    "Finish": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitir"
+          }
+        }
+      }
+    },
+    "Finished": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitti"
+          }
+        }
+      }
+    },
+    "Finished working; you haven't looked yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışırken bitti; henüz bakmadın"
+          }
+        }
+      }
+    },
+    "Fix the merge animation": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birleştirme animasyonunu düzelt"
+          }
+        }
+      }
+    },
+    "Floor": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zemin"
+          }
+        }
+      }
+    },
+    "Focus": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odak"
+          }
+        }
+      }
+    },
+    "Folder not found: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasör bulunamadı: %@"
+          }
+        }
+      }
+    },
+    "For Claude Code's voice mode.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code'un ses modu için."
+          }
+        }
+      }
+    },
+    "Found Claude Code %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code bulundu: %@"
+          }
+        }
+      }
+    },
+    "Found Claude Code (version unknown)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code bulundu (sürüm bilinmiyor)"
+          }
+        }
+      }
+    },
+    "Full Disk Access": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tam Disk Erişimi"
+          }
+        }
+      }
+    },
+    "Glasses": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gözlük"
+          }
+        }
+      }
+    },
+    "Grant these now so macOS doesn't interrupt your agents later. All are optional.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bunları şimdi ver; macOS ajanlarını sonradan bölmesin. Hepsi isteğe bağlı."
+          }
+        }
+      }
+    },
+    "Granted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verildi"
+          }
+        }
+      }
+    },
+    "Grid bug in the level editor": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seviye editöründe ızgara hatası"
+          }
+        }
+      }
+    },
+    "Hair": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saç"
+          }
+        }
+      }
+    },
+    "Hair color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saç rengi"
+          }
+        }
+      }
+    },
+    "Hook helper not found: %@\nRun `swift build` first (`swift run AgentOffice` alone does not build it).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook yardımcısı bulunamadı: %@\nÖnce `swift build` çalıştır (sadece `swift run AgentOffice` onu derlemez)."
+          }
+        }
+      }
+    },
+    "How to install Claude Code": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code nasıl kurulur"
+          }
+        }
+      }
+    },
+    "Idle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boşta"
+          }
+        }
+      }
+    },
+    "If you quit, the processes of running agents and agents waiting for a reply will end. Sessions can be resumed later where they left off.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkarsan çalışan ve cevap bekleyen ajanların süreçleri kapanır. Oturumlar sonra kaldığı yerden devam ettirilebilir."
+          }
+        }
+      }
+    },
+    "In Work mode the small office turns to the agent that needs you: a question first, then a finished task, then a working agent.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma modunda küçük ofis, sana ihtiyacı olan ajana döner: önce soru, sonra biten iş, sonra çalışan ajan."
+          }
+        }
+      }
+    },
+    "In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, finished but unseen, or working. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, işi bitip görülmemiş, çalışan. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür."
+          }
+        }
+      }
+    },
+    "In your home folder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ana klasörde"
+          }
+        }
+      }
+    },
+    "Inspector": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnceleme paneli"
+          }
+        }
+      }
+    },
+    "Jump to Waiting Agent": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekleyen ajana git"
+          }
+        }
+      }
+    },
+    "Keyboard: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klavye: %@"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dil"
+          }
+        }
+      }
+    },
+    "Last Turn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son tur"
+          }
+        }
+      }
+    },
+    "Lets agents in terminals take screenshots (for example to check a user interface). Restart the app after allowing.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminallerdeki ajanlar ekran görüntüsü alabilsin (ör. bir arayüzü kontrol etmek için). İzin verdikten sonra uygulamayı yeniden başlat."
+          }
+        }
+      }
+    },
+    "Lets you know when an agent asks a question or waits for permission.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir ajan soru sorduğunda ya da izin beklediğinde haber verir."
+          }
+        }
+      }
+    },
+    "Light blue": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık mavi"
+          }
+        }
+      }
+    },
+    "Meet the office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofisle tanış"
+          }
+        }
+      }
+    },
+    "Microphone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon"
+          }
+        }
+      }
+    },
+    "Mini office auto-focus": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mini ofis otomatik odak"
+          }
+        }
+      }
+    },
+    "Mint stripes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nane çizgili"
+          }
+        }
+      }
+    },
+    "Mode": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mod"
+          }
+        }
+      }
+    },
+    "New": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni"
+          }
+        }
+      }
+    },
+    "New Claude Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Claude oturumu"
+          }
+        }
+      }
+    },
+    "New Pane": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni panel"
+          }
+        }
+      }
+    },
+    "New Pane Beside": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanına yeni panel"
+          }
+        }
+      }
+    },
+    "New Room": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oda"
+          }
+        }
+      }
+    },
+    "Next Pane": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki panel"
+          }
+        }
+      }
+    },
+    "Next Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki oturum"
+          }
+        }
+      }
+    },
+    "No changes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklik yok"
+          }
+        }
+      }
+    },
+    "No changes to show": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gösterilecek değişiklik yok"
+          }
+        }
+      }
+    },
+    "No content, or the diff is too large.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İçerik yok ya da diff çok büyük."
+          }
+        }
+      }
+    },
+    "No matching projects": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşleşen proje yok"
+          }
+        }
+      }
+    },
+    "No projects yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz proje yok"
+          }
+        }
+      }
+    },
+    "No request has been sent yet. After the first request, what changed in that turn will appear here.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz bir istek gönderilmedi. İlk istekten sonra o turda değişenler burada görünecek."
+          }
+        }
+      }
+    },
+    "No session selected": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum seçili değil"
+          }
+        }
+      }
+    },
+    "No terminal open": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal açık değil"
+          }
+        }
+      }
+    },
+    "No to-do list": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo listesi yok"
+          }
+        }
+      }
+    },
+    "Not a Git repository": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git deposu değil"
+          }
+        }
+      }
+    },
+    "Notifications": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamam"
+          }
+        }
+      }
+    },
+    "Oak parquet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meşe parke"
+          }
+        }
+      }
+    },
+    "Office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofis"
+          }
+        }
+      }
+    },
+    "Office preferences": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofis tercihleri"
+          }
+        }
+      }
+    },
+    "Office view": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofis görünümü"
+          }
+        }
+      }
+    },
+    "On: villagers animate at 12–30 fps and the mini office at 12 fps. Off: the office always draws at your display's refresh rate (smoother, more CPU). Either way it stops while hidden.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır. Kapalıyken: ofis her zaman ekranının yenileme hızında çizilir (daha akıcı, daha çok CPU). İkisinde de gizliyken durur."
+          }
+        }
+      }
+    },
+    "On: villagers animate at 12–30 fps. Off: always at your display's refresh rate — smoother, uses more CPU.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıkken: köylüler 12–30 fps ile canlandırılır. Kapalıyken: her zaman ekranının yenileme hızında — daha akıcı, daha çok CPU kullanır."
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aç"
+          }
+        }
+      }
+    },
+    "Open Here": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Burada aç"
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem Ayarları'nı Aç"
+          }
+        }
+      }
+    },
+    "Open Terminal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminali Aç"
+          }
+        }
+      }
+    },
+    "Open a Terminal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal Aç"
+          }
+        }
+      }
+    },
+    "Other Folder…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka klasör…"
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzinler"
+          }
+        }
+      }
+    },
+    "Permissions…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzinler…"
+          }
+        }
+      }
+    },
+    "Pigtails": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "At kuyruğu"
+          }
+        }
+      }
+    },
+    "Pink polka dots": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pembe puantiyeli"
+          }
+        }
+      }
+    },
+    "Plain": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düz"
+          }
+        }
+      }
+    },
+    "Please restart Slash Office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lütfen Slash Office'i yeniden başlat"
+          }
+        }
+      }
+    },
+    "Polka dots": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puantiyeli"
+          }
+        }
+      }
+    },
+    "Press Esc to close": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esc ile kapat"
+          }
+        }
+      }
+    },
+    "Press ⌘T to open a new pane.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘T ile yeni panel aç."
+          }
+        }
+      }
+    },
+    "Previous Pane": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki panel"
+          }
+        }
+      }
+    },
+    "Previous Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki oturum"
+          }
+        }
+      }
+    },
+    "Project color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje rengi"
+          }
+        }
+      }
+    },
+    "Project folder not found: %@\nIf the folder was moved, remove the session and open it again.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje klasörü bulunamadı: %@\nKlasör taşındıysa oturumu kaldırıp yeniden aç."
+          }
+        }
+      }
+    },
+    "Quit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çık"
+          }
+        }
+      }
+    },
+    "Randomize": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rastgele"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yenile"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "Remove Stopped Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durmuş oturumu kaldır"
+          }
+        }
+      }
+    },
+    "Removes the repeated file access prompts for Documents, Desktop, Downloads and other apps' data. Turn on Slash Office in System Settings, then restart the app.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belgeler, Masaüstü, İndirilenler ve diğer uygulamaların verileri için tekrar tekrar çıkan dosya erişimi pencerelerini kaldırır. Sistem Ayarları'nda Slash Office'i aç; sonra uygulamayı yeniden başlat."
+          }
+        }
+      }
+    },
+    "Reset to Default": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılana dön"
+          }
+        }
+      }
+    },
+    "Restart": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden Başlat"
+          }
+        }
+      }
+    },
+    "Restart Now": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şimdi Yeniden Başlat"
+          }
+        }
+      }
+    },
+    "Restart Slash Office?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office yeniden başlatılsın mı?"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam ettir"
+          }
+        }
+      }
+    },
+    "Resume All (%lld)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü devam ettir (%lld)"
+          }
+        }
+      }
+    },
+    "Resume All Stopped Sessions": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm durmuş oturumları devam ettir"
+          }
+        }
+      }
+    },
+    "Resume All Stopped Sessions (%lld)  ⌘⇧R": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm durmuş oturumları devam ettir (%lld)  ⌘⇧R"
+          }
+        }
+      }
+    },
+    "Resume Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu devam ettir"
+          }
+        }
+      }
+    },
+    "Resume all stopped sessions where they left off (⌘⇧R)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bütün durmuş oturumları kaldığı yerden aç (⌘⇧R)"
+          }
+        }
+      }
+    },
+    "Rug": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halı"
+          }
+        }
+      }
+    },
+    "Running in the background": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arka planda açık"
+          }
+        }
+      }
+    },
+    "Scope": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapsam"
+          }
+        }
+      }
+    },
+    "Screen Recording": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran Kaydı"
+          }
+        }
+      }
+    },
+    "Search…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ara…"
+          }
+        }
+      }
+    },
+    "Select a file.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir dosya seç."
+          }
+        }
+      }
+    },
+    "Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum"
+          }
+        }
+      }
+    },
+    "Session not found": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum bulunamadı"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumlar"
+          }
+        }
+      }
+    },
+    "Shirt color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tişört rengi"
+          }
+        }
+      }
+    },
+    "Shirt pattern": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tişört deseni"
+          }
+        }
+      }
+    },
+    "Short": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısa"
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısayollar"
+          }
+        }
+      }
+    },
+    "Shown for your keyboard layout. All of them are also in the Agents menu.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klavye düzenine göre gösterilir. Hepsi Ajanlar menüsünde de var."
+          }
+        }
+      }
+    },
+    "Skin tone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten rengi"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atla"
+          }
+        }
+      }
+    },
+    "Slash Office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office"
+          }
+        }
+      }
+    },
+    "Slash Office is already open. Statuses are updating in the other window; close this copy.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office zaten açık. Durumlar diğer pencerede güncelleniyor; bu kopyayı kapat."
+          }
+        }
+      }
+    },
+    "Slash Office restarts to switch the language, then continues from the next step.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dili değiştirmek için Slash Office yeniden başlar, sonra bir sonraki adımdan devam eder."
+          }
+        }
+      }
+    },
+    "Slash Office runs Claude Code and terminal sessions side by side and shows your agents working in a little office. Let's set it up — it takes a minute, and you can skip any step.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office, Claude Code ve terminal oturumlarını yan yana çalıştırır ve ajanlarını küçük bir ofiste çalışırken gösterir. Birlikte kuralım; bir dakika sürer ve istediğin adımı atlayabilirsin."
+          }
+        }
+      }
+    },
+    "Slash Office starts Claude Code in its panes and follows what each agent is doing. Without it, Slash Office still works as a terminal.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office, Claude Code'u panellerinde başlatır ve her ajanın ne yaptığını izler. Claude Code olmadan da Slash Office bir terminal olarak çalışır."
+          }
+        }
+      }
+    },
+    "Smaller Text": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazıyı küçült"
+          }
+        }
+      }
+    },
+    "Spiky": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikenli"
+          }
+        }
+      }
+    },
+    "Staged": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazırlanmış"
+          }
+        }
+      }
+    },
+    "Standing with a ? when the agent has a question or needs permission. You also get a notification.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanın sorusu olduğunda ya da izne ihtiyacı olduğunda ? işaretiyle ayakta durur. Ayrıca bildirim alırsın."
+          }
+        }
+      }
+    },
+    "Start Agent": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanı Başlat"
+          }
+        }
+      }
+    },
+    "Start your first session in a project folder, or finish and explore. ⌘N starts a new Claude session any time.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlk oturumunu bir proje klasöründe başlat ya da bitirip keşfet. ⌘N ile istediğin zaman yeni bir Claude oturumu başlatırsın."
+          }
+        }
+      }
+    },
+    "Starting": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlıyor"
+          }
+        }
+      }
+    },
+    "Stop and Remove": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat ve kaldır"
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durdu"
+          }
+        }
+      }
+    },
+    "Striped": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çizgili"
+          }
+        }
+      }
+    },
+    "System": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem"
+          }
+        }
+      }
+    },
+    "Terminal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal"
+          }
+        }
+      }
+    },
+    "Terminal in Folder…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasörde terminal…"
+          }
+        }
+      }
+    },
+    "Terminal · ready": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal · hazır"
+          }
+        }
+      }
+    },
+    "Terminal: choose a folder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal: klasör seç"
+          }
+        }
+      }
+    },
+    "The agent is still running. Removing it will end its process.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır."
+          }
+        }
+      }
+    },
+    "The appearance could not be saved: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görünüş kaydedilemedi: %@"
+          }
+        }
+      }
+    },
+    "The hook server could not be started: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hook sunucusu başlatılamadı: %@"
+          }
+        }
+      }
+    },
+    "The new language is used after a restart.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni dil, yeniden başlatınca kullanılır."
+          }
+        }
+      }
+    },
+    "The new language is used after the next launch.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni dil bir sonraki açılışta kullanılır."
+          }
+        }
+      }
+    },
+    "The office is empty": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofis boş"
+          }
+        }
+      }
+    },
+    "The room style could not be saved: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oda stili kaydedilemedi: %@"
+          }
+        }
+      }
+    },
+    "The session isn't running; resume it from its pane.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum çalışmıyor; panelinden devam ettirebilirsin."
+          }
+        }
+      }
+    },
+    "The session list could not be saved: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum listesi kaydedilemedi: %@"
+          }
+        }
+      }
+    },
+    "The settings file could not be written: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayar dosyası yazılamadı: %@"
+          }
+        }
+      }
+    },
+    "The sky and light follow your computer's clock: sunrise, day, sunset and a starry night. When off, it is always daytime.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gökyüzü ve ışık bilgisayarın saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece. Kapalıyken hep gündüz."
+          }
+        }
+      }
+    },
+    "The sky follows your Mac's clock: sunrise, daylight, sunset and a starry night.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gökyüzü Mac'inin saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece."
+          }
+        }
+      }
+    },
+    "The to-do tool is off in this Claude Code setup. Plans from Codex sessions will appear here.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Claude Code kurulumunda todo aracı kapalı. Codex oturumlarında plan burada görünecek."
+          }
+        }
+      }
+    },
+    "This Claude session is running in Claude Code's background; its status shows in the list and the office. Open it here to pick up where it left off; it keeps running even if the pane is closed.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Claude oturumu Claude Code'un arka planında sürüyor; durumu listede ve ofiste görünür. Burada açınca kaldığı yerden görünür; panel kapansa da çalışmaya devam eder."
+          }
+        }
+      }
+    },
+    "This Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum boyunca"
+          }
+        }
+      }
+    },
+    "This session's starting point is unknown (it started before the Git repository was opened).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturumun başlangıç noktası bilinmiyor (git deposu açılmadan önce başlamış)."
+          }
+        }
+      }
+    },
+    "Tile": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karo"
+          }
+        }
+      }
+    },
+    "To-Do": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo"
+          }
+        }
+      }
+    },
+    "Typing at the desk while the agent runs tools.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajan araç çalıştırırken masada yazı yazar."
+          }
+        }
+      }
+    },
+    "Uncommitted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit edilmemiş"
+          }
+        }
+      }
+    },
+    "Villager": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Köylü"
+          }
+        }
+      }
+    },
+    "Waiting for permission": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin bekliyor"
+          }
+        }
+      }
+    },
+    "Wallpaper": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duvar kâğıdı"
+          }
+        }
+      }
+    },
+    "Walnut parquet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ceviz parke"
+          }
+        }
+      }
+    },
+    "Welcome Guide…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karşılama Rehberi…"
+          }
+        }
+      }
+    },
+    "Welcome to Slash Office": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office'e hoş geldin"
+          }
+        }
+      }
+    },
+    "What would you like to open?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne açmak istersin?"
+          }
+        }
+      }
+    },
+    "When on, the office is drawn with rooms and animation, and you can navigate it. When off, it shows plain cards without animation (less CPU and GPU).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıkken ofis gezinilebilir, odalı ve animasyonlu çizilir. Kapalıyken animasyonsuz, sade kartlar gösterilir (daha az CPU ve GPU)."
+          }
+        }
+      }
+    },
+    "Which color?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hangi renk?"
+          }
+        }
+      }
+    },
+    "Work": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma"
+          }
+        }
+      }
+    },
+    "Working": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışıyor"
+          }
+        }
+      }
+    },
+    "Working · %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışıyor · %@"
+          }
+        }
+      }
+    },
+    "Yellow checks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sarı kareli"
+          }
+        }
+      }
+    },
+    "You can change these any time in Settings (⌘,).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bunları istediğin zaman Ayarlar'dan (⌘,) değiştirebilirsin."
+          }
+        }
+      }
+    },
+    "You're all set": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazırsın"
+          }
+        }
+      }
+    },
+    "`claude` not found. Searched directories: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`claude` bulunamadı. Aranan dizinler: %@"
+          }
+        }
+      }
+    },
+    "↑↓ select · ↩ open · Esc back": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "↑↓ seç · ↩ aç · Esc geri"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

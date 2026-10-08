@@ -21,7 +21,7 @@ struct SimpleOfficeView: View {
         .task(id: plan.rooms.map(\.key)) { model.loadProjectIcons(plan.rooms.map(\.key)) }
         .overlay {
             if plan.rooms.isEmpty {
-                ContentUnavailableView("Ofis boş", systemImage: "building.2", description: Text("⌘T ile yeni panel aç."))
+                ContentUnavailableView("The office is empty", systemImage: "building.2", description: Text("Press ⌘T to open a new pane."))
             }
         }
     }
@@ -50,7 +50,7 @@ private struct RoomCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(ProjectPalette.color(for: room.key).opacity(0.5)))
-        .contextMenu { Button("Odayı düzenle…") { model.editingRoom = room.key } }
+        .contextMenu { Button("Edit Room…") { model.editingRoom = room.key } }
     }
 }
 
@@ -74,7 +74,7 @@ private struct DeskRow: View {
                 FinishedBadge(compact: true)
             }
             if case .waiting = session.state {
-                Text("?").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
+                Text(verbatim: "?").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
                     .frame(width: 16, height: 16).background(Circle().fill(.orange))
             } else {
                 StatusBadge(state: session.state, kind: model.kind(of: session.id)).lineLimit(1)
@@ -85,7 +85,7 @@ private struct DeskRow: View {
         .background(Self.color(session.state).opacity(focused ? 0.35 : 0.15), in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(focused ? Color.white.opacity(0.7) : .clear))
         .contentShape(Rectangle())
-        .contextMenu { Button("Görünümü düzenle…") { model.editingAvatar = session.id } }
+        .contextMenu { Button("Edit Appearance…") { model.editingAvatar = session.id } }
         .onTapGesture {
             if NSEvent.modifierFlags.contains(.shift) { model.addTerminal(session.id) } else { model.showTerminal(session.id) }
         }
@@ -131,14 +131,14 @@ struct SettingsView: View {
                 }
             }
             Divider()
-            Toggle("Detaylı ofis", isOn: $richOffice)
-            Text("Açıkken ofis gezinilebilir, odalı ve animasyonlu çizilir. Kapalıyken animasyonsuz, sade kartlar gösterilir (daha az CPU ve GPU).")
+            Toggle("Detailed office", isOn: $richOffice)
+            Text("When on, the office is drawn with rooms and animation, and you can navigate it. When off, it shows plain cards without animation (less CPU and GPU).")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Toggle("Gece/gündüz döngüsü", isOn: $dayNight).disabled(!richOffice)
-            Text("Gökyüzü ve ışık bilgisayarın saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece. Kapalıyken hep gündüz.")
+            Toggle("Day/night cycle", isOn: $dayNight).disabled(!richOffice)
+            Text("The sky and light follow your computer's clock: sunrise, day, sunset and a starry night. When off, it is always daytime.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Toggle("Mini ofiste otomatik odak", isOn: $autoFocus).disabled(!richOffice)
-            Text("Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, işi bitip görülmemiş, çalışan. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür.")
+            Toggle("Auto focus in the mini office", isOn: $autoFocus).disabled(!richOffice)
+            Text("In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, finished but unseen, or working. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Energy saving", isOn: $energySaving).disabled(!richOffice)
             Text("On: villagers animate at 12–30 fps and the mini office at 12 fps. Off: the office always draws at your display's refresh rate (smoother, more CPU). Either way it stops while hidden.")

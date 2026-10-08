@@ -45,15 +45,15 @@ struct LauncherPane: View {
 
     private var choose: some View {
         VStack(spacing: 18) {
-            Text("Ne açmak istersin?").font(.title3.weight(.semibold)).foregroundStyle(.white.opacity(0.9))
+            Text("What would you like to open?").font(.title3.weight(.semibold)).foregroundStyle(.white.opacity(0.9))
             HStack(spacing: 14) {
-                ChoiceButton(key: "T", title: "Terminal", detail: "Ana klasörde", symbol: "apple.terminal") { openTerminal() }
-                ChoiceButton(key: "C", title: "Claude", detail: "Proje seç", symbol: "sparkles") { startPicking(.claude) }
+                ChoiceButton(key: "T", title: "Terminal", detail: "In your home folder", symbol: "apple.terminal") { openTerminal() }
+                ChoiceButton(key: "C", title: "Claude", detail: "Choose a project", symbol: "sparkles") { startPicking(.claude) }
             }
-            Button("Terminal için klasör seç…") { startPicking(.shell) }
+            Button("Choose Folder for Terminal…") { startPicking(.shell) }
                 .buttonStyle(.link)
                 .font(.callout)
-            Text("Esc ile kapat").font(.caption).foregroundStyle(.white.opacity(0.4))
+            Text("Press Esc to close").font(.caption).foregroundStyle(.white.opacity(0.4))
         }
         .padding(24)
         .focusable()
@@ -86,11 +86,11 @@ struct LauncherPane: View {
         let projects = RecentProjects.filter(model.recentProjects, query: query)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(kind == .claude ? "Claude: proje seç" : "Terminal: klasör seç").font(.headline)
+                Text(kind == .claude ? String(localized: "Claude: choose a project") : String(localized: "Terminal: choose a folder")).font(.headline)
                 Spacer()
-                Text("↑↓ seç · ↩ aç · Esc geri").font(.caption).foregroundStyle(.secondary)
+                Text("↑↓ select · ↩ open · Esc back").font(.caption).foregroundStyle(.secondary)
             }
-            TextField("Ara…", text: $query)
+            TextField("Search…", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .focused($focus, equals: .search)
                 .onChange(of: query) { selection = RecentProjects.filter(model.recentProjects, query: query).first }
@@ -110,15 +110,15 @@ struct LauncherPane: View {
                 .onChange(of: selection) { if let selection { proxy.scrollTo(selection) } }
                 .overlay {
                     if projects.isEmpty {
-                        ContentUnavailableView(model.recentProjects.isEmpty ? "Henüz proje yok" : "Eşleşen proje yok",
-                                               systemImage: "folder", description: Text("Başka klasör… ile seç."))
+                        ContentUnavailableView(model.recentProjects.isEmpty ? String(localized: "No projects yet") : String(localized: "No matching projects"),
+                                               systemImage: "folder", description: Text("Choose one with Other Folder…"))
                     }
                 }
             }
             HStack {
-                Button("Başka klasör…") { model.chooseFolderAndStart(kind, replacing: id) }
+                Button("Other Folder…") { model.chooseFolderAndStart(kind, replacing: id) }
                 Spacer()
-                Button("Aç") { if let selection { open(selection, kind) } }
+                Button("Open") { if let selection { open(selection, kind) } }
                     .disabled(selection == nil)
             }
         }
@@ -135,7 +135,7 @@ struct LauncherPane: View {
 
     private func open(_ path: String, _ kind: SessionKind) {
         guard FileManager.default.fileExists(atPath: path) else {
-            model.errorMessage = "Klasör bulunamadı: \(path)"
+            model.errorMessage = String(localized: "Folder not found: \(path)")
             return
         }
         let url = URL(fileURLWithPath: path)
@@ -148,8 +148,8 @@ struct LauncherPane: View {
 
 private struct ChoiceButton: View {
     let key: String
-    let title: String
-    let detail: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
     let symbol: String
     let action: () -> Void
 

@@ -17,8 +17,8 @@ enum Notifier {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = switch reason {
-        case .question(let text): text.isEmpty ? "Bir soru soruyor" : text
-        case .permission: "İzin bekliyor"
+        case .question(let text): text.isEmpty ? String(localized: "Asking a question") : text
+        case .permission: String(localized: "Waiting for permission")
         }
         content.sound = .default
         content.userInfo = ["sessionID": sessionID]

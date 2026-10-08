@@ -93,7 +93,7 @@ struct OfficeView: View {
                 // Elle gezinince kendiliğinden odak bir süre bekler (sorular hariç).
                 TimelineView(.periodic(from: .now, by: 5)) { context in
                     if OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: context.date) {
-                        Label("Otomatik odak duraklatıldı", systemImage: "pause.circle")
+                        Label("Auto focus paused", systemImage: "pause.circle")
                             .font(.caption2).foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 3)
                             .background(.black.opacity(0.5), in: Capsule())
@@ -104,7 +104,7 @@ struct OfficeView: View {
         }
         .overlay {
             if plan.rooms.isEmpty {
-                ContentUnavailableView("Ofis boş", systemImage: "building.2", description: Text("⌘T ile yeni panel aç."))
+                ContentUnavailableView("The office is empty", systemImage: "building.2", description: Text("Press ⌘T to open a new pane."))
             }
         }
     }

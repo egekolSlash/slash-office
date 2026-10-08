@@ -117,9 +117,9 @@ final class AppModel {
             try server.start()
             self.server = server
         } catch HookServerError.alreadyRunning {
-            errorMessage = "Slash Office zaten açık. Durumlar diğer pencerede güncelleniyor; bu kopyayı kapat."
+            errorMessage = String(localized: "Slash Office is already open. Statuses are updating in the other window; close this copy.")
         } catch {
-            errorMessage = "Hook sunucusu başlatılamadı: \(error)"
+            errorMessage = String(localized: "The hook server could not be started: \(error.localizedDescription)")
         }
         if ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO"] == "1" {
             loadDemoSessions()
@@ -225,7 +225,7 @@ final class AppModel {
         do {
             try SessionStore.save(Array(records.values), to: recordsURL)
         } catch {
-            errorMessage = "Oturum listesi kaydedilemedi: \(error)"
+            errorMessage = String(localized: "The session list could not be saved: \(error.localizedDescription)")
         }
     }
 
@@ -276,7 +276,7 @@ final class AppModel {
     func resume(_ id: String, show: Bool = true) {
         guard let record = records[id] else { return }
         guard FileManager.default.fileExists(atPath: record.cwd) else {
-            errorMessage = "Proje klasörü bulunamadı: \(record.cwd)\nKlasör taşındıysa oturumu kaldırıp yeniden aç."
+            errorMessage = String(localized: "Project folder not found: \(record.cwd)\nIf the folder was moved, remove the session and open it again.")
             return
         }
         // Süreç hâlâ çalışıyorsa yeni terminal açmak eskisini (ve içindeki claude'u) öldürür.
@@ -441,7 +441,7 @@ final class AppModel {
     private func locateClaude() -> String? {
         let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
         guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs) else {
-            errorMessage = "`claude` bulunamadı. Aranan dizinler: \(dirs.joined(separator: ", "))"
+            errorMessage = String(localized: "`claude` not found. Searched directories: \(dirs.joined(separator: ", "))")
             return nil
         }
         return claude
@@ -462,7 +462,7 @@ final class AppModel {
         let env = launchEnvironment
         guard let claude = locateClaude() else { return false }
         guard FileManager.default.isExecutableFile(atPath: hookBinaryPath) else {
-            errorMessage = "Hook yardımcısı bulunamadı: \(hookBinaryPath)\nÖnce `swift build` çalıştır (sadece `swift run AgentOffice` onu derlemez)."
+            errorMessage = String(localized: "Hook helper not found: \(hookBinaryPath)\nRun `swift build` first (`swift run AgentOffice` alone does not build it).")
             return false
         }
         guard let settings = writeHookSettings(record.id) else { return false }
@@ -482,7 +482,7 @@ final class AppModel {
             try ClaudeLaunch.settingsJSON(hookCommand: hookCommand).write(to: settings)
             return settings
         } catch {
-            errorMessage = "Ayar dosyası yazılamadı: \(error)"
+            errorMessage = String(localized: "The settings file could not be written: \(error.localizedDescription)")
             return nil
         }
     }
@@ -544,7 +544,7 @@ final class AppModel {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.prompt = kind == .shell ? "Terminali aç" : "Ajanı başlat"
+        panel.prompt = kind == .shell ? String(localized: "Open Terminal") : String(localized: "Start Agent")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         switch kind {
         case .claude: newClaudeSession(cwd: url, replacing: replacing)
@@ -633,12 +633,12 @@ extension AppModel {
     /// Varsayılandan farklıysa saklanır; `nil` ya da varsayılan görünüş kaydı siler.
     func setLook(_ look: AvatarLook?, for id: String) {
         avatarLooks[id] = look == AvatarLook.default(for: id) ? nil : look
-        do { try StyleStore.save(avatarLooks, to: avatarsURL) } catch { errorMessage = "Görünüş kaydedilemedi: \(error)" }
+        do { try StyleStore.save(avatarLooks, to: avatarsURL) } catch { errorMessage = String(localized: "The appearance could not be saved: \(error.localizedDescription)") }
     }
 
     func setStyle(_ style: RoomStyle?, for roomKey: String) {
         roomStyles[roomKey] = style == RoomStyle.default(for: roomKey) ? nil : style
-        do { try StyleStore.save(roomStyles, to: roomStylesURL) } catch { errorMessage = "Oda stili kaydedilemedi: \(error)" }
+        do { try StyleStore.save(roomStyles, to: roomStylesURL) } catch { errorMessage = String(localized: "The room style could not be saved: \(error.localizedDescription)") }
     }
 
     func worktree(for cwd: String) -> String? { roomIdentities[cwd]?.worktree }
@@ -897,7 +897,7 @@ extension AppModel {
     func loadDemoSessions() {
         let demo: [(String, String, [AgentEvent])] = [
             ("juice-merge", "/demo/juice-merge", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Edit", summary: nil)]),
-            ("juice-merge-worktree1", "/demo/juice-merge-worktree1", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .needsInput(.question("Hangi renk?"))]),
+            ("juice-merge-worktree1", "/demo/juice-merge-worktree1", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .needsInput(.question(String(localized: "Which color?")))]),
             ("juice-merge-worktree2", "/demo/juice-merge-worktree2", [.sessionStarted(providerSessionID: nil)]),
             ("room-logic", "/demo/room-logic", [.sessionStarted(providerSessionID: nil), .promptSubmitted(text: "x"), .toolStarted(name: "Bash", summary: nil)]),
             ("api", "/demo/api", [.sessionStarted(providerSessionID: nil)]),
@@ -914,9 +914,9 @@ extension AppModel {
             store.register(id: id, title: "api", cwd: "/demo/api", state: state)
         }
         // "Ne üzerinde çalışıyor" ve "bitti, görülmedi" demo verisi.
-        store.setWorkTitle("Birleştirme animasyonunu düzelt", for: "demo-0")
-        store.setWorkTitle("Seviye editöründe ızgara hatası", for: "demo-1")
-        store.apply([.promptSubmitted(text: "API sayfalamasını ekle"), .turnEnded], to: "demo-4", watched: false)
+        store.setWorkTitle(String(localized: "Fix the merge animation"), for: "demo-0")
+        store.setWorkTitle(String(localized: "Grid bug in the level editor"), for: "demo-1")
+        store.apply([.promptSubmitted(text: String(localized: "Add API pagination")), .turnEnded], to: "demo-4", watched: false)
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
             roomIdentities[worktree] = RepoIdentity.Identity(roomKey: "/demo/juice-merge", worktree: (worktree as NSString).lastPathComponent)

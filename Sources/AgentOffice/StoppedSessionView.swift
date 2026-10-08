@@ -23,17 +23,17 @@ struct StoppedSessionView: View {
                 Text((session.cwd as NSString).abbreviatingWithTildeInPath).font(.caption).foregroundStyle(.tertiary)
             }
             HStack(spacing: 14) {
-                BigAction(title: "Devam ettir", shortcut: "⌘R", symbol: "play.fill", tint: .accentColor) {
+                BigAction(title: "Resume", shortcut: "⌘R", symbol: "play.fill", tint: .accentColor) {
                     model.resume(session.id)
                 }
-                BigAction(title: "Kaldır", shortcut: "⌘⇧⌫", symbol: "trash", tint: .red) {
+                BigAction(title: "Remove", shortcut: "⌘⇧⌫", symbol: "trash", tint: .red) {
                     requestRemove(session.id)
                 }
             }
             let others = model.stoppedSessionIDs.count
             if others >= 2 {
                 Button { model.resumeAllStopped() } label: {
-                    Label("Tüm durmuş oturumları devam ettir (\(others))  ⌘⇧R", systemImage: "play.square.stack")
+                    Label("Resume All Stopped Sessions (\(others))  ⌘⇧R", systemImage: "play.square.stack")
                 }
                 .buttonStyle(.link)
             }
@@ -46,7 +46,7 @@ struct StoppedSessionView: View {
 }
 
 private struct BigAction: View {
-    let title: String
+    let title: LocalizedStringKey
     let shortcut: String
     let symbol: String
     let tint: Color

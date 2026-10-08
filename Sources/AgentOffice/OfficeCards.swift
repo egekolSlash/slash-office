@@ -70,7 +70,7 @@ private struct LotSign: View {
     let compact: Bool
 
     var body: some View {
-        Label("Yeni oda", systemImage: "plus")
+        Label("New Room", systemImage: "plus")
             .font(.system(size: compact ? 10 : 12, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
@@ -133,7 +133,7 @@ struct QuestionBubble: View {
     let size: Double
 
     var body: some View {
-        Text("?")
+        Text(verbatim: "?")
             .font(.system(size: size * 0.6, weight: .heavy))
             .foregroundStyle(.white)
             .frame(width: size, height: size)

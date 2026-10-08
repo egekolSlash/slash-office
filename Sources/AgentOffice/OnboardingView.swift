@@ -25,6 +25,8 @@ struct OnboardingView: View {
         for step in Onboarding.Step.allCases {
             let host = NSHostingView(rootView: OnboardingView(model: model, step: step))
             host.frame = NSRect(x: 0, y: 0, width: 620, height: 540)
+            // Arka plan saydam: koyu modda beyaz metin PNG'de kaybolmasın.
+            host.appearance = NSAppearance(named: .aqua)
             let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.contentView = host
             host.layoutSubtreeIfNeeded()

@@ -11,16 +11,16 @@ struct StatusBadge: View {
             .foregroundStyle(color)
     }
 
-    private var text: String {
-        if kind == .shell, state == .idle || state == .starting { return "Terminal · hazır" }
+    private var text: LocalizedStringKey {
+        if kind == .shell, state == .idle || state == .starting { return "Terminal · ready" }
         return switch state {
-        case .starting: "Başlıyor"
-        case .idle: "Boşta"
-        case .working(let tool?): "Çalışıyor · \(tool)"
-        case .working(nil): "Çalışıyor"
-        case .waiting(.permission): "İzin bekliyor"
-        case .waiting(.question): "Soru soruyor"
-        case .exited: "Durdu"
+        case .starting: "Starting"
+        case .idle: "Idle"
+        case .working(let tool?): "Working · \(tool)"
+        case .working(nil): "Working"
+        case .waiting(.permission): "Waiting for permission"
+        case .waiting(.question): "Asking a question"
+        case .exited: "Stopped"
         }
     }
 

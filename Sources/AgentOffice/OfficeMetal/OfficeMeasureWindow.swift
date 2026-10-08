@@ -19,7 +19,7 @@ enum OfficeMeasureWindow {
         let mini = arguments.contains("--mini")
         let window = NSWindow(contentRect: NSRect(x: 80, y: 80, width: mini ? 420 : 1200, height: mini ? 280 : 800),
                               styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-        window.title = "Ofis ölçümü" + (mini ? " (mini)" : "")
+        window.title = "Office benchmark" + (mini ? " (mini)" : "")
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         window.isReleasedWhenClosed = false
@@ -53,7 +53,7 @@ enum OfficeMeasureWindow {
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
             let now = CACurrentMediaTime(), cpu = processCPU(), count = frames.load(ordering: .relaxed)
             let dt = now - lastTime
-            print(String(format: "fps=%.1f  süreç CPU=%%%.1f (kullanıcı %%%.1f, sistem %%%.1f)", Double(count - lastFrames) / dt,
+            print(String(format: "fps=%.1f  process CPU=%%%.1f (user %%%.1f, system %%%.1f)", Double(count - lastFrames) / dt,
                          (cpu.user + cpu.system - lastCPU.user - lastCPU.system) / dt * 100,
                          (cpu.user - lastCPU.user) / dt * 100, (cpu.system - lastCPU.system) / dt * 100))
             lastTime = now; lastCPU = cpu; lastFrames = count

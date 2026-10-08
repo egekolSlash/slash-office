@@ -16,10 +16,10 @@ struct ChangesInspector: View {
             let state = model.diffWatcher.state(id, model.changesScope)
             VStack(spacing: 0) {
                 header(session: session, state: state)
-                Picker("Kapsam", selection: $model.changesScope) {
-                    Text("Commit edilmemiş").tag(ChangesScope.uncommitted)
-                    Text("Son tur").tag(ChangesScope.lastTurn)
-                    Text("Oturum").tag(ChangesScope.session)
+                Picker("Scope", selection: $model.changesScope) {
+                    Text("Uncommitted").tag(ChangesScope.uncommitted)
+                    Text("Last Turn").tag(ChangesScope.lastTurn)
+                    Text("Session").tag(ChangesScope.session)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -32,7 +32,7 @@ struct ChangesInspector: View {
             .onChange(of: id) { _, newID in model.requestDiff(newID, immediately: true) }
             .onChange(of: model.changesScope) { _, _ in model.requestDiff(id, immediately: true) }
         } else {
-            ContentUnavailableView("Oturum seçili değil", systemImage: "doc.text.magnifyingglass")
+            ContentUnavailableView("No session selected", systemImage: "doc.text.magnifyingglass")
         }
     }
 
@@ -44,11 +44,11 @@ struct ChangesInspector: View {
             }
             Spacer()
             if case .ready(let groups, _) = state {
-                Text("\(groups.reduce(0) { $0 + $1.files.count }) dosya").font(.caption).foregroundStyle(.secondary)
+                Text("Files: \(groups.reduce(0) { $0 + $1.files.count })").font(.caption).foregroundStyle(.secondary)
             }
             Button { model.requestDiff(session.id, immediately: true) } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(.plain)
-                .help("Yenile")
+                .help("Refresh")
         }
         .padding(8)
     }
@@ -59,11 +59,11 @@ struct ChangesInspector: View {
         case nil, .loading?:
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         case .unavailable(let reason)?:
-            ContentUnavailableView("Gösterilecek değişiklik yok", systemImage: "clock", description: Text(reason))
+            ContentUnavailableView("No changes to show", systemImage: "clock", description: Text(reason))
         case .noRepository?:
             if session.touchedFiles.isEmpty {
-                ContentUnavailableView("Git deposu değil", systemImage: "folder",
-                                       description: Text("Ajanın dokunduğu dosyalar burada listelenecek."))
+                ContentUnavailableView("Not a Git repository", systemImage: "folder",
+                                       description: Text("Files the agent touches will be listed here."))
             } else {
                 List(session.touchedFiles, id: \.self) { path in
                     FileRow(path: path, detail: nil)
@@ -71,14 +71,14 @@ struct ChangesInspector: View {
             }
         case .ready(let groups, _)?:
             if groups.isEmpty {
-                ContentUnavailableView("Değişiklik yok", systemImage: "checkmark.circle",
-                                       description: Text(model.changesScope == .uncommitted ? "Her şey commit edilmiş." : ""))
+                ContentUnavailableView("No changes", systemImage: "checkmark.circle",
+                                       description: Text(model.changesScope == .uncommitted ? String(localized: "Everything is committed.") : ""))
             } else {
                 let selected = selectedFile(in: groups)
                 VSplitView {
                     List(selection: $selection) {
                         ForEach(groups) { group in
-                            Section("\(group.title) · \(group.files.count)") {
+                            Section(String("\(group.title) · \(group.files.count)")) {
                                 ForEach(group.files) { file in
                                     FileRow(path: file.path, detail: file).tag(Self.tag(group, file))
                                 }
@@ -117,8 +117,8 @@ private struct FileRow: View {
             Text(folder).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
             Spacer(minLength: 4)
             if let detail {
-                if detail.additions > 0 { Text("+\(detail.additions)").font(.caption.monospaced()).foregroundStyle(.green) }
-                if detail.deletions > 0 { Text("−\(detail.deletions)").font(.caption.monospaced()).foregroundStyle(.red) }
+                if detail.additions > 0 { Text(verbatim: "+\(detail.additions)").font(.caption.monospaced()).foregroundStyle(.green) }
+                if detail.deletions > 0 { Text(verbatim: "−\(detail.deletions)").font(.caption.monospaced()).foregroundStyle(.red) }
                 Text(letter(detail.change)).font(.caption.bold().monospaced()).foregroundStyle(color(detail.change))
                     .frame(width: 12)
             }
@@ -190,11 +190,11 @@ struct DiffTextView: NSViewRepresentable {
             output.append(NSAttributedString(string: line + "\n", attributes: attributes))
         }
         guard let file else {
-            append("Bir dosya seç.", color: .secondaryLabelColor)
+            append(String(localized: "Select a file."), color: .secondaryLabelColor)
             return output
         }
-        if file.isBinary { append("binary dosya", color: .secondaryLabelColor); return output }
-        if file.hunks.isEmpty { append("İçerik yok ya da diff çok büyük.", color: .secondaryLabelColor); return output }
+        if file.isBinary { append(String(localized: "Binary file"), color: .secondaryLabelColor); return output }
+        if file.hunks.isEmpty { append(String(localized: "No content, or the diff is too large."), color: .secondaryLabelColor); return output }
         for hunk in file.hunks {
             append(hunk.header, color: .secondaryLabelColor)
             for line in hunk.lines {
@@ -216,8 +216,8 @@ struct TodoInspector: View {
     var body: some View {
         if let id = model.layout.focused, let session = model.store.session(id) {
             if session.todos.isEmpty {
-                ContentUnavailableView("Todo listesi yok", systemImage: "checklist",
-                                       description: Text("Bu Claude Code kurulumunda todo aracı kapalı. Codex oturumlarında plan burada görünecek."))
+                ContentUnavailableView("No to-do list", systemImage: "checklist",
+                                       description: Text("The to-do tool is off in this Claude Code setup. Plans from Codex sessions will appear here."))
             } else {
                 List(Array(session.todos.enumerated()), id: \.offset) { _, item in
                     Label(item.title, systemImage: symbol(item.status))
@@ -226,7 +226,7 @@ struct TodoInspector: View {
                 }
             }
         } else {
-            ContentUnavailableView("Oturum seçili değil", systemImage: "checklist")
+            ContentUnavailableView("No session selected", systemImage: "checklist")
         }
     }
 

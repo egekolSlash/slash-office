@@ -12,7 +12,7 @@ struct PermissionsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Permissions").font(.title2.bold())
-            Text("Ajanlar senin klasörlerinde çalışıyor. macOS'un çalışma sırasında tek tek sormaması için izinleri şimdi ver.")
+            Text("Agents work in your folders. Grant permissions now so macOS doesn't ask one by one while they work.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             PermissionsList()
@@ -36,14 +36,14 @@ struct PermissionsList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            PermissionRow(title: "Tam Disk Erişimi", symbol: "internaldrive",
-                          detail: "Belgeler, Masaüstü, İndirilenler ve diğer uygulamaların verileri için tekrar tekrar çıkan dosya erişimi pencerelerini kaldırır. Ayarlar'da Slash Office'i aç; sonra uygulamayı yeniden başlat.",
-                          status: fullDisk, action: "Ayarlar'ı aç") {
+            PermissionRow(title: "Full Disk Access", symbol: "internaldrive",
+                          detail: "Removes the repeated file access prompts for Documents, Desktop, Downloads and other apps' data. Turn on Slash Office in System Settings, then restart the app.",
+                          status: fullDisk, action: "Open System Settings") {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
             }
-            PermissionRow(title: "Bildirimler", symbol: "bell.badge",
-                          detail: "Bir ajan soru sorduğunda ya da izin beklediğinde haber verir.",
-                          status: notifications, action: "İzin ver") {
+            PermissionRow(title: "Notifications", symbol: "bell.badge",
+                          detail: "Lets you know when an agent asks a question or waits for permission.",
+                          status: notifications, action: "Allow") {
                 if notifications == .denied {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
                 } else {
@@ -52,18 +52,18 @@ struct PermissionsList: View {
                     }
                 }
             }
-            PermissionRow(title: "Mikrofon", symbol: "mic",
-                          detail: "Claude Code'un ses modu için.",
-                          status: microphone, action: "İzin ver") {
+            PermissionRow(title: "Microphone", symbol: "mic",
+                          detail: "For Claude Code's voice mode.",
+                          status: microphone, action: "Allow") {
                 if microphone == .denied {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
                 } else {
                     AVCaptureDevice.requestAccess(for: .audio) { _ in Task { @MainActor in await refresh() } }
                 }
             }
-            PermissionRow(title: "Ekran Kaydı", symbol: "rectangle.dashed.badge.record",
-                          detail: "Terminallerdeki ajanlar ekran görüntüsü alabilsin (ör. bir arayüzü kontrol etmek için). İzin verdikten sonra uygulamayı yeniden başlat.",
-                          status: screen, action: "İzin ver") {
+            PermissionRow(title: "Screen Recording", symbol: "rectangle.dashed.badge.record",
+                          detail: "Lets agents in terminals take screenshots (for example to check a user interface). Restart the app after allowing.",
+                          status: screen, action: "Allow") {
                 // İlk istekte macOS kendi penceresini gösterir; sonrakilerde sadece Ayarlar'dan açılabilir.
                 if !CGRequestScreenCaptureAccess() {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
@@ -124,11 +124,11 @@ private struct PermissionRow: View {
             Spacer(minLength: 12)
             switch status {
             case .granted:
-                Label("Verildi", systemImage: "checkmark.circle.fill").foregroundStyle(.green).labelStyle(.titleAndIcon)
+                Label("Granted", systemImage: "checkmark.circle.fill").foregroundStyle(.green).labelStyle(.titleAndIcon)
             case .unknown:
                 EmptyView()
             case .notDetermined, .denied:
-                Button(status == .denied ? "Ayarlar'ı aç" : action, action: perform)
+                Button(status == .denied ? "Open System Settings" : action, action: perform)
             }
         }
     }

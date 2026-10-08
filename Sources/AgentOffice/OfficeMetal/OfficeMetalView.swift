@@ -88,7 +88,7 @@ final class OfficeMetalView: NSView {
 
     private var lastLighting: OfficeDaylight.Lighting?
 
-    required init?(coder: NSCoder) { fatalError("init(coder:) kullanılmıyor") }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
     isolated deinit {
         loop.stop()

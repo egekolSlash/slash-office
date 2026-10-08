@@ -77,16 +77,16 @@ final class DiffWatcher {
         let branch = workspace.branch()
         switch scope {
         case .uncommitted:
-            let groups = [ChangeGroup(title: "Hazırlanmış", files: parse(workspace.diff(.staged))),
-                          ChangeGroup(title: "Değişiklikler", files: parse(workspace.diff(.unstaged)))]
+            let groups = [ChangeGroup(title: String(localized: "Staged"), files: parse(workspace.diff(.staged))),
+                          ChangeGroup(title: String(localized: "Changes"), files: parse(workspace.diff(.unstaged)))]
             return .ready(groups: groups.filter { !$0.files.isEmpty }, branch: branch)
         case .lastTurn:
-            guard let turnTree else { return .unavailable("Henüz bir istek gönderilmedi. İlk istekten sonra o turda değişenler burada görünecek.") }
-            return .ready(groups: [ChangeGroup(title: "Son tur", files: parse(workspace.diff(.since(tree: turnTree))))]
+            guard let turnTree else { return .unavailable(String(localized: "No request has been sent yet. After the first request, what changed in that turn will appear here.")) }
+            return .ready(groups: [ChangeGroup(title: String(localized: "Last Turn"), files: parse(workspace.diff(.since(tree: turnTree))))]
                 .filter { !$0.files.isEmpty }, branch: branch)
         case .session:
-            guard let base = baseline else { return .unavailable("Bu oturumun başlangıç noktası bilinmiyor (git deposu açılmadan önce başlamış).") }
-            return .ready(groups: [ChangeGroup(title: "Oturum boyunca", files: parse(workspace.diff(since: base)))]
+            guard let base = baseline else { return .unavailable(String(localized: "This session's starting point is unknown (it started before the Git repository was opened).")) }
+            return .ready(groups: [ChangeGroup(title: String(localized: "This Session"), files: parse(workspace.diff(since: base)))]
                 .filter { !$0.files.isEmpty }, branch: branch)
         }
     }

@@ -13,8 +13,8 @@ struct TerminalGrid: View {
             PaneNodeView(model: model, node: root, requestRemove: requestRemove)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ContentUnavailableView("Terminal açık değil", systemImage: "terminal",
-                                   description: Text("Ofisten bir ajana tıkla ya da ⌘T ile yeni panel aç."))
+            ContentUnavailableView("No terminal open", systemImage: "terminal",
+                                   description: Text("Click an agent in the office or press ⌘T to open a new pane."))
         }
     }
 }

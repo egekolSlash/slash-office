@@ -21,45 +21,45 @@ struct AvatarEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("\(model.store.session(id)?.title ?? "Köylü") · Görünüm").font(.title3.bold())
+            Text("\(model.store.session(id)?.title ?? String(localized: "Villager")) · Appearance").font(.title3.bold())
             Form {
-                Picker("Saç", selection: Binding(get: { look.hairStyle }, set: { v in update { $0.hairStyle = v } })) {
-                    Text("Kısa").tag(AvatarLook.HairStyle.short)
-                    Text("At kuyruğu").tag(AvatarLook.HairStyle.pigtails)
-                    Text("Dikenli").tag(AvatarLook.HairStyle.spiky)
-                    Text("Küt").tag(AvatarLook.HairStyle.bob)
+                Picker("Hair", selection: Binding(get: { look.hairStyle }, set: { v in update { $0.hairStyle = v } })) {
+                    Text("Short").tag(AvatarLook.HairStyle.short)
+                    Text("Pigtails").tag(AvatarLook.HairStyle.pigtails)
+                    Text("Spiky").tag(AvatarLook.HairStyle.spiky)
+                    Text("Bob").tag(AvatarLook.HairStyle.bob)
                 }
                 .pickerStyle(.segmented)
-                LabeledContent("Saç rengi") {
+                LabeledContent("Hair color") {
                     Swatches(colors: AvatarLook.hairColors, selected: look.hairColor) { i in update { $0.hairColor = i } }
                 }
-                LabeledContent("Ten") {
+                LabeledContent("Skin tone") {
                     Swatches(colors: AvatarLook.skinTones, selected: look.skin) { i in update { $0.skin = i } }
                 }
-                Picker("Tişört deseni", selection: Binding(get: { look.shirtPattern }, set: { v in update { $0.shirtPattern = v } })) {
-                    Text("Düz").tag(AvatarLook.ShirtPattern.plain)
-                    Text("Çizgili").tag(AvatarLook.ShirtPattern.stripes)
-                    Text("Puantiyeli").tag(AvatarLook.ShirtPattern.dots)
+                Picker("Shirt pattern", selection: Binding(get: { look.shirtPattern }, set: { v in update { $0.shirtPattern = v } })) {
+                    Text("Plain").tag(AvatarLook.ShirtPattern.plain)
+                    Text("Striped").tag(AvatarLook.ShirtPattern.stripes)
+                    Text("Polka dots").tag(AvatarLook.ShirtPattern.dots)
                 }
                 .pickerStyle(.segmented)
-                LabeledContent("Tişört rengi") {
+                LabeledContent("Shirt color") {
                     HStack(spacing: 6) {
-                        Swatch(color: projectColor, selected: look.shirtColor == nil, label: "Proje rengi") { update { $0.shirtColor = nil } }
+                        Swatch(color: projectColor, selected: look.shirtColor == nil, label: String(localized: "Project color")) { update { $0.shirtColor = nil } }
                         Divider().frame(height: 18)
                         Swatches(colors: AvatarLook.shirtColors, selected: look.shirtColor ?? -1) { i in update { $0.shirtColor = i } }
                     }
                 }
-                Toggle("Gözlük", isOn: Binding(get: { look.glasses }, set: { v in update { $0.glasses = v } }))
+                Toggle("Glasses", isOn: Binding(get: { look.glasses }, set: { v in update { $0.glasses = v } }))
             }
             .formStyle(.grouped)
             HStack {
-                Button("Rastgele") {
+                Button("Randomize") {
                     var rng = SystemRandomNumberGenerator()
                     model.setLook(AvatarLook.random(using: &rng), for: id)
                 }
-                Button("Varsayılana dön") { model.setLook(nil, for: id) }
+                Button("Reset to Default") { model.setLook(nil, for: id) }
                 Spacer()
-                Button("Tamam") { model.editingAvatar = nil }.keyboardShortcut(.defaultAction)
+                Button("Done") { model.editingAvatar = nil }.keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)
@@ -73,11 +73,13 @@ struct RoomEditorSheet: View {
     let roomKey: String
 
     static let wallpapers: [(name: String, color: AvatarLook.RGBA)] = [
-        ("Krem çizgili", (0.98, 0.90, 0.76)), ("Nane çizgili", (0.81, 0.93, 0.86)), ("Pembe puantiyeli", (0.99, 0.86, 0.88)),
-        ("Açık mavi", (0.84, 0.92, 0.99)), ("Sarı kareli", (0.99, 0.92, 0.68)),
+        (String(localized: "Cream stripes"), (0.98, 0.90, 0.76)), (String(localized: "Mint stripes"), (0.81, 0.93, 0.86)),
+        (String(localized: "Pink polka dots"), (0.99, 0.86, 0.88)), (String(localized: "Light blue"), (0.84, 0.92, 0.99)),
+        (String(localized: "Yellow checks"), (0.99, 0.92, 0.68)),
     ]
     static let floors: [(name: String, color: AvatarLook.RGBA)] = [
-        ("Meşe parke", (0.82, 0.58, 0.34)), ("Ceviz parke", (0.52, 0.33, 0.20)), ("Karo", (0.92, 0.74, 0.62)),
+        (String(localized: "Oak parquet"), (0.82, 0.58, 0.34)), (String(localized: "Walnut parquet"), (0.52, 0.33, 0.20)),
+        (String(localized: "Tile"), (0.92, 0.74, 0.62)),
     ]
 
     private var style: RoomStyle { model.style(for: roomKey) }
@@ -90,34 +92,34 @@ struct RoomEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("\((roomKey as NSString).lastPathComponent) · Oda").font(.title3.bold())
+            Text("\((roomKey as NSString).lastPathComponent) · Room").font(.title3.bold())
             Form {
-                LabeledContent("Duvar kâğıdı") {
+                LabeledContent("Wallpaper") {
                     HStack(spacing: 6) {
                         ForEach(Array(Self.wallpapers.enumerated()), id: \.offset) { i, item in
                             Swatch(color: item.color, selected: style.wallpaper == i, label: item.name) { update { $0.wallpaper = i } }
                         }
                     }
                 }
-                LabeledContent("Zemin") {
+                LabeledContent("Floor") {
                     HStack(spacing: 6) {
                         ForEach(Array(Self.floors.enumerated()), id: \.offset) { i, item in
                             Swatch(color: item.color, selected: style.floor == i, label: item.name) { update { $0.floor = i } }
                         }
                     }
                 }
-                Picker("Halı", selection: Binding(get: { style.rug }, set: { v in update { $0.rug = v } })) {
-                    Text("Puantiyeli").tag(RoomStyle.RugPattern.dots)
-                    Text("Çizgili").tag(RoomStyle.RugPattern.stripes)
-                    Text("Düz").tag(RoomStyle.RugPattern.plain)
+                Picker("Rug", selection: Binding(get: { style.rug }, set: { v in update { $0.rug = v } })) {
+                    Text("Polka dots").tag(RoomStyle.RugPattern.dots)
+                    Text("Striped").tag(RoomStyle.RugPattern.stripes)
+                    Text("Plain").tag(RoomStyle.RugPattern.plain)
                 }
                 .pickerStyle(.segmented)
             }
             .formStyle(.grouped)
             HStack {
-                Button("Varsayılana dön") { model.setStyle(nil, for: roomKey) }
+                Button("Reset to Default") { model.setStyle(nil, for: roomKey) }
                 Spacer()
-                Button("Tamam") { model.editingRoom = nil }.keyboardShortcut(.defaultAction)
+                Button("Done") { model.editingRoom = nil }.keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)

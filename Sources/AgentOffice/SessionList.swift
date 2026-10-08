@@ -14,11 +14,11 @@ struct SessionList: View {
             let stopped = model.stoppedSessionIDs.count
             if stopped >= 2 {
                 Button { model.resumeAllStopped() } label: {
-                    Label("Tümünü devam ettir (\(stopped))", systemImage: "play.square.stack")
+                    Label("Resume All (\(stopped))", systemImage: "play.square.stack")
                         .frame(maxWidth: .infinity)
                 }
                 .controlSize(.large)
-                .help("Bütün durmuş oturumları kaldığı yerden aç (⌘⇧R)")
+                .help("Resume all stopped sessions where they left off (⌘⇧R)")
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             }
@@ -62,9 +62,9 @@ struct SessionList: View {
         }
         .contextMenu(forSelectionType: String.self) { ids in
             if let id = ids.first {
-                if model.store.session(id)?.state == .exited { Button("Devam ettir") { model.resume(id) } }
-                Button("Görünümü düzenle…") { model.editingAvatar = id }
-                Button("Kaldır", role: .destructive) { requestRemove(id) }
+                if model.store.session(id)?.state == .exited { Button("Resume") { model.resume(id) } }
+                Button("Edit Appearance…") { model.editingAvatar = id }
+                Button("Remove", role: .destructive) { requestRemove(id) }
             }
         } primaryAction: { ids in
             if let id = ids.first { model.showTerminal(id) }

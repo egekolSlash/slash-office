@@ -2,17 +2,22 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key><string>dev.agentoffice.app</string>
+    <key>CFBundleIdentifier</key><string>io.github.egekolslash.slashoffice</string>
     <key>CFBundleName</key><string>Slash Office</string>
     <key>CFBundleDisplayName</key><string>Slash Office</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleIconName</key><string>AppIcon</string>
     <key>CFBundleExecutable</key><string>AgentOffice</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.2</string>
-    <key>CFBundleVersion</key><string>2</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <!-- make-app.sh git commit sayısını yazar. -->
+    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>tr</string></array>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Ege Kol. MIT License.</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSMicrophoneUsageDescription</key><string>Slash Office içinde çalışan Claude Code'un ses modu mikrofonu kullanır.</string>
+    <key>NSMicrophoneUsageDescription</key><string>Claude Code running inside Slash Office uses the microphone for voice mode.</string>
 </dict>
 </plist>

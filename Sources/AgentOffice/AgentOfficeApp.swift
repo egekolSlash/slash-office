@@ -5,7 +5,14 @@ import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let model = AppModel()
+    let model: AppModel
+
+    override init() {
+        // Model ayarları okumadan önce: eski bundle kimliğinin ayarları bir kez taşınır.
+        SettingsMigration.run(bundleID: Bundle.main.bundleIdentifier)
+        model = AppModel()
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // `--office-snapshot <png>`: demo ofisini ekran dışı çizip çık (hook sunucusu ve oturumlar başlamaz).
@@ -42,10 +49,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard model.hasActiveAgents else { return .terminateNow }
         let alert = NSAlert()
-        alert.messageText = "Çalışan ajanlar var"
-        alert.informativeText = "Çıkarsan çalışan ve cevap bekleyen ajanların süreçleri kapanır. Oturumlar sonra kaldığı yerden devam ettirilebilir."
-        alert.addButton(withTitle: "Çık")
-        alert.addButton(withTitle: "Vazgeç")
+        alert.messageText = String(localized: "Agents are running")
+        alert.informativeText = String(localized: "If you quit, the processes of running agents and agents waiting for a reply will end. Sessions can be resumed later where they left off.")
+        alert.addButton(withTitle: String(localized: "Quit"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
     }
 

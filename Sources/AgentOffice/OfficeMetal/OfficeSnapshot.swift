@@ -23,7 +23,7 @@ enum OfficeSnapshot {
             model.roomStyles["/demo/juice-merge"] = RoomStyle(wallpaper: 2, floor: 2, rug: .plain)
         }
         guard let gpu = await OfficeGPU.shared(), let renderer = try? OfficeMetalRenderer(gpu: gpu) else {
-            print("office snapshot: varlıklar yüklenemedi"); exit(1)
+            print("office snapshot: assets could not be loaded"); exit(1)
         }
         // `--size WxH`: görünüm boyutu (ör. mini ofis gibi küçük).
         let size: (width: Int, height: Int) = arguments.firstIndex(of: "--size").flatMap { i -> (Int, Int)? in
@@ -65,7 +65,7 @@ enum OfficeSnapshot {
         let looks = Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) })
         if live { sim.sync(plan: OfficePlan.make([], slots: [:]), desks: [:], looks: [:], projectColors: [:], live: false) }
         sim.sync(plan: plan, desks: states, looks: looks, projectColors: colors, live: live)
-        print("office snapshot: sahne kuruldu, \(desks.count) masa, \(mesh.vertices.count) köşe")
+        print("office snapshot: scene built, \(desks.count) desks, \(mesh.vertices.count) vertices")
 
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: OfficeGPU.colorFormat, width: size.width, height: size.height, mipmapped: false)
         descriptor.usage = [.renderTarget, .shaderRead]
@@ -85,7 +85,7 @@ enum OfficeSnapshot {
         }
         // `--bench <fps>`: ölçüm için ekran dışında bu kare hızında 20 sn çizer (pencere başka Space'teyken de çalışır).
         if let i = arguments.firstIndex(of: "--bench"), let fps = Double(arguments[i + 1]) {
-            print("office bench: \(fps) fps, 20 sn")
+            print("office bench: \(fps) fps, 20 s")
             let end = Date().addingTimeInterval(20)
             while Date() < end {
                 let start = Date()

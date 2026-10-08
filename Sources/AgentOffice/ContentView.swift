@@ -43,21 +43,21 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
-            Picker("Mod", selection: $model.mode) {
-                Text("Ofis").tag(WorkspaceMode.office)
-                Text("Çalışma").tag(WorkspaceMode.work)
-                Text("Odak").tag(WorkspaceMode.focus)
+            Picker("Mode", selection: $model.mode) {
+                Text("Office").tag(WorkspaceMode.office)
+                Text("Work").tag(WorkspaceMode.work)
+                Text("Focus").tag(WorkspaceMode.focus)
             }
             .pickerStyle(.segmented)
-            Menu("Yeni", systemImage: "plus") {
-                Button("Claude oturumu") { model.openLauncher(beside: false, claude: true) }
+            Menu("New", systemImage: "plus") {
+                Button("Claude Session") { model.openLauncher(beside: false, claude: true) }
                 Button("Terminal") { model.newShellSession(cwd: URL(fileURLWithPath: NSHomeDirectory())) }
-                Button("Klasörde terminal…") { model.chooseFolderAndStart(.shell) }
+                Button("Terminal in Folder…") { model.chooseFolderAndStart(.shell) }
             }
         }
-        .confirmationDialog("Ajan hâlâ çalışıyor. Kaldırılırsa süreç kapatılır.",
+        .confirmationDialog("The agent is still running. Removing it will end its process.",
                             isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } })) {
-            Button("Kapat ve kaldır", role: .destructive) {
+            Button("Stop and Remove", role: .destructive) {
                 if let pendingRemoval { model.remove(pendingRemoval.id, keepListFocus: pendingRemoval.keepListFocus) }
                 pendingRemoval = nil
             }
@@ -75,8 +75,8 @@ struct ContentView: View {
         .sheet(isPresented: Binding(get: { model.editingRoom != nil }, set: { if !$0 { model.editingRoom = nil } })) {
             if let key = model.editingRoom { RoomEditorSheet(model: model, roomKey: key) }
         }
-        .alert("Hata", isPresented: .constant(model.errorMessage != nil)) {
-            Button("Tamam") { model.errorMessage = nil }
+        .alert("Error", isPresented: .constant(model.errorMessage != nil)) {
+            Button("OK") { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
         }
@@ -86,9 +86,9 @@ struct ContentView: View {
     private var inspector: some View {
         VStack(spacing: 0) {
             Picker("Inspector", selection: $inspectorTab) {
-                Text("Oturumlar").tag(InspectorTab.sessions)
-                Text("Değişiklikler").tag(InspectorTab.changes)
-                Text("Todo").tag(InspectorTab.todo)
+                Text("Sessions").tag(InspectorTab.sessions)
+                Text("Changes").tag(InspectorTab.changes)
+                Text("To-Do").tag(InspectorTab.todo)
             }
             .pickerStyle(.segmented)
             .labelsHidden()

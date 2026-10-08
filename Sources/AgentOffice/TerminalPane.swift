@@ -18,7 +18,7 @@ struct TerminalPane: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text(TerminalLayout.isLauncher(id) ? "Yeni" : model.store.session(id)?.title ?? "?").font(.caption.bold())
+            Text(TerminalLayout.isLauncher(id) ? String(localized: "New") : model.store.session(id)?.title ?? "?").font(.caption.bold())
             if let summary = model.workSummary(for: id) {
                 Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail).help(summary)
             }
@@ -27,7 +27,7 @@ struct TerminalPane: View {
             Spacer()
             Button { model.closePane(id) } label: { Image(systemName: "xmark") }
                 .buttonStyle(.plain)
-                .help("Paneli kapat (oturum çalışmaya devam eder)")
+                .help("Close pane (the session keeps running)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -60,7 +60,7 @@ struct TerminalPane: View {
             }
             }
         } else {
-            ContentUnavailableView("Oturum bulunamadı", systemImage: "questionmark")
+            ContentUnavailableView("Session not found", systemImage: "questionmark")
         }
     }
 }
@@ -72,11 +72,11 @@ private struct BackgroundSessionView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Arka planda açık", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+            Label("Running in the background", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
         } description: {
-            Text("Bu Claude oturumu Claude Code'un arka planında sürüyor; durumu listede ve ofiste görünür. Burada açınca kaldığı yerden görünür; panel kapansa da çalışmaya devam eder.")
+            Text("This Claude session is running in Claude Code's background; its status shows in the list and the office. Open it here to pick up where it left off; it keeps running even if the pane is closed.")
         } actions: {
-            Button("Burada aç") { model.resume(id) }
+            Button("Open Here") { model.resume(id) }
                 .controlSize(.large)
         }
     }

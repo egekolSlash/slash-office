@@ -6,11 +6,11 @@ struct FinishedBadge: View {
     var compact = false
 
     var body: some View {
-        Label(compact ? "" : "Bitti", systemImage: "checkmark.circle.fill")
+        Label(compact ? "" : String(localized: "Finished"), systemImage: "checkmark.circle.fill")
             .labelStyle(compact ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
             .font(.caption.weight(.semibold))
             .foregroundStyle(.green)
-            .help("Çalışırken bitti; henüz bakmadın")
+            .help("Finished working; you haven't looked yet")
     }
 }
 

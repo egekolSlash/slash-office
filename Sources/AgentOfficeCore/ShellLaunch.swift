@@ -41,10 +41,10 @@ public struct ShellIntegration: Equatable, Sendable {
 
     public static let wrapperScript = """
     #!/bin/sh
-    # Agent Office: terminalde açılan claude'u bu oturumun hook ayarıyla başlatır.
+    # Agent Office: starts claude, opened in the terminal, with this session's hook settings.
     real="$AGENT_OFFICE_REAL_CLAUDE"
     if [ ! -x "$real" ]; then
-        echo "agent-office: claude bulunamadı ($real)" >&2
+        echo "agent-office: claude not found ($real)" >&2
         exit 127
     fi
     if [ -n "$AGENT_OFFICE_CLAUDE_SETTINGS" ] && [ -f "$AGENT_OFFICE_CLAUDE_SETTINGS" ]; then
