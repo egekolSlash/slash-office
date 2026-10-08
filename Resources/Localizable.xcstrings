@@ -671,12 +671,12 @@
         }
       }
     },
-    "In Work mode the small office turns to the agent that needs you: a question first, then a finished task, then a working agent.": {
+    "In Work mode the small office turns to the agent that needs you: a question first, then a working agent, then a finished task.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Çalışma modunda küçük ofis, sana ihtiyacı olan ajana döner: önce soru, sonra biten iş, sonra çalışan ajan."
+            "value": "Çalışma modunda küçük ofis, sana ihtiyacı olan ajana döner: önce soru, sonra çalışan ajan, sonra biten iş."
           }
         }
       }

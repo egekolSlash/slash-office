@@ -10,11 +10,13 @@ import Testing
                                   since: t0.addingTimeInterval(seconds))
     }
 
-    @Test func questionWinsOverFinishedOverWorking() {
+    @Test func questionWinsOverWorkingOverFinished() {
         let pick = OfficeAutoFocus.pick([c("w", .working(tool: nil)), c("f", .idle, finished: true),
                                          c("q", .waiting(.question("?")))], current: nil)
         #expect(pick == "q")
-        #expect(OfficeAutoFocus.pick([c("w", .working(tool: nil)), c("f", .idle, finished: true)], current: nil) == "f")
+        // İşi bitip görülmemiş en düşük öncelikte: çalışan ondan önce gelir, ama başka kimse yoksa ona dönülür.
+        #expect(OfficeAutoFocus.pick([c("w", .working(tool: nil)), c("f", .idle, finished: true)], current: nil) == "w")
+        #expect(OfficeAutoFocus.pick([c("i", .idle), c("f", .idle, finished: true)], current: nil) == "f")
         #expect(OfficeAutoFocus.pick([c("w", .working(tool: nil)), c("i", .idle)], current: nil) == "w")
     }
 

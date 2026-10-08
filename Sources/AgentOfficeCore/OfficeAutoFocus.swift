@@ -1,7 +1,7 @@
 import Foundation
 
 /// Mini ofisin kendiliğinden odaklanması: kamera dikkat isteyen masaya döner. Öncelik:
-/// soru soran > işi bitip görülmemiş > çalışan; aynı öncelikte kullanıcının panelde açık tutmadığı (bakmadığı)
+/// soru soran > çalışan > işi bitip görülmemiş; aynı öncelikte kullanıcının panelde açık tutmadığı (bakmadığı)
 /// oturum, sonra bu duruma en son giren (bir ajana bakarken başkası çalışmaya başlarsa kamera ona döner).
 /// Eşitlikte zaten baktığımız masada kalınır (kamera zıplamasın).
 /// Kullanıcı kamerayı elle oynattıysa son jestten 3 sn sonrasına kadar kendiliğinden odak durur.
@@ -27,8 +27,8 @@ public enum OfficeAutoFocus {
     static func score(_ c: Candidate) -> Int? {
         let level: Int
         if case .waiting = c.state { level = 3 }
-        else if c.unseenFinish { level = 2 }
-        else if case .working = c.state { level = 1 }
+        else if case .working = c.state { level = 2 }
+        else if c.unseenFinish { level = 1 }
         else { return nil }
         return level * 2 + (c.openInPane ? 0 : 1)
     }
