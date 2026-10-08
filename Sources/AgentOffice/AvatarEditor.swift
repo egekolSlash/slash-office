@@ -1,72 +1,6 @@
 import AgentOfficeCore
 import SwiftUI
 
-/// "Görünümü düzenle…" (spec v3 §7): köylünün saçı, teni, tişörtü ve gözlüğü. Değişiklik ofiste anında görünür.
-struct AvatarEditorSheet: View {
-    @Bindable var model: AppModel
-    let id: String
-
-    private var look: AvatarLook { model.look(for: id) }
-    private var projectColor: AvatarLook.RGBA {
-        let key = model.store.session(id).map { model.roomKey(for: $0.cwd) } ?? id
-        let c = ProjectPalette.colors[ProjectPalette.index(for: key)]
-        return (c.red, c.green, c.blue)
-    }
-
-    private func update(_ change: (inout AvatarLook) -> Void) {
-        var next = look
-        change(&next)
-        model.setLook(next, for: id)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("\(model.store.session(id)?.title ?? String(localized: "Villager")) · Appearance").font(.title3.bold())
-            Form {
-                Picker("Hair", selection: Binding(get: { look.hairStyle }, set: { v in update { $0.hairStyle = v } })) {
-                    Text("Short").tag(AvatarLook.HairStyle.short)
-                    Text("Pigtails").tag(AvatarLook.HairStyle.pigtails)
-                    Text("Spiky").tag(AvatarLook.HairStyle.spiky)
-                    Text("Bob").tag(AvatarLook.HairStyle.bob)
-                }
-                .pickerStyle(.segmented)
-                LabeledContent("Hair color") {
-                    Swatches(colors: AvatarLook.hairColors, selected: look.hairColor) { i in update { $0.hairColor = i } }
-                }
-                LabeledContent("Skin tone") {
-                    Swatches(colors: AvatarLook.skinTones, selected: look.skin) { i in update { $0.skin = i } }
-                }
-                Picker("Shirt pattern", selection: Binding(get: { look.shirtPattern }, set: { v in update { $0.shirtPattern = v } })) {
-                    Text("Plain").tag(AvatarLook.ShirtPattern.plain)
-                    Text("Striped").tag(AvatarLook.ShirtPattern.stripes)
-                    Text("Polka dots").tag(AvatarLook.ShirtPattern.dots)
-                }
-                .pickerStyle(.segmented)
-                LabeledContent("Shirt color") {
-                    HStack(spacing: 6) {
-                        Swatch(color: projectColor, selected: look.shirtColor == nil, label: String(localized: "Project color")) { update { $0.shirtColor = nil } }
-                        Divider().frame(height: 18)
-                        Swatches(colors: AvatarLook.shirtColors, selected: look.shirtColor ?? -1) { i in update { $0.shirtColor = i } }
-                    }
-                }
-                Toggle("Glasses", isOn: Binding(get: { look.glasses }, set: { v in update { $0.glasses = v } }))
-            }
-            .formStyle(.grouped)
-            HStack {
-                Button("Randomize") {
-                    var rng = SystemRandomNumberGenerator()
-                    model.setLook(AvatarLook.random(using: &rng), for: id)
-                }
-                Button("Reset to Default") { model.setLook(nil, for: id) }
-                Spacer()
-                Button("Done") { model.editingAvatar = nil }.keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(20)
-        .frame(width: 520)
-    }
-}
-
 /// "Odayı düzenle…": duvar kâğıdı, zemin ve halı (depo başına).
 struct RoomEditorSheet: View {
     @Bindable var model: AppModel
@@ -150,7 +84,7 @@ struct RoomEditorSheet: View {
     }
 }
 
-private struct Swatches: View {
+struct Swatches: View {
     let colors: [AvatarLook.RGBA]
     let selected: Int
     let pick: (Int) -> Void
@@ -164,7 +98,7 @@ private struct Swatches: View {
     }
 }
 
-private struct Swatch: View {
+struct Swatch: View {
     let color: AvatarLook.RGBA
     let selected: Bool
     let label: String?

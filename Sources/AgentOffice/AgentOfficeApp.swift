@@ -23,6 +23,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         if OnboardingView.snapshot(arguments: CommandLine.arguments, model: model) { exit(0) }
+        if CommandLine.arguments.contains("--customizer-snapshot") {
+            let model = self.model
+            Task { @MainActor in
+                _ = await AgentCustomizer.snapshot(arguments: CommandLine.arguments, model: model)
+                exit(0)
+            }
+            return
+        }
         // `--office-window`: demo ofisini yüzen pencerede gösterip kare hızı ve CPU ölçer.
         if OfficeMeasureWindow.requested(CommandLine.arguments) {
             OfficeMeasureWindow.run(arguments: CommandLine.arguments, model: model)
@@ -128,10 +136,28 @@ struct AgentOfficeApp: App {
                 }
                 .shortcut("pane.close")
             }
+            CommandGroup(after: .windowArrangement) {
+                CustomizeAgentsButton()
+            }
             CommandGroup(replacing: .help) {
                 Button("Welcome Guide…") { delegate.model.openOnboarding() }
             }
         }
+        Window("Customize Agents", id: "agents") {
+            AgentCustomizer(model: delegate.model)
+                .frame(minWidth: 880, minHeight: 560)
+        }
+        .defaultSize(width: 980, height: 640)
         Settings { SettingsView(runningAgents: { [delegate] in delegate.model.runningAgentCount }) }
+    }
+}
+
+/// Menüde "Customize Agents…" (⇧⌘A): pencereyi açar.
+private struct CustomizeAgentsButton: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button(LocalizedStringKey(ShortcutCatalog.shortcut("agents.customize").title)) { openWindow(id: "agents") }
+            .shortcut("agents.customize")
     }
 }

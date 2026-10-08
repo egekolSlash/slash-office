@@ -32,13 +32,14 @@ import Testing
         #expect(ShortcutCatalog.shortcut("session.resumeAll").symbols == "⇧⌘R")
         #expect(ShortcutCatalog.shortcut("text.bigger").symbols == "⌘+")
         #expect(ShortcutCatalog.shortcut("session.removeStopped").symbols == "⇧⌘⌫")
+        #expect(ShortcutCatalog.shortcut("agents.customize").symbols == "⇧⌘A")
     }
 
     @Test func everyMenuCommandHasAShortcut() {
         let ids = ["session.newClaude", "pane.new", "pane.newBeside", "mode.office", "mode.work", "mode.focus",
                    "text.bigger", "text.smaller", "text.actual", "session.jumpToWaiting", "session.previous",
                    "session.next", "pane.previous", "pane.next", "session.resume", "session.removeStopped",
-                   "session.resumeAll", "pane.close"]
+                   "session.resumeAll", "pane.close", "agents.customize"]
         #expect(Set(ShortcutCatalog.all.map(\.id)) == Set(ids))
     }
 

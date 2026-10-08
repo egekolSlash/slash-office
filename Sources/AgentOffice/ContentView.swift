@@ -19,6 +19,8 @@ struct ContentView: View {
         }
     }
 
+    @Environment(\.openWindow) private var openWindow
+
     var body: some View {
         Group {
             switch model.mode {
@@ -66,11 +68,15 @@ struct ContentView: View {
         .sheet(isPresented: $model.showPermissions) {
             PermissionsView { model.finishPermissions() }
         }
+        // "Edit Appearance…" (sağ tık, liste): özelleştirme penceresi o köylü seçili açılır.
+        .onChange(of: model.editingAvatar) {
+            guard let id = model.editingAvatar else { return }
+            model.customizingAgent = id
+            model.editingAvatar = nil
+            openWindow(id: "agents")
+        }
         .sheet(isPresented: $model.showOnboarding) {
             OnboardingView(model: model)
-        }
-        .sheet(isPresented: Binding(get: { model.editingAvatar != nil }, set: { if !$0 { model.editingAvatar = nil } })) {
-            if let id = model.editingAvatar { AvatarEditorSheet(model: model, id: id) }
         }
         .sheet(isPresented: Binding(get: { model.editingRoom != nil }, set: { if !$0 { model.editingRoom = nil } })) {
             if let key = model.editingRoom { RoomEditorSheet(model: model, roomKey: key) }

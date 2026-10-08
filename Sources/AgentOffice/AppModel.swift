@@ -17,6 +17,9 @@ final class AppModel {
     var mode: WorkspaceMode = .work { didSet { markFocusedSeen() } }
     var errorMessage: String?
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
+    /// Özelleştirme penceresinde seçilecek köylü ("Edit Appearance…" ile açılınca).
+    var customizingAgent: String?
+
     /// Agents > Permissions… ile açılan izin ekranı (ilk açılışta izinleri rehber ister).
     var showPermissions = false
     /// İlk açılış rehberi: bitirilene ya da atlanana kadar her açılışta; Help > Welcome Guide… ile her zaman.
@@ -617,6 +620,18 @@ extension AppModel {
     func roomKey(for cwd: String) -> String { roomIdentities[cwd]?.roomKey ?? cwd }
 
     func look(for id: String) -> AvatarLook { avatarLooks[id] ?? AvatarLook.default(for: id) }
+
+    /// Köylünün projesinin rengi (tişört rengi "proje rengi" iken).
+    func projectColor(for id: String) -> AvatarLook.RGBA {
+        let key = store.session(id).map { roomKey(for: $0.cwd) } ?? id
+        let c = ProjectPalette.colors[ProjectPalette.index(for: key)]
+        return (c.red, c.green, c.blue)
+    }
+
+    /// Önizlemedeki tişört rengi: seçilen renk ya da proje rengi.
+    func shirtColor(for id: String) -> AvatarLook.RGBA {
+        look(for: id).shirtColor.map { AvatarLook.shirtColors[$0 % AvatarLook.shirtColors.count] } ?? projectColor(for: id)
+    }
 
     /// Köylünün adı (verildiyse), yoksa oturum başlığı: kartta, listede, panel başlığında ve bildirimde.
     func displayName(for id: String) -> String {

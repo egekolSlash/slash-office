@@ -41,6 +41,16 @@
         }
       }
     },
+    "Accessories": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aksesuarlar"
+          }
+        }
+      }
+    },
     "Actual Size": {
       "localizations": {
         "tr": {
@@ -151,6 +161,16 @@
         }
       }
     },
+    "Beanie": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bere"
+          }
+        }
+      }
+    },
     "Bigger Text": {
       "localizations": {
         "tr": {
@@ -171,12 +191,32 @@
         }
       }
     },
+    "Blush": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allık"
+          }
+        }
+      }
+    },
     "Bob": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Küt"
+          }
+        }
+      }
+    },
+    "Bold": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalın"
           }
         }
       }
@@ -191,12 +231,32 @@
         }
       }
     },
+    "Bun": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topuz"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Vazgeç"
+          }
+        }
+      }
+    },
+    "Cap": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kep"
           }
         }
       }
@@ -351,6 +411,16 @@
         }
       }
     },
+    "Clothes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kıyafetler"
+          }
+        }
+      }
+    },
     "Coffee machine": {
       "localizations": {
         "tr": {
@@ -371,6 +441,16 @@
         }
       }
     },
+    "Color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renk"
+          }
+        }
+      }
+    },
     "Continue": {
       "localizations": {
         "tr": {
@@ -387,6 +467,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Krem çizgili"
+          }
+        }
+      }
+    },
+    "Curly": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kıvırcık"
+          }
+        }
+      }
+    },
+    "Customize Agents": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Köylüleri Özelleştir"
+          }
+        }
+      }
+    },
+    "Customize Agents…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Köylüleri Özelleştir…"
           }
         }
       }
@@ -481,6 +591,36 @@
         }
       }
     },
+    "Eyebrows": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaşlar"
+          }
+        }
+      }
+    },
+    "Eyes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gözler"
+          }
+        }
+      }
+    },
+    "Face": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüz"
+          }
+        }
+      }
+    },
     "Files the agent touches will be listed here.": {
       "localizations": {
         "tr": {
@@ -541,6 +681,16 @@
         }
       }
     },
+    "Flat": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düz"
+          }
+        }
+      }
+    },
     "Floor": {
       "localizations": {
         "tr": {
@@ -597,6 +747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code bulundu (sürüm bilinmiyor)"
+          }
+        }
+      }
+    },
+    "Freckles": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çiller"
           }
         }
       }
@@ -677,6 +837,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saç rengi"
+          }
+        }
+      }
+    },
+    "Happy": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mutlu"
+          }
+        }
+      }
+    },
+    "Hat": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şapka"
+          }
+        }
+      }
+    },
+    "Headphones": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kulaklık"
           }
         }
       }
@@ -801,6 +991,16 @@
         }
       }
     },
+    "Laughing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gülen"
+          }
+        }
+      }
+    },
     "Lets agents in terminals take screenshots (for example to check a user interface). Restart the app after allowing.": {
       "localizations": {
         "tr": {
@@ -827,6 +1027,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Açık mavi"
+          }
+        }
+      }
+    },
+    "Long": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzun"
           }
         }
       }
@@ -877,6 +1087,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mod"
+          }
+        }
+      }
+    },
+    "Mouth": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağız"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İsim"
           }
         }
       }
@@ -947,6 +1177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sonraki oturum"
+          }
+        }
+      }
+    },
+    "No agents yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz köylü yok"
           }
         }
       }
@@ -1037,6 +1277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todo listesi yok"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yok"
           }
         }
       }
@@ -1187,6 +1437,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başka klasör…"
+          }
+        }
+      }
+    },
+    "Pants": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pantolon"
           }
         }
       }
@@ -1491,6 +1751,16 @@
         }
       }
     },
+    "Round": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuvarlak"
+          }
+        }
+      }
+    },
     "Rug": {
       "localizations": {
         "tr": {
@@ -1611,6 +1881,16 @@
         }
       }
     },
+    "Shoes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayakkabı"
+          }
+        }
+      }
+    },
     "Short": {
       "localizations": {
         "tr": {
@@ -1711,12 +1991,32 @@
         }
       }
     },
+    "Sleepy": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uykulu"
+          }
+        }
+      }
+    },
     "Smaller Text": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Yazıyı küçült"
+          }
+        }
+      }
+    },
+    "Smile": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gülümseme"
           }
         }
       }
@@ -1771,6 +2071,16 @@
         }
       }
     },
+    "Start a session and its villager appears here.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir oturum başlat, köylüsü burada görünür."
+          }
+        }
+      }
+    },
     "Start your first session in a project folder, or finish and explore. ⌘N starts a new Claude session any time.": {
       "localizations": {
         "tr": {
@@ -1817,6 +2127,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Çizgili"
+          }
+        }
+      }
+    },
+    "Style": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
           }
         }
       }
@@ -1997,6 +2317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu Claude Code kurulumunda todo aracı kapalı. Codex oturumlarında plan burada görünecek."
+          }
+        }
+      }
+    },
+    "Thin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnce"
           }
         }
       }
