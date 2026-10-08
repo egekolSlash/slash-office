@@ -337,21 +337,10 @@ final class AppModel {
     /// `claude agents --json`; hata ya da zaman aşımında nil.
     private nonisolated static func claudeAgents(claudePath: String, environment: [String: String]) async -> [ClaudeAgents.Entry]? {
         await Task.detached {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: claudePath)
-            process.arguments = ["agents", "--json"]
-            process.environment = LaunchEnvironment.prepare(environment, sessionID: "", socketPath: nil)
+            let environment = LaunchEnvironment.prepare(environment, sessionID: "", socketPath: nil)
                 .filter { $0.key != "AGENT_OFFICE_SESSION" }
-            let output = Pipe()
-            process.standardOutput = output
-            process.standardError = FileHandle.nullDevice
-            process.standardInput = FileHandle.nullDevice
-            do { try process.run() } catch { return nil }
-            let deadline = DispatchTime.now() + 3
-            DispatchQueue.global().asyncAfter(deadline: deadline) { if process.isRunning { process.terminate() } }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0,
+            guard let result = ProcessRunner.run(claudePath, ["agents", "--json"], environment: environment, timeout: 3),
+                  result.status == 0, let data = result.output.data(using: .utf8),
                   (try? JSONSerialization.jsonObject(with: data)) is [Any] else { return nil }
             return ClaudeAgents.parse(data)
         }.value
@@ -818,20 +807,12 @@ extension AppModel {
     /// Rehberdeki Claude Code adımı: `claude` yolu ve `claude --version` (en çok 3 sn).
     func claudeStatus() async -> (path: String?, version: String?) {
         guard let claude = findClaude() else { return (nil, nil) }
+        // Uygulamanın PATH'iyle: Finder'dan açılınca npm ile kurulan claude (`env node`) node'u bulabilsin.
+        let environment = launchEnvironment
         let version = await Task.detached { () -> String? in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: claude)
-            process.arguments = ["--version"]
-            let output = Pipe()
-            process.standardOutput = output
-            process.standardError = FileHandle.nullDevice
-            process.standardInput = FileHandle.nullDevice
-            do { try process.run() } catch { return nil }
-            DispatchQueue.global().asyncAfter(deadline: .now() + 3) { if process.isRunning { process.terminate() } }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
-            return String(decoding: data, as: UTF8.self).split(separator: " ").first.map(String.init)
+            guard let result = ProcessRunner.run(claude, ["--version"], environment: environment, timeout: 3),
+                  result.status == 0 else { return nil }
+            return result.output.split(separator: " ").first.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         }.value
         return (claude, version)
     }
