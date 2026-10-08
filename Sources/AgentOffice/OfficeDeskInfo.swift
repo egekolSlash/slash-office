@@ -13,4 +13,6 @@ struct OfficeDeskInfo: Equatable {
     var summary: String? = nil
     /// Çalışırken bitti, kullanıcı henüz görmedi.
     var unseenFinish = false
+    /// Köylüye verilen ad (kartta başlığın önünde).
+    var name: String? = nil
 }

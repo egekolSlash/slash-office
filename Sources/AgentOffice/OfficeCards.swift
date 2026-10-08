@@ -108,7 +108,14 @@ private struct DeskCard: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
                 if info.kind == .shell { Image(systemName: "apple.terminal").font(.system(size: 9)) }
-                Text(info.worktree ?? info.title).font(.system(size: near ? 12 : 10, weight: .semibold))
+                // Ad verilmişse: "Ayşe · juice-merge" (ad kalın, proje soluk).
+                if let name = info.name {
+                    Text(verbatim: name).font(.system(size: near ? 12 : 10, weight: .semibold))
+                        + Text(verbatim: " · " + (info.worktree ?? info.title)).font(.system(size: near ? 11 : 9))
+                            .foregroundColor(.white.opacity(0.7))
+                } else {
+                    Text(info.worktree ?? info.title).font(.system(size: near ? 12 : 10, weight: .semibold))
+                }
             }
             // Yakın görünümde: ne üzerinde çalışıyor.
             if near, let summary = info.summary {

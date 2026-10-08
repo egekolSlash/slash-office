@@ -18,7 +18,7 @@ struct TerminalPane: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text(TerminalLayout.isLauncher(id) ? String(localized: "New") : model.store.session(id)?.title ?? "?").font(.caption.bold())
+            Text(TerminalLayout.isLauncher(id) ? String(localized: "New") : model.displayName(for: id)).font(.caption.bold())
             if let summary = model.workSummary(for: id) {
                 Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }

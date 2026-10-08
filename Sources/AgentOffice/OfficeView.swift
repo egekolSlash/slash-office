@@ -177,7 +177,8 @@ struct OfficeView: View {
                 result[desk.id] = OfficeDeskInfo(
                     id: desk.id, title: session.title, state: session.state, kind: model.kind(of: desk.id),
                     roomKey: room.key, worktree: model.worktree(for: session.cwd),
-                    focused: model.layout.focused == desk.id, summary: session.workSummary, unseenFinish: session.unseenFinish)
+                    focused: model.layout.focused == desk.id, summary: session.workSummary, unseenFinish: session.unseenFinish,
+                    name: model.look(for: desk.id).name)
             }
         }
         return result

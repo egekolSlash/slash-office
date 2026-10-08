@@ -122,7 +122,7 @@ struct StatusStrip: View {
                     .fill(color(session.state))
                     .frame(width: 12, height: 12)
                     .overlay(Circle().stroke(model.layout.focused == session.id ? Color.primary : .clear, lineWidth: 2))
-                    .help(session.title)
+                    .help(model.displayName(for: session.id))
                     .onTapGesture { model.showTerminal(session.id) }
             }
             Spacer()

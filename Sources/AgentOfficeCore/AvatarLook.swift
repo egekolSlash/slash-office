@@ -61,6 +61,11 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                   blush: try c.decodeIfPresent(Bool.self, forKey: .blush) ?? true)
     }
 
+    /// Kartta ve listede gösterilen ad: köylünün adı, yoksa oturum başlığı.
+    public func displayName(title: String) -> String { name ?? title }
+    /// Ad verilmişse oturum başlığı (proje) altta küçük gösterilir.
+    public func subtitle(title: String) -> String? { name == nil ? nil : title }
+
     /// Boş ya da sadece boşluksa nil.
     public static func trimmedName(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)

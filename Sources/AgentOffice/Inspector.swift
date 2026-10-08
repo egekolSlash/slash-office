@@ -38,7 +38,7 @@ struct ChangesInspector: View {
 
     private func header(session: AgentStore.Session, state: DiffState?) -> some View {
         HStack(spacing: 6) {
-            Text(session.title).font(.headline)
+            Text(verbatim: model.displayName(for: session.id)).font(.headline)
             if case .ready(_, let branch?) = state {
                 Label(branch, systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.secondary)
             }

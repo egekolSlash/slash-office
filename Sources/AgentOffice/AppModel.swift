@@ -162,7 +162,7 @@ final class AppModel {
         store.apply(events, to: envelope.session, watched: SeenPolicy.finishIsWatched)
         if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) { refreshWorkTitle(envelope.session, transcript: path) }
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
-            Notifier.notifyWaiting(sessionID: session.id, title: session.title, reason: reason)
+            Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
         }
         Notifier.updateBadge(waiting: store.waitingCount)
         // /clear sonrası Claude'un oturum kimliği değişir; resume için en sonuncusunu sakla.
@@ -617,6 +617,11 @@ extension AppModel {
     func roomKey(for cwd: String) -> String { roomIdentities[cwd]?.roomKey ?? cwd }
 
     func look(for id: String) -> AvatarLook { avatarLooks[id] ?? AvatarLook.default(for: id) }
+
+    /// Köylünün adı (verildiyse), yoksa oturum başlığı: kartta, listede, panel başlığında ve bildirimde.
+    func displayName(for id: String) -> String {
+        look(for: id).displayName(title: store.session(id)?.title ?? "?")
+    }
 
     func style(for roomKey: String) -> RoomStyle { roomStyles[roomKey] ?? RoomStyle.default(for: roomKey) }
 

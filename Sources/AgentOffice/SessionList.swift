@@ -45,7 +45,10 @@ struct SessionList: View {
                     ProjectIconView(icon: model.projectIcons[session.cwd], size: 28, isShell: model.kind(of: session.id) == .shell)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text(session.title).font(.headline)
+                            Text(verbatim: model.displayName(for: session.id)).font(.headline)
+                            if model.look(for: session.id).name != nil {
+                                Text(verbatim: session.title).font(.caption).foregroundStyle(.secondary)
+                            }
                             if session.unseenFinish { FinishedBadge(tooltip: false) }
                         }
                         // İpucu (`.help`) yok: satır içindeki ipucu tıklamayı yutar, satır seçilemezdi.

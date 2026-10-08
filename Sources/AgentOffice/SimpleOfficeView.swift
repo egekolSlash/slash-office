@@ -63,7 +63,8 @@ private struct DeskRow: View {
         HStack(spacing: 6) {
             Circle().fill(Self.color(session.state)).frame(width: 9, height: 9)
             VStack(alignment: .leading, spacing: 1) {
-                Text(model.worktree(for: session.cwd) ?? session.title)
+                Text(verbatim: model.look(for: session.id).name.map { "\($0) · \(model.worktree(for: session.cwd) ?? session.title)" }
+                     ?? model.worktree(for: session.cwd) ?? session.title)
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.white).lineLimit(1)
                 if let summary = session.workSummary {
                     Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)

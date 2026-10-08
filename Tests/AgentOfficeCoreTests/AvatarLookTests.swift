@@ -100,5 +100,13 @@ import Testing
         #expect(v[VillagerVariant.hair] == 7)
         #expect(v[0] == 0)
     }
+
+    /// Köylünün adı varsa oturum başlığının yerine geçer; başlık (proje) altta kalır.
+    @Test func displayNameUsesTheVillagerName() {
+        var look = AvatarLook.default(for: "x")
+        #expect(look.displayName(title: "juice-merge") == "juice-merge" && look.subtitle(title: "juice-merge") == nil)
+        look.name = "Ayşe"
+        #expect(look.displayName(title: "juice-merge") == "Ayşe" && look.subtitle(title: "juice-merge") == "juice-merge")
+    }
 }
 
