@@ -84,6 +84,18 @@ final class AppModel {
     @ObservationIgnored private var titleReads: [String: Date] = [:]
     /// İçinde hook gönderen bir claude çalışan shell oturumları.
     @ObservationIgnored private var shellsWithClaudeHooks: Set<String> = []
+    /// Süreci panelimizde olmayan ama arka planda yaşayan Claude oturumları (uygulama kapanınca Claude Code
+    /// oturumu arka plana alır). Durumları hook'lardan ve `claude agents` listesinden gelir; panelde "Burada aç".
+    private(set) var backgroundSessions: Set<String> = []
+    /// Son `claude agents --json` listesi ve alındığı an.
+    @ObservationIgnored private var agentsListing: (entries: [ClaudeAgents.Entry], at: Date)?
+    @ObservationIgnored private var agentsRefreshing = false
+    /// Liste alınamadıysa (eski claude sürümü vb.) bir süre tekrar denenmez.
+    @ObservationIgnored private var agentsFailedAt: Date?
+    /// Shell'de önde çalışan claude süreci ve ilk görüldüğü an (izleyici mi, gerçek oturum mu kararı için).
+    @ObservationIgnored private var shellClaudeSeen: [String: (pid: Int32, at: Date)] = [:]
+    /// Paneli `claude attach` istemcisi olan oturumlar: istemci kapanınca oturum arka planda sürer.
+    @ObservationIgnored private var attachedClients: Set<String> = []
 
     func start() {
         guard server == nil else { return }
@@ -116,6 +128,8 @@ final class AppModel {
             store.setWorkTitle(record.workTitle, for: record.id)
         }
         if let first = store.sessions.first?.id { layout.show(first) }
+        // Durmuş görünen oturumlardan arka planda süren var mı.
+        refreshAgents()
         // Kayıtlı oturumların klasörleri de son projelere girer (eskisi sona).
         for record in records.values.sorted(by: { $0.createdAt < $1.createdAt }) where record.cwd != NSHomeDirectory() {
             if !recentProjects.contains(record.cwd) { recentProjects.append(record.cwd) }
@@ -136,6 +150,7 @@ final class AppModel {
             events.removeAll { if case .sessionEnded = $0 { true } else { false } }
             if !events.isEmpty { shellsWithClaudeHooks.insert(envelope.session) }
         }
+        noteBackgroundHook(envelope.session, events: events)
         store.apply(events, to: envelope.session, watched: isWatched(envelope.session))
         if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) { refreshWorkTitle(envelope.session, transcript: path) }
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
@@ -278,7 +293,7 @@ final class AppModel {
         Task {
             let agents = await Self.claudeAgents(claudePath: claude, environment: environment)
             resuming.remove(id)
-            finishResume(id, agents: agents, show: show)
+            finishResume(id, agents: agents ?? [], show: show)
         }
     }
 
@@ -288,6 +303,17 @@ final class AppModel {
             DebugLog.write("resume \(id): attach to background session \(target.attachID)")
             guard attach(record: record, attachID: target.attachID) else { return }
             record.noteClaudeSession(target.sessionID)
+            records[id] = record
+            saveRecords()
+            // Oturum zaten çalışıyor: durumu (hook'lardan gelen) korunur.
+            backgroundSessions.remove(id)
+            if store.session(id)?.state == .exited {
+                store.restart(id)
+                if let entry = agents.first(where: { $0.sessionId == target.sessionID }),
+                   let state = ClaudeAgents.state(of: entry) { store.setState(state, for: id) }
+            }
+            if show { showTerminal(id) }
+            return
         } else {
             let projects = claudeProjectsDirectory
             let plan = ResumePlan.decide(candidates: record.resumeCandidates,
@@ -302,8 +328,8 @@ final class AppModel {
         if show { showTerminal(id) }
     }
 
-    /// `claude agents --json`; hata ya da zaman aşımında boş liste (her zamanki `--resume` yolu).
-    private nonisolated static func claudeAgents(claudePath: String, environment: [String: String]) async -> [ClaudeAgents.Entry] {
+    /// `claude agents --json`; hata ya da zaman aşımında nil.
+    private nonisolated static func claudeAgents(claudePath: String, environment: [String: String]) async -> [ClaudeAgents.Entry]? {
         await Task.detached {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: claudePath)
@@ -314,12 +340,14 @@ final class AppModel {
             process.standardOutput = output
             process.standardError = FileHandle.nullDevice
             process.standardInput = FileHandle.nullDevice
-            do { try process.run() } catch { return [] }
+            do { try process.run() } catch { return nil }
             let deadline = DispatchTime.now() + 3
             DispatchQueue.global().asyncAfter(deadline: deadline) { if process.isRunning { process.terminate() } }
             let data = output.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
-            return process.terminationStatus == 0 ? ClaudeAgents.parse(data) : []
+            guard process.terminationStatus == 0,
+                  (try? JSONSerialization.jsonObject(with: data)) is [Any] else { return nil }
+            return ClaudeAgents.parse(data)
         }.value
     }
 
@@ -396,6 +424,11 @@ final class AppModel {
         return env
     }
 
+    private func findClaude() -> String? {
+        ExecutableLocator.find("claude", searchDirectories:
+            ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH))
+    }
+
     private func locateClaude() -> String? {
         let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
         guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs) else {
@@ -408,6 +441,7 @@ final class AppModel {
     /// Arka planda çalışan Claude oturumunu panelde açar.
     private func attach(record: SessionRecord, attachID: String) -> Bool {
         guard let claude = locateClaude() else { return false }
+        attachedClients.insert(record.id)
         startTerminal(record: record, command: ClaudeLaunch.attachCommand(
             claudePath: claude, attachID: attachID, cwd: record.cwd, socketPath: socketPath,
             baseEnvironment: launchEnvironment, tag: record.id))
@@ -423,6 +457,7 @@ final class AppModel {
             return false
         }
         guard let settings = writeHookSettings(record.id) else { return false }
+        attachedClients.remove(record.id)
         let command = ClaudeLaunch.command(claudePath: claude, sessionID: claudeSessionID, resume: resume,
                                            settingsPath: settings.path, cwd: record.cwd, socketPath: socketPath,
                                            baseEnvironment: env, tag: record.id)
@@ -479,8 +514,15 @@ final class AppModel {
         let id = record.id
         terminal.onFocus = { [weak self] in self?.noteKeyboardFocus(id) }
         let coordinator = TerminalCoordinator(sessionID: record.id) { [weak self] id in
-            self?.store.markExited(id)
-            Notifier.updateBadge(waiting: self?.store.waitingCount ?? 0)
+            guard let self else { return }
+            if attachedClients.remove(id) != nil {
+                // `claude attach` istemcisi kapandı; oturum arka planda sürer (liste doğrular).
+                backgroundSessions.insert(id)
+                refreshAgents()
+                return
+            }
+            store.markExited(id)
+            Notifier.updateBadge(waiting: store.waitingCount)
         }
         terminal.processDelegate = coordinator
         terminals[record.id] = terminal
@@ -521,6 +563,13 @@ final class AppModel {
 
     /// Shell oturumlarında hook yok: ön plandaki komut saniyede bir okunur.
     func pollShells() {
+        let claudeShells = Set(records.keys.filter { id in
+            guard records[id]?.kind == .shell, let terminal = terminals[id], terminal.process.running else { return false }
+            return ShellActivity.foregroundGroup(ptyFD: terminal.process.childfd).flatMap(ShellActivity.processName) == "claude"
+        })
+        shellClaudeSeen = shellClaudeSeen.filter { claudeShells.contains($0.key) }
+        // Arka plan oturumları ve shell'deki claude'lar için liste ara ara yenilenir (yoksa hiç çalışmaz).
+        if !backgroundSessions.isEmpty || !shellClaudeSeen.isEmpty { refreshAgents(ifOlderThan: 20) }
         for (id, record) in records where record.kind == .shell {
             guard let terminal = terminals[id], terminal.process.running else { continue }
             let pid = terminal.process.shellPid
@@ -534,6 +583,12 @@ final class AppModel {
             let command = group.flatMap(ShellActivity.processName)
             let state = ShellActivity.state(shellPID: pid, foregroundGroup: group, commandName: command)
             let previous = store.session(id)?.state
+            if command == "claude", let claudePID = foregroundPID, isClaudeViewer(shell: id, pid: claudePID) {
+                // Kendi oturumu olmayan claude (arka plandaki bir oturumu izliyor ya da ajan görünümünde): durumunu
+                // bilemeyiz, gerçek durum o oturumun kaydında. Terminal olarak görünür.
+                store.setState(.idle, for: id, watched: isWatched(id))
+                continue
+            }
             // Terminalde açılan claude hook gönderiyorsa durumu (çalışıyor, soru soruyor, boşta) hook belirler.
             if command == "claude", shellsWithClaudeHooks.contains(id) { continue }
             shellsWithClaudeHooks.remove(id)
@@ -845,5 +900,69 @@ extension AppModel {
         case "focus": mode = .focus
         default: break
         }
+    }
+}
+
+extension AppModel {
+    /// `claude agents --json` arka planda alınır; arka plan oturumlarının durumu düzeltilir.
+    func refreshAgents(ifOlderThan age: TimeInterval = 0) {
+        if let at = agentsListing?.at, Date().timeIntervalSince(at) < age { return }
+        if let failed = agentsFailedAt, Date().timeIntervalSince(failed) < 60 { return }
+        guard !agentsRefreshing, let claude = findClaude() else { return }
+        agentsRefreshing = true
+        let environment = launchEnvironment
+        Task {
+            let started = Date()
+            let agents = await Self.claudeAgents(claudePath: claude, environment: environment)
+            agentsRefreshing = false
+            guard let agents else { agentsFailedAt = Date(); return }
+            agentsFailedAt = nil
+            agentsListing = (agents, started)
+            applyAgents(agents)
+        }
+    }
+
+    /// Panelimizde süreci olmayan Claude kayıtları: listede arka planda görünen canlıdır (durumu listeden),
+    /// daha önce canlı olup listeden düşen kapanmıştır.
+    private func applyAgents(_ agents: [ClaudeAgents.Entry]) {
+        for (id, record) in records where record.kind == .claude {
+            guard terminals[id]?.process.running != true, !resuming.contains(id),
+                  let session = store.session(id) else { continue }
+            let entry = ClaudeAgents.attachTarget(candidates: record.resumeCandidates, agents: agents)
+                .flatMap { target in agents.first { $0.sessionId == target.sessionID } }
+            if entry != nil {
+                backgroundSessions.insert(id)
+            } else if backgroundSessions.remove(id) == nil {
+                continue
+            }
+            if let fix = ClaudeAgents.correction(current: session.state, entry: entry) {
+                DebugLog.write("background \(id): \(session.state) -> \(fix)")
+                if session.state == .exited { store.restart(id) }
+                store.setState(fix, for: id, watched: isWatched(id))
+            }
+        }
+        Notifier.updateBadge(waiting: store.waitingCount)
+    }
+
+    /// Panelimizde süreci olmayan bir Claude kaydına hook geldi: oturum arka planda yaşıyor.
+    fileprivate func noteBackgroundHook(_ id: String, events: [AgentEvent]) {
+        guard records[id]?.kind == .claude, terminals[id]?.process.running != true, !events.isEmpty else { return }
+        if events.contains(where: { if case .sessionEnded = $0 { true } else { false } }) {
+            backgroundSessions.remove(id)
+            return
+        }
+        if backgroundSessions.insert(id).inserted { refreshAgents(ifOlderThan: 3) }
+        if store.session(id)?.state == .exited { store.restart(id) }
+    }
+
+    /// Shell'de önde çalışan claude kendi oturumunu yürütmüyor mu; ilk görüldükten 3 sn sonra liste alınır.
+    fileprivate func isClaudeViewer(shell id: String, pid: Int32) -> Bool {
+        if shellClaudeSeen[id]?.pid != pid { shellClaudeSeen[id] = (pid, Date()) }
+        let seenAt = shellClaudeSeen[id]!.at
+        if (agentsListing?.at ?? .distantPast) < seenAt.addingTimeInterval(3), Date().timeIntervalSince(seenAt) >= 3 {
+            refreshAgents()
+        }
+        guard let listing = agentsListing else { return false }
+        return ClaudeAgents.isViewer(pid: pid, seenAt: seenAt, listedAt: listing.at, agents: listing.entries)
     }
 }

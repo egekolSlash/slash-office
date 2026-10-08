@@ -41,6 +41,8 @@ struct TerminalPane: View {
     @ViewBuilder private var content: some View {
         if TerminalLayout.isLauncher(id) {
             LauncherPane(model: model, id: id)
+        } else if model.backgroundSessions.contains(id), !model.isRunning(id) {
+            BackgroundSessionView(model: model, id: id)
         } else if let session = model.store.session(id), session.state == .exited, model.terminals[id] == nil {
             StoppedSessionView(model: model, session: session, requestRemove: requestRemove)
         } else if let terminal = model.terminals[id] {
@@ -59,6 +61,23 @@ struct TerminalPane: View {
             }
         } else {
             ContentUnavailableView("Oturum bulunamadı", systemImage: "questionmark")
+        }
+    }
+}
+
+/// Uygulama dışında, Claude Code'un arka planında süren oturum: durumu listede ve ofiste görünür, burada açılabilir.
+private struct BackgroundSessionView: View {
+    @Bindable var model: AppModel
+    let id: String
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Arka planda açık", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+        } description: {
+            Text("Bu Claude oturumu Claude Code'un arka planında sürüyor; durumu listede ve ofiste görünür. Burada açınca kaldığı yerden görünür; panel kapansa da çalışmaya devam eder.")
+        } actions: {
+            Button("Burada aç") { model.resume(id) }
+                .controlSize(.large)
         }
     }
 }
