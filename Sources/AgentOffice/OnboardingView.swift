@@ -133,16 +133,20 @@ private struct LanguageStep: View {
                 }
             }
             .pickerStyle(.radioGroup)
+            // Seçim hemen kaydedilir: Continue'ya basılsa da sonraki açılışta geçerli olur.
+            .onChange(of: language) { AppRestart.apply(language) }
             if language != initial {
                 HStack {
                     Text("Slash Office restarts to switch the language, then continues from the next step.")
                         .font(.callout).foregroundStyle(.secondary)
                     Spacer()
                     Button("Restart") {
-                        AppRestart.apply(language)
-                        guide.resumeAfterRestart()
-                        UserDefaults.standard.set(guide.savedStep, forKey: Onboarding.stepKey)
-                        AppRestart.relaunch(runningAgents: model.runningAgentCount)
+                        // Sadece onaylanınca: açılışta rehber sonraki adımdan devam eder.
+                        AppRestart.relaunch(runningAgents: model.runningAgentCount) {
+                            var resumed = guide
+                            resumed.resumeAfterRestart()
+                            UserDefaults.standard.set(resumed.savedStep, forKey: Onboarding.stepKey)
+                        }
                     }
                 }
             }

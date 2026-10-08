@@ -12,18 +12,19 @@ APP=${1:-build/SlashOffice.app}
 STAGE=$(mktemp -d)/SlashOffice.app
 # Her mimari ayrı derlenip lipo ile birleştirilir (tek komutta çok mimari SwiftPM'i Xcode derleyicisine geçirir;
 # o da SwiftTerm'in eklentisini çözemiyor).
-BINS=""
+# Mimari başına çıktı klasörleri konumsal parametrelerde (boşluklu yollar bölünmesin).
+set --
 for arch in ${ARCHS:-}; do
     # shellcheck disable=SC2086
     swift build -c release --arch "$arch" ${SWIFT_BUILD_FLAGS:-}
     # shellcheck disable=SC2086
-    BINS="$BINS $(swift build -c release --arch "$arch" ${SWIFT_BUILD_FLAGS:-} --show-bin-path)"
+    set -- "$@" "$(swift build -c release --arch "$arch" ${SWIFT_BUILD_FLAGS:-} --show-bin-path)"
 done
-if [ -z "$BINS" ]; then
+if [ $# -eq 0 ]; then
     # shellcheck disable=SC2086
     swift build -c release ${SWIFT_BUILD_FLAGS:-}
     # shellcheck disable=SC2086
-    BINS=$(swift build -c release ${SWIFT_BUILD_FLAGS:-} --show-bin-path)
+    set -- "$(swift build -c release ${SWIFT_BUILD_FLAGS:-} --show-bin-path)"
 fi
 mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources"
 cp Resources/Info.plist "$STAGE/Contents/Info.plist"
@@ -51,23 +52,22 @@ cp Resources/tr.lproj/InfoPlist.strings "$STAGE/Contents/Resources/tr.lproj/"
 # Ofis v3 varlıkları (köylü + eşyalar, scripts/build-office-art.sh ile üretilir).
 cp -R Resources/OfficeArt "$STAGE/Contents/Resources/OfficeArt"
 for exe in AgentOffice agent-office-hook; do
-    # shellcheck disable=SC2086
-    lipo -create $(for bin in $BINS; do printf '%s/%s ' "$bin" "$exe"; done) -output "$STAGE/Contents/MacOS/$exe"
+    out="$STAGE/Contents/MacOS/$exe"
+    rm -f "$out"
+    for bin in "$@"; do
+        if [ -f "$out" ]; then lipo -create "$out" "$bin/$exe" -output "$out"; else cp "$bin/$exe" "$out"; fi
+    done
 done
 # macOS izinleri (klasör erişimi, mikrofon) imzaya bağlı: ad-hoc imza her derlemede değişip izinleri sıfırlar.
 # Sabit bir sertifika varsa onunla imzalanır; CODESIGN_IDENTITY ile seçilebilir, yoksa ad-hoc'a düşer.
 IDENTITY=${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null | awk '/Apple Development/ {print $2; exit}')}
-SIGN_FLAGS="--force --sign ${IDENTITY:--}"
-APP_FLAGS=""
-if [ "${CODESIGN_RUNTIME:-0}" = 1 ]; then
-    SIGN_FLAGS="$SIGN_FLAGS --options runtime --timestamp"
-    APP_FLAGS="--entitlements Resources/SlashOffice.entitlements"
-fi
+# İmza argümanları da konumsal: "Developer ID Application: Ad Soyad (…)" gibi boşluklu kimlikler bölünmesin.
+set -- --force --sign "${IDENTITY:--}"
+[ "${CODESIGN_RUNTIME:-0}" = 1 ] && set -- "$@" --options runtime --timestamp
 # İçteki yardımcı önce, sonra paket (--deep yerine).
-# shellcheck disable=SC2086
-codesign $SIGN_FLAGS "$STAGE/Contents/MacOS/agent-office-hook" >/dev/null
-# shellcheck disable=SC2086
-codesign $SIGN_FLAGS $APP_FLAGS "$STAGE" >/dev/null
+codesign "$@" "$STAGE/Contents/MacOS/agent-office-hook" >/dev/null
+[ "${CODESIGN_RUNTIME:-0}" = 1 ] && set -- "$@" --entitlements Resources/SlashOffice.entitlements
+codesign "$@" "$STAGE" >/dev/null
 # Paket önce geçici yerde hazırlanır, sonra tek adımda yerine konur.
 rm -rf "$APP"
 mkdir -p "$(dirname "$APP")"

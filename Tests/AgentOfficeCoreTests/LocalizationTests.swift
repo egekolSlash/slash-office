@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+@testable import AgentOfficeCore
 
 /// Arayüz İngilizce yazılır, Türkçesi `Resources/Localizable.xcstrings`'te (spec: herkese açık sürüm §1).
 @Suite struct LocalizationTests {
@@ -88,6 +89,42 @@ import Testing
             }
         }
         #expect(missing.isEmpty, "Katalogda yok: \(missing.sorted())")
+    }
+
+    /// Kısayol başlıkları menüde ve rehberde `LocalizedStringKey` olarak gösterilir; çıkarıcı bunları göremez.
+    @Test func shortcutTitlesAreTranslated() throws {
+        let catalog = try Self.catalogStrings()
+        let missing = ShortcutCatalog.all.map(\.title).filter { title in
+            let tr = ((catalog[title] as? [String: Any])?["localizations"] as? [String: Any])?["tr"] as? [String: Any]
+            return (tr?["stringUnit"] as? [String: Any])?["state"] as? String != "translated"
+        }
+        #expect(missing.isEmpty, "Türkçesi eksik kısayol: \(missing)")
+    }
+
+    /// Özel görünümlere (`LegendRow`, `StepHeader`, `PermissionRow`…) `LocalizedStringKey` parametresiyle geçen ve
+    /// üçlü ifadelerdeki metinler: çıkarıcı bunları göremez, kaynaktan taranır. Büyük harfle başlayan, yer tutucusuz
+    /// metinler katalogda olmalı (geliştirici araçları hariç).
+    @Test func customViewStringsAreInTheCatalog() throws {
+        let catalog = try Self.catalogStrings()
+        let markers = ["LegendRow(", "StepHeader(", "PreferenceToggle(", "PermissionRow(", "ChoiceButton(", "BigAction(",
+                       "title:", "detail:", "action:", "? \""]
+        let devTools: Set = ["OfficeMeasureWindow.swift", "OfficeSnapshot.swift"]
+        var missing: [String] = []
+        let base = Self.root.appendingPathComponent("Sources/AgentOffice")
+        let files = FileManager.default.enumerator(at: base, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" && !devTools.contains($0.lastPathComponent) } ?? []
+        for file in files {
+            let source = try String(contentsOf: file, encoding: .utf8)
+            let lines = source.split(separator: "\n", omittingEmptySubsequences: false)
+            for (line, literal) in Self.stringLiterals(in: source) {
+                let text = lines[line - 1]
+                guard markers.contains(where: text.contains), !text.contains("DebugLog"), !text.contains("\\("),
+                      let first = literal.first, first.isUppercase, literal.dropFirst().first?.isLowercase == true,
+                      catalog[literal] == nil else { continue }
+                missing.append("\(file.lastPathComponent):\(line): \(literal)")
+            }
+        }
+        #expect(missing.isEmpty, "Katalogda yok: \(missing)")
     }
 
     /// Basit Swift tarayıcısı: yorumları atlar, dize sabitlerini (satır numarasıyla) döner. `"""` dahil.

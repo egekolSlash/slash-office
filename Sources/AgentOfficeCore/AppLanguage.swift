@@ -1,3 +1,5 @@
+import Foundation
+
 /// Uygulamanın dili: sistemin dili ya da uygulamaya özel İngilizce / Türkçe. macOS'ta uygulamaya özel dil,
 /// uygulamanın kendi ayarlarındaki `AppleLanguages` ile seçilir ve yeniden başlatınca geçerli olur.
 public enum AppLanguage: String, CaseIterable, Sendable {
@@ -30,5 +32,18 @@ public enum AppLanguage: String, CaseIterable, Sendable {
         case .english: "English"
         case .turkish: "T\u{FC}rk\u{E7}e"
         }
+    }
+
+    /// Uygulamanın kendi ayarına yazar (sistem: silinir); sonraki açılışta geçerli olur.
+    public func store(in defaults: UserDefaults) {
+        if let appleLanguages { defaults.set(appleLanguages, forKey: "AppleLanguages") } else {
+            defaults.removeObject(forKey: "AppleLanguages")
+        }
+    }
+
+    /// Uygulamanın kendi ayarındaki seçim (genel sistem listesi değil).
+    public static func stored(in defaults: UserDefaults, domain: String?) -> AppLanguage {
+        let values = domain.flatMap { defaults.persistentDomain(forName: $0) }?["AppleLanguages"] as? [String]
+        return from(appleLanguages: values)
     }
 }

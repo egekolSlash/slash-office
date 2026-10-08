@@ -5,23 +5,18 @@ import AppKit
 @MainActor
 enum AppRestart {
     /// Uygulamanın kendi ayarındaki dil (genel sistem listesi değil).
-    static var language: AppLanguage {
-        let domain = Bundle.main.bundleIdentifier.flatMap { UserDefaults.standard.persistentDomain(forName: $0) }
-        return AppLanguage.from(appleLanguages: domain?["AppleLanguages"] as? [String])
-    }
+    static var language: AppLanguage { AppLanguage.stored(in: .standard, domain: Bundle.main.bundleIdentifier) }
 
-    static func apply(_ language: AppLanguage) {
-        if let languages = language.appleLanguages {
-            UserDefaults.standard.set(languages, forKey: "AppleLanguages")
-        } else {
-            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        }
-    }
+    static func apply(_ language: AppLanguage) { language.store(in: .standard) }
 
-    /// Çalışan ajan varsa önce sorar; onaylanırsa uygulama kapanınca yenisi açılır. Yeni kopya eskisi kapanmadan
-    /// açılırsa hook sunucusu çakışır; bu yüzden bekleyen küçük bir kabuk açar. `false`: yeniden açılamadı.
+    /// Yeniden başlatma onaylandı: çıkışta ikinci kez sorulmaz, çıkış kesinleşince yeniden açıcı başlar.
+    private(set) static var relaunchConfirmed = false
+
+    /// Çalışan ajan varsa önce sorar; onaylanırsa uygulama kapanınca yenisi açılır (`startRelauncherIfConfirmed`,
+    /// `applicationWillTerminate`'te). `false`: bu kopya bir paket değil, yeniden açılamaz.
+    /// `confirmed`: kullanıcı onayladı, uygulama kapanmak üzere (iptal edilirse çağrılmaz).
     @discardableResult
-    static func relaunch(runningAgents: Int) -> Bool {
+    static func relaunch(runningAgents: Int, confirmed: () -> Void = {}) -> Bool {
         if runningAgents > 0 {
             let alert = NSAlert()
             alert.messageText = String(localized: "Restart Slash Office?")
@@ -30,15 +25,21 @@ enum AppRestart {
             alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return true }
         }
-        let bundle = Bundle.main.bundlePath
-        guard bundle.hasSuffix(".app") else { return fail() }
+        guard Bundle.main.bundlePath.hasSuffix(".app") else { return fail() }
+        relaunchConfirmed = true
+        confirmed()
+        NSApp.terminate(nil)
+        return true
+    }
+
+    /// Çıkış kesinleşti: yeni kopya bu süreç bitince açılır (önce açılırsa hook sunucusu çakışır).
+    static func startRelauncherIfConfirmed() {
+        guard QuitPolicy.startsRelauncher(relaunchConfirmed: relaunchConfirmed) else { return }
         let pid = ProcessInfo.processInfo.processIdentifier
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$0\"", bundle]
-        do { try process.run() } catch { return fail() }
-        NSApp.terminate(nil)
-        return true
+        process.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$0\"", Bundle.main.bundlePath]
+        try? process.run()
     }
 
     private static func fail() -> Bool {

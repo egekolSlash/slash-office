@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import AgentOfficeCore
 
@@ -27,4 +28,18 @@ import Testing
         #expect(AppLanguage.english.displayName == "English")
         #expect(AppLanguage.turkish.displayName == "Türkçe")
     }
+
+    /// Seçim hemen kaydedilir (rehberde Restart yerine Continue'ya basılsa da sonraki açılışta geçerli); sistem
+    /// seçilince uygulamaya özel ayar silinir.
+    @Test func storeWritesTheAppSpecificSetting() throws {
+        let suite = "test.slashoffice.language.\(UInt32.random(in: 0...UInt32.max))"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        AppLanguage.turkish.store(in: defaults)
+        #expect(AppLanguage.stored(in: defaults, domain: suite) == .turkish)
+        AppLanguage.system.store(in: defaults)
+        #expect(AppLanguage.stored(in: defaults, domain: suite) == .system)
+        #expect(defaults.persistentDomain(forName: suite)?["AppleLanguages"] == nil)
+    }
 }
+

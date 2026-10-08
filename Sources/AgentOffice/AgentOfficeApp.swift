@@ -47,7 +47,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard model.hasActiveAgents else { return .terminateNow }
+        guard QuitPolicy.asksBeforeQuit(activeAgents: model.hasActiveAgents, relaunchConfirmed: AppRestart.relaunchConfirmed) else {
+            return .terminateNow
+        }
         let alert = NSAlert()
         alert.messageText = String(localized: "Agents are running")
         alert.informativeText = String(localized: "If you quit, the processes of running agents and agents waiting for a reply will end. Sessions can be resumed later where they left off.")
@@ -58,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         model.stop()
+        AppRestart.startRelauncherIfConfirmed()
     }
 }
 
