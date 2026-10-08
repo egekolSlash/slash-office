@@ -86,4 +86,18 @@ import Testing
         #expect(store.session("s")?.title == "new")
         #expect(store.session("s")?.touchedFiles == [])
     }
+
+    /// Odak sırası için: durum sınıfı (çalışıyor, bekliyor, boşta...) değişince zaman damgası güncellenir; aynı
+    /// sınıftaki olaylar (bir tool'dan diğerine) güncellemez.
+    @Test func attentionSinceMovesOnlyWhenTheStateClassChanges() {
+        let store = AgentStore()
+        store.register(id: "a", title: "a", cwd: "/p")
+        let t0 = Date(timeIntervalSince1970: 100)
+        store.apply([.promptSubmitted(text: "go")], to: "a", at: t0)
+        #expect(store.session("a")?.attentionSince == t0)
+        store.apply([.toolStarted(name: "Bash", summary: nil)], to: "a", at: t0.addingTimeInterval(5))
+        #expect(store.session("a")?.attentionSince == t0)
+        store.apply([.needsInput(.question("?"))], to: "a", at: t0.addingTimeInterval(9))
+        #expect(store.session("a")?.attentionSince == t0.addingTimeInterval(9))
+    }
 }

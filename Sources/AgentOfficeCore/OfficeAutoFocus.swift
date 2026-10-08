@@ -2,7 +2,8 @@ import Foundation
 
 /// Mini ofisin kendiliğinden odaklanması: kamera dikkat isteyen masaya döner. Öncelik:
 /// soru soran > işi bitip görülmemiş > çalışan; aynı öncelikte kullanıcının panelde açık tutmadığı (bakmadığı)
-/// oturum, sonra en son olayı olan. Zaten baktığımız masa aynı öncelikteyse yerinde kalınır (kamera zıplamasın).
+/// oturum, sonra bu duruma en son giren (bir ajana bakarken başkası çalışmaya başlarsa kamera ona döner).
+/// Eşitlikte zaten baktığımız masada kalınır (kamera zıplamasın).
 /// Kullanıcı kamerayı elle oynattıysa son jestten 3 sn sonrasına kadar kendiliğinden odak durur.
 public enum OfficeAutoFocus {
     public struct Candidate: Equatable, Sendable {
@@ -10,11 +11,12 @@ public enum OfficeAutoFocus {
         public var state: AgentState
         public var unseenFinish: Bool
         public var openInPane: Bool
-        public var lastEventAt: Date?
+        /// Bu durum sınıfına ne zaman girdi (`AgentStore.Session.attentionSince`).
+        public var since: Date?
 
-        public init(id: String, state: AgentState, unseenFinish: Bool, openInPane: Bool, lastEventAt: Date?) {
+        public init(id: String, state: AgentState, unseenFinish: Bool, openInPane: Bool, since: Date?) {
             self.id = id; self.state = state; self.unseenFinish = unseenFinish
-            self.openInPane = openInPane; self.lastEventAt = lastEventAt
+            self.openInPane = openInPane; self.since = since
         }
     }
 
@@ -35,10 +37,11 @@ public enum OfficeAutoFocus {
         let scored = candidates.compactMap { c in score(c).map { (c, $0) } }
         guard let best = scored.map(\.1).max() else { return nil }
         let top = scored.filter { $0.1 == best }.map(\.0)
-        if let current, top.contains(where: { $0.id == current }) { return current }
         return top.max { a, b in
-            let ta = a.lastEventAt ?? .distantPast, tb = b.lastEventAt ?? .distantPast
-            return ta != tb ? ta < tb : a.id > b.id
+            let ta = a.since ?? .distantPast, tb = b.since ?? .distantPast
+            if ta != tb { return ta < tb }
+            if (a.id == current) != (b.id == current) { return b.id == current }
+            return a.id > b.id
         }?.id
     }
 

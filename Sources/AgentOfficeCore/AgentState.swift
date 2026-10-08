@@ -6,6 +6,19 @@ public enum AgentState: Equatable, Sendable {
     case exited
 }
 
+extension AgentState {
+    /// Durumun sınıfı; ayrıntı (hangi tool, hangi soru) yok sayılır.
+    public var stateClass: Int {
+        switch self {
+        case .starting: 0
+        case .idle: 1
+        case .working: 2
+        case .waiting: 3
+        case .exited: 4
+        }
+    }
+}
+
 public enum AgentStateMachine {
     public static func reduce(_ state: AgentState, _ event: AgentEvent) -> AgentState {
         if state == .exited { return .exited }

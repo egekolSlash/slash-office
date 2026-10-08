@@ -13,6 +13,8 @@ public final class AgentStore {
         public var lastPrompt: String?
         public var providerSessionID: String?
         public var lastEventAt: Date?
+        /// Durum sınıfına (çalışıyor, bekliyor, boşta...) ne zaman girdi; kendiliğinden odakta aynı öncelikte en yeni kazanır.
+        public var attentionSince: Date?
         /// Ajanın tool'larla dokunduğu dosyalar (git olmayan klasörlerde diff yerine gösterilir).
         public var touchedFiles: [String] = []
         /// Claude'un oturuma verdiği başlık (ai-title).
@@ -55,6 +57,7 @@ public final class AgentStore {
             let previous = session.state
             session.state = AgentStateMachine.reduce(session.state, event)
             Self.noteFinish(&session, from: previous, watched: watched)
+            Self.noteAttention(&session, from: previous, at: date)
             switch event {
             case .sessionStarted(let providerID?): session.providerSessionID = providerID
             case .promptSubmitted(let text): session.lastPrompt = text
@@ -74,6 +77,7 @@ public final class AgentStore {
         let previous = sessions[index].state
         sessions[index].state = state
         Self.noteFinish(&sessions[index], from: previous, watched: watched)
+        Self.noteAttention(&sessions[index], from: previous, at: .now)
     }
 
     public func markSeen(_ id: String) {
@@ -86,6 +90,10 @@ public final class AgentStore {
         sessions[index].workTitle = title
     }
 
+    static func noteAttention(_ session: inout Session, from previous: AgentState, at date: Date) {
+        if session.state.stateClass != previous.stateClass { session.attentionSince = date }
+    }
+
     static func noteFinish(_ session: inout Session, from previous: AgentState, watched: Bool) {
         if case .working = session.state { session.unseenFinish = false; return }
         if case .working = previous, session.state == .idle, !watched { session.unseenFinish = true }
@@ -93,7 +101,9 @@ public final class AgentStore {
 
     public func setState(_ state: AgentState, for id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }), sessions[index].state != state else { return }
+        let previous = sessions[index].state
         sessions[index].state = state
+        Self.noteAttention(&sessions[index], from: previous, at: .now)
     }
 
     /// Shell oturumu başka klasöre geçti (`cd`): proje, başlık ve o projeye ait izler güncellenir.

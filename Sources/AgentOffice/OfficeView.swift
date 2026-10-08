@@ -110,7 +110,7 @@ struct OfficeView: View {
         desks.values.map { info in
             OfficeAutoFocus.Candidate(id: info.id, state: info.state, unseenFinish: info.unseenFinish,
                                       openInPane: model.layout.visible.contains(info.id),
-                                      lastEventAt: model.store.session(info.id)?.lastEventAt)
+                                      since: model.store.session(info.id)?.attentionSince)
         }
     }
 

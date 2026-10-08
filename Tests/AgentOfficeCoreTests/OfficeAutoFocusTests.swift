@@ -7,7 +7,7 @@ import Testing
 
     func c(_ id: String, _ state: AgentState, finished: Bool = false, open: Bool = false, at seconds: Double = 0) -> OfficeAutoFocus.Candidate {
         OfficeAutoFocus.Candidate(id: id, state: state, unseenFinish: finished, openInPane: open,
-                                  lastEventAt: t0.addingTimeInterval(seconds))
+                                  since: t0.addingTimeInterval(seconds))
     }
 
     @Test func questionWinsOverFinishedOverWorking() {
@@ -28,13 +28,22 @@ import Testing
         #expect(OfficeAutoFocus.pick(asked, current: nil) == "a")
     }
 
-    @Test func soonestEventWinsWithinTheSameClassAndCurrentIsSticky() {
+    /// Aynı öncelikte durumuna en son giren kazanır: bir ajana bakarken başka biri çalışmaya başlarsa kamera ona döner.
+    @Test func newestArrivalWinsWithinTheSameClass() {
         let two = [c("old", .waiting(.question("?")), at: 1), c("new", .waiting(.question("?")), at: 5)]
         #expect(OfficeAutoFocus.pick(two, current: nil) == "new")
-        // Zaten baktığımız aynı sınıftaysa yerinde kalır (kamera zıplamasın).
-        #expect(OfficeAutoFocus.pick(two, current: "old") == "old")
+        #expect(OfficeAutoFocus.pick(two, current: "old") == "new")
+        let working = [c("watched", .working(tool: nil), at: 1), c("started", .working(tool: nil), at: 9)]
+        #expect(OfficeAutoFocus.pick(working, current: "watched") == "started")
         // Daha yüksek bir sınıf çıkınca geçer.
         #expect(OfficeAutoFocus.pick([c("old", .working(tool: nil)), c("q", .waiting(.question("?")))], current: "old") == "q")
+    }
+
+    /// Eşitlikte baktığımız masada kalınır (kamera zıplamasın).
+    @Test func tiesKeepTheCurrentDesk() {
+        let two = [c("a", .working(tool: nil), at: 3), c("b", .working(tool: nil), at: 3)]
+        #expect(OfficeAutoFocus.pick(two, current: "a") == "a")
+        #expect(OfficeAutoFocus.pick(two, current: "b") == "b")
     }
 
     @Test func nothingHappeningMeansNoFocus() {
