@@ -3,7 +3,7 @@ import AppKit
 import Metal
 import SwiftUI
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--size WxH] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -25,7 +25,11 @@ enum OfficeSnapshot {
         guard let gpu = await OfficeGPU.shared(), let renderer = try? OfficeMetalRenderer(gpu: gpu) else {
             print("office snapshot: varlıklar yüklenemedi"); exit(1)
         }
-        let size = (width: 1600, height: 1000)
+        // `--size WxH`: görünüm boyutu (ör. mini ofis gibi küçük).
+        let size: (width: Int, height: Int) = arguments.firstIndex(of: "--size").flatMap { i -> (Int, Int)? in
+            let parts = arguments[i + 1].split(separator: "x").compactMap { Int($0) }
+            return parts.count == 2 ? (parts[0], parts[1]) : nil
+        } ?? (1600, 1000)
         let camera = OfficeCamera()
         camera.viewSize = (Double(size.width), Double(size.height))
         let plan = model.officePlan()
@@ -38,7 +42,10 @@ enum OfficeSnapshot {
         if arguments.contains("--focus-waiting"),
            let desk = plan.rooms.flatMap(\.desks).first(where: { if case .waiting = model.store.session($0.id)?.state { true } else { false } }) {
             camera.userMoved = true
-            camera.viewport = OfficeViewport.focusing(x: desk.x, z: desk.z, zoom: zoom ?? 200, fit: camera.fitViewport)
+            let body = plan.villagerFocus(desk, standing: true)
+            camera.viewport = OfficeViewport.focusing(x: body.x, y: body.y, z: body.z,
+                                                      zoom: zoom ?? OfficeViewport.focusZoom(viewSize: camera.viewSize, fit: camera.fitViewport),
+                                                      fit: camera.fitViewport)
         }
         let desks = demoDeskInfos(plan, model: model)
         let colors = Dictionary(uniqueKeysWithValues: plan.rooms.map { room in

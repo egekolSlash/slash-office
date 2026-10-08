@@ -154,6 +154,33 @@ import simd
         #expect(v.fitZoom == fit.fitZoom && v.zoom == 150)
     }
 
+    /// Odak köylünün gövdesini ekranın tam ortasına getirir: ayakta bekleyen masanın yanında (koridorda) durur,
+    /// gövde yerden yukarıdadır; masanın zemin noktasına bakmak onu merkezden kaydırırdı.
+    @Test(arguments: [false, true]) func focusCentersTheVillagersBody(standing: Bool) {
+        let members = [OfficePlan.Member(id: "a", roomKey: "/a"), OfficePlan.Member(id: "b", roomKey: "/a")]
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let desk = plan.rooms[0].desks[1]
+        let fit = OfficeViewport.fitting(plan.rooms[0].rect, height: 1.6, viewSize: size)
+        let body = plan.villagerFocus(desk, standing: standing)
+        for zoom in [60.0, 120, 220] {
+            let v = OfficeViewport.focusing(x: body.x, y: body.y, z: body.z, zoom: zoom, fit: fit)
+            let p = v.project(x: body.x, y: body.y, z: body.z, viewSize: size)
+            #expect(abs(p.x - 450) < 0.5 && abs(p.y - 300) < 0.5)
+        }
+    }
+
+    /// Kendiliğinden odağın yakınlığı görünümün boyutuna göre: köylü ve kartı küçük mini ofise de sığar.
+    @Test func focusZoomFollowsViewSize() {
+        let fit = OfficeViewport.fitting(PlanRect(minX: 0, minZ: 0, maxX: 10, maxZ: 10), height: 1.6, viewSize: (320, 240))
+        let small = OfficeViewport.focusZoom(viewSize: (320, 240), fit: fit)
+        let wide = OfficeViewport.focusZoom(viewSize: (480, 240), fit: fit)
+        let big = OfficeViewport.focusZoom(viewSize: (480, 400), fit: fit)
+        #expect(small < big && wide <= big)
+        #expect(320 / small >= 3.5 && 240 / small >= 2.4)
+        let limits = OfficeViewport.zoomLimits(fit: fit)
+        #expect(limits.contains(small) && limits.contains(big))
+    }
+
     @Test func clickOnCharacterFindsDeskBehindIt() {
         let members = [OfficePlan.Member(id: "a", roomKey: "/a")]
         let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))

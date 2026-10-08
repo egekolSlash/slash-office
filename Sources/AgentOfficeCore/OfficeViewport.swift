@@ -228,6 +228,22 @@ public struct OfficeViewport: Equatable, Sendable {
         OfficeViewport(targetX: x, targetZ: z, zoom: zoom, fitZoom: fit.fitZoom, planMinZ: fit.planMinZ)
     }
 
+    /// Yerden `y` yükseklikteki noktayı (köylünün gövdesi) ekranın tam ortasına getiren görünüm: hedef zemin noktası
+    /// bakış doğrultusunda o noktanın arkasındadır. Eğim sadece yakınlığa bağlı olduğu için kesindir.
+    public static func focusing(x: Double, y: Double, z: Double, zoom: Double, fit: OfficeViewport) -> OfficeViewport {
+        var viewport = focusing(x: x, z: z, zoom: zoom, fit: fit)
+        viewport.targetZ = z - y / tan(viewport.pitchDegrees * .pi / 180)
+        return viewport
+    }
+
+    /// Bir köylüye odaklanırken yakınlık: görünüme yaklaşık 4 × 2,6 m sığar (köylü, kartı ve masası), görünüm
+    /// büyüdükçe yakınlaşır; yakınlaştırma sınırları ve en çok 160 içinde.
+    public static func focusZoom(viewSize: ViewSize, fit: OfficeViewport) -> Double {
+        let limits = zoomLimits(fit: fit)
+        let wanted = min(viewSize.width / 4, viewSize.height / 2.6, 160)
+        return min(max(wanted, limits.lowerBound), limits.upperBound)
+    }
+
     /// İçerik parmakla birlikte hareket eder (görünüm noktası cinsinden); hedef planın `panMargin` yakınında kalır.
     public mutating func pan(dx: Double, dy: Double, within bounds: PlanRect) {
         targetX -= dx / zoom
@@ -406,6 +422,14 @@ public enum OfficeOverlay {
 
 extension OfficePlan {
     /// Kart ve balonun asıldığı nokta: köylünün başı (oturuyorsa taburede, ayaktaysa masanın yanındaki boşlukta).
+    /// Köylünün masasındaki yeri (oturuyorsa tabure, bekliyorsa yanındaki koridor) ve gövdesinin ortası (balona yer kalsın
+    /// diye biraz yukarısı): kamera odağı.
+    public func villagerFocus(_ desk: Desk, standing: Bool) -> (x: Double, y: Double, z: Double) {
+        guard let room = rooms.first(where: { $0.desks.contains(desk) }) else { return (desk.x, 0.7, desk.z) }
+        let p = standing ? room.standSpot(for: desk) : room.seat(for: desk)
+        return (p.x, standing ? 0.65 : 0.55, p.z)
+    }
+
     public func headAnchor(_ desk: Desk, standing: Bool, viewport: OfficeViewport,
                            viewSize: OfficeViewport.ViewSize) -> (x: Double, y: Double) {
         guard let room = rooms.first(where: { $0.desks.contains(desk) }) else {
