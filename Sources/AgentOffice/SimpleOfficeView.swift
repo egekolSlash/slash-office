@@ -66,7 +66,7 @@ private struct DeskRow: View {
                 Text(model.worktree(for: session.cwd) ?? session.title)
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.white).lineLimit(1)
                 if let summary = session.workSummary {
-                    Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7)).lineLimit(1).help(summary)
+                    Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                 }
             }
             Spacer(minLength: 4)
