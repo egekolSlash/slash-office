@@ -1,3 +1,4 @@
+import AgentOfficeCore
 import AppKit
 import SwiftUI
 import UserNotifications
@@ -24,6 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Bildirim izni ilk açılıştaki izin ekranında istenir.
         if Notifier.canNotify { UNUserNotificationCenter.current().delegate = self }
         model.start()
+        // Shift'siz ⌘= de yazıyı büyütsün (ABD klavyesinde + Shift ister; menüde ⌘+ görünür).
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [model] event in
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  event.charactersIgnoringModifiers == "=" else { return event }
+            MainActor.assumeIsolated { model.zoom(by: 1) }
+            return nil
+        }
         // Uygulamaya dönünce odaktaki oturumun "bitti, görülmedi" işareti kalkar.
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [model] _ in
             MainActor.assumeIsolated { model.markFocusedSeen() }
@@ -66,36 +74,35 @@ struct AgentOfficeApp: App {
                 .frame(minWidth: 900, minHeight: 560)
         }
         .commands {
-            CommandMenu("Ajanlar") {
-                Button("Yeni Claude oturumu") { delegate.model.openLauncher(beside: false, claude: true) }
-                    .keyboardShortcut("n")
-                Button("Yeni panel") { delegate.model.openLauncher(beside: false) }
-                    .keyboardShortcut("t")
-                Button("Yanına yeni panel") { delegate.model.openLauncher(beside: true) }
-                    .keyboardShortcut("d")
-                Button("İzinler…") { delegate.model.showPermissions = true }
+            CommandMenu("Agents") {
+                let model = delegate.model
+                let title = { (id: String) in LocalizedStringKey(ShortcutCatalog.shortcut(id).title) }
+                Button(title("session.newClaude")) { model.openLauncher(beside: false, claude: true) }.shortcut("session.newClaude")
+                Button(title("pane.new")) { model.openLauncher(beside: false) }.shortcut("pane.new")
+                Button(title("pane.newBeside")) { model.openLauncher(beside: true) }.shortcut("pane.newBeside")
+                Button("Permissions…") { model.showPermissions = true }
                 Divider()
-                Button("Ofis") { delegate.model.mode = .office }.keyboardShortcut("1")
-                Button("Çalışma") { delegate.model.mode = .work }.keyboardShortcut("2")
-                Button("Odak") { delegate.model.mode = .focus }.keyboardShortcut("3")
+                Button(title("mode.office")) { model.mode = .office }.shortcut("mode.office")
+                Button(title("mode.work")) { model.mode = .work }.shortcut("mode.work")
+                Button(title("mode.focus")) { model.mode = .focus }.shortcut("mode.focus")
                 Divider()
-                Button("Yazıyı büyüt") { delegate.model.zoom(by: 1) }.keyboardShortcut("=")
-                Button("Yazıyı küçült") { delegate.model.zoom(by: -1) }.keyboardShortcut("-")
-                Button("Gerçek boyut") { delegate.model.resetZoom() }.keyboardShortcut("0")
+                Button(title("text.bigger")) { model.zoom(by: 1) }.shortcut("text.bigger")
+                Button(title("text.smaller")) { model.zoom(by: -1) }.shortcut("text.smaller")
+                Button(title("text.actual")) { model.resetZoom() }.shortcut("text.actual")
                 Divider()
-                Button("Bekleyen ajana atla") { delegate.model.jumpToWaiting() }.keyboardShortcut("j")
-                Button("Önceki oturum") { delegate.model.showAdjacentSession(-1) }.keyboardShortcut("[")
-                Button("Sonraki oturum") { delegate.model.showAdjacentSession(1) }.keyboardShortcut("]")
-                Button("Önceki panel") { delegate.model.cycleFocus(backward: true) }.keyboardShortcut(";")
-                Button("Sonraki panel") { delegate.model.cycleFocus() }.keyboardShortcut("'")
-                Button("Oturumu devam ettir") { delegate.model.resumeFocused() }.keyboardShortcut("r")
-                Button("Durmuş oturumu kaldır") { delegate.model.removeFocusedStopped() }.keyboardShortcut(.delete, modifiers: [.command, .shift])
-                Button("Tüm durmuş oturumları devam ettir") { delegate.model.resumeAllStopped() }.keyboardShortcut("r", modifiers: [.command, .shift])
+                Button(title("session.jumpToWaiting")) { model.jumpToWaiting() }.shortcut("session.jumpToWaiting")
+                Button(title("session.previous")) { model.showAdjacentSession(-1) }.shortcut("session.previous")
+                Button(title("session.next")) { model.showAdjacentSession(1) }.shortcut("session.next")
+                Button(title("pane.previous")) { model.cycleFocus(backward: true) }.shortcut("pane.previous")
+                Button(title("pane.next")) { model.cycleFocus() }.shortcut("pane.next")
+                Button(title("session.resume")) { model.resumeFocused() }.shortcut("session.resume")
+                Button(title("session.removeStopped")) { model.removeFocusedStopped() }.shortcut("session.removeStopped")
+                Button(title("session.resumeAll")) { model.resumeAllStopped() }.shortcut("session.resumeAll")
                 Divider()
-                Button("Paneli kapat") {
-                    if let id = delegate.model.layout.focused { delegate.model.closePane(id) }
+                Button(title("pane.close")) {
+                    if let id = model.layout.focused { model.closePane(id) }
                 }
-                .keyboardShortcut("w")
+                .shortcut("pane.close")
             }
         }
         Settings { SettingsView() }
