@@ -398,8 +398,20 @@ public enum OfficeOverlay {
                     }
                 }
             }
-            // Yer yoksa gösterilmez: uzaktaki kart yakındakinin (ya da odaktakinin) üstüne binmesin.
-            if let frame = candidates.first(where: free) { placed[id] = frame }
+            if let frame = candidates.first(where: free) { placed[id] = frame; continue }
+            // Başın yanında temiz yer yok (yakın plan, kenar, başka baş ya da tabela): kart yine gösterilir, ekrana
+            // sığdırılır. Gizlenen tek kart, daha yakındaki (önce yerleşen) bir kartın üstüne binecek olandır.
+            func clamped(_ f: CardFrame) -> CardFrame {
+                let x = viewSize.width > w ? min(max(f.x, w / 2), viewSize.width - w / 2) : viewSize.width / 2
+                let y = viewSize.height > h ? min(max(f.y, h / 2), viewSize.height - h / 2) : viewSize.height / 2
+                return CardFrame(x: x, y: y, scale: f.scale)
+            }
+            func clearOfCards(_ f: CardFrame) -> Bool {
+                placed.values.allSatisfy { p in
+                    abs(p.x - f.x) >= (w + cardSize.width * p.scale) / 2 || abs(p.y - f.y) >= (h + cardSize.height * p.scale) / 2
+                }
+            }
+            if let frame = candidates.lazy.map(clamped).first(where: clearOfCards) { placed[id] = frame }
         }
         return placed
     }

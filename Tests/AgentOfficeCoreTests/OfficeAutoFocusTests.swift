@@ -136,6 +136,28 @@ import Testing
         }
     }
 
+    /// Yakın planda kartın başın yanında, kenarlara taşmadan duracak yeri yok: yine gösterilir, ekrana sığdırılır
+    /// (gizlenirse hiçbir kart görünmüyordu). Gizleme sadece daha yakındaki bir kartın üstüne binecek olana.
+    @Test func cardWithNoRoomBesideTheHeadIsClampedOnScreen() {
+        let tight = (width: 260.0, height: 120.0)
+        let frames = OfficeOverlay.layoutCards([("only", (x: 130, y: 60))], headRadius: 40, cardSize: card, viewSize: tight)
+        let frame = try? #require(frames["only"])
+        #expect(frame != nil)
+        if let frame {
+            #expect(frame.x - card.width / 2 >= -0.001 && frame.x + card.width / 2 <= tight.width + 0.001)
+            #expect(frame.y - card.height / 2 >= -0.001 && frame.y + card.height / 2 <= tight.height + 0.001)
+        }
+    }
+
+    /// Engel (başka bir baş ya da tabela) yüzünden yer bulamayan kart da gösterilir; sadece kartlar çakışmaz.
+    @Test func obstaclesDoNotHideTheOnlyCard() {
+        let view = (width: 400.0, height: 300.0)
+        let wall = OfficeOverlay.Obstacle(x: 200, y: 150, width: 400, height: 300)
+        let frames = OfficeOverlay.layoutCards([("a", (x: 200, y: 150))], headRadius: 10, cardSize: card, viewSize: view,
+                                               avoiding: [wall])
+        #expect(frames["a"] != nil)
+    }
+
     /// Odaktaki kart önce yerleşir: başının hemen sağındaki yeri o alır.
     @Test func prioritizedCardIsPlacedFirst() {
         let anchors: [(String, (x: Double, y: Double))] = [("front", (x: 300, y: 320)), ("focus", (x: 320, y: 300))]
