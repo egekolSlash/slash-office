@@ -10,6 +10,7 @@ struct OfficeView: View {
     var interactive = false
     @State private var gpu: OfficeGPU?
     private var camera: OfficeCamera { interactive ? model.officeCamera : model.miniOfficeCamera }
+    static let autoFocusKey = "miniOfficeAutoFocus"
     /// Mini ofisin kendiliğinden baktığı masa (`OfficeAutoFocus`).
     @State private var autoFocused: String?
     @State private var unavailable = false
@@ -119,7 +120,7 @@ struct OfficeView: View {
     }
 
     private func applyAutoFocus(_ target: String?, plan: OfficePlan, camera: OfficeCamera) {
-        guard !interactive else { return }
+        guard !interactive, UserDefaults.standard.object(forKey: Self.autoFocusKey) as? Bool ?? true else { return }
         let candidates = autoFocusCandidates(deskInfos(plan))
         let lookingElsewhere = target != nil && camera.target == nil && !isLooking(at: target, plan: plan, camera: camera)
         let apply = OfficeAutoFocus.shouldApply(target: target, current: autoFocused, candidates: candidates,
@@ -168,8 +169,9 @@ struct OfficeView: View {
         let standing = Set(plan.rooms.flatMap(\.desks).map(\.id).filter { id in
             if case .waiting = model.store.session(id)?.state { true } else { false }
         })
+        let focused = model.layout.focused.map { [$0] } ?? []
         return plan.desk(atViewX: x, y: y, viewport: camera.viewport, viewSize: camera.viewSize, detail: detail,
-                         waiting: waiting, standing: standing)
+                         waiting: waiting, standing: standing, focused: focused)
     }
 
     private func handleClick(x: Double, y: Double, clickCount: Int, shift: Bool, plan: OfficePlan, camera: OfficeCamera) {

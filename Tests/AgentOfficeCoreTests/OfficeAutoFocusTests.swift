@@ -45,7 +45,7 @@ import Testing
     /// Elle hareketten sonraki duraklama sadece daha önemsiz geçişleri engeller: yeni bir soru yine kamerayı döndürür.
     @Test func aNewQuestionOverridesTheManualPause() {
         let now = t0
-        let paused = now.addingTimeInterval(-5)
+        let paused = now.addingTimeInterval(-1)
         let question = c("q", .waiting(.question("?")))
         #expect(OfficeAutoFocus.shouldApply(target: "q", current: "w", candidates: [question, c("w", .working(tool: nil))],
                                             lastManualMove: paused, now: now))
@@ -60,7 +60,8 @@ import Testing
     @Test func manualMovePausesAutoFocusForAWhile() {
         let now = t0
         #expect(!OfficeAutoFocus.isPaused(lastManualMove: nil, now: now))
-        #expect(OfficeAutoFocus.isPaused(lastManualMove: now.addingTimeInterval(-10), now: now))
+        #expect(OfficeAutoFocus.isPaused(lastManualMove: now.addingTimeInterval(-2), now: now))
+        #expect(OfficeAutoFocus.manualPause == 3)
         #expect(!OfficeAutoFocus.isPaused(lastManualMove: now.addingTimeInterval(-OfficeAutoFocus.manualPause - 1), now: now))
     }
 }
@@ -70,7 +71,9 @@ import Testing
     let card = (width: 130.0, height: 34.0)
 
     func overlaps(_ a: OfficeOverlay.CardFrame, _ b: OfficeOverlay.CardFrame) -> Bool {
-        abs(a.x - b.x) < (card.width) - 0.5 && abs(a.y - b.y) < (card.height) - 0.5
+        let s = (a.scale + b.scale) / 2
+        let w: Double = card.width * s - 0.5, h: Double = card.height * s - 0.5
+        return abs(a.x - b.x) < w && abs(a.y - b.y) < h
     }
 
     /// Kart başın yanında durur, üstünde değil.
@@ -91,7 +94,7 @@ import Testing
             anchors.append(("d\(i)", (x: x, y: y)))
         }
         let frames = OfficeOverlay.layoutCards(anchors, headRadius: 18, cardSize: card, viewSize: size)
-        #expect(frames.count == count)
+        #expect(frames.count >= count - 1)                                  // sığmayan uzaktaki gizlenebilir
         let all = Array(frames.values)
         for (i, a) in all.enumerated() {
             for b in all.dropFirst(i + 1) { #expect(!overlaps(a, b), "\(a) \(b)") }
@@ -111,6 +114,33 @@ import Testing
             }
             #expect(!(abs(f.x - sign.x) < (card.width + sign.width) / 2 && abs(f.y - sign.y) < (card.height + sign.height) / 2))
         }
+    }
+
+    /// Uzaktaki kart yer bulamazsa yakındakinin üstüne binmez, gizlenir.
+    @Test func farCardThatWouldCoverANearOneIsHidden() {
+        let small = (width: 330.0, height: 90.0)
+        let anchors: [(String, (x: Double, y: Double))] = [("near", (x: 150, y: 50)), ("far", (x: 160, y: 40))]
+        let frames = OfficeOverlay.layoutCards(anchors, headRadius: 10, cardSize: card, viewSize: small)
+        #expect(frames["near"] != nil)
+        if let far = frames["far"], let near = frames["near"] {
+            #expect(!overlaps(far, near))
+        }
+    }
+
+    /// Odaktaki kart önce yerleşir: başının hemen sağındaki yeri o alır.
+    @Test func prioritizedCardIsPlacedFirst() {
+        let anchors: [(String, (x: Double, y: Double))] = [("front", (x: 300, y: 320)), ("focus", (x: 320, y: 300))]
+        let frames = OfficeOverlay.layoutCards(anchors, headRadius: 18, cardSize: card, viewSize: size, priority: ["focus"])
+        let f = frames["focus"]!
+        #expect(abs(f.x - (320 + 18 + 6 + card.width / 2)) < 1e-9 && abs(f.y - 300) < 1e-9)
+    }
+
+    /// Küçültülmüş (uzaktaki) kart küçük boyutuyla yerleşir.
+    @Test func scaledCardsTakeLessRoom() {
+        let anchors: [(String, (x: Double, y: Double))] = [("a", (x: 300, y: 300))]
+        let f = OfficeOverlay.layoutCards(anchors, headRadius: 18, cardSize: card, viewSize: size, scales: ["a": 0.7])["a"]!
+        #expect(f.scale == 0.7)
+        #expect(abs(f.x - (300 + 18 * 0.7 + 6 + card.width * 0.7 / 2)) < 1e-9)   // uzaktaki baş da küçük
     }
 
     @Test func cardNearTheRightEdgeGoesLeft() {

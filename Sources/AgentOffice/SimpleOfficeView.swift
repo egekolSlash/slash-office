@@ -105,6 +105,7 @@ private struct DeskRow: View {
 struct SettingsView: View {
     @AppStorage("richOffice") private var richOffice = false
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
+    @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
 
     var body: some View {
         Form {
@@ -113,6 +114,9 @@ struct SettingsView: View {
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Gece/gündüz döngüsü", isOn: $dayNight).disabled(!richOffice)
             Text("Gökyüzü ve ışık bilgisayarın saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece. Kapalıyken hep gündüz.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Mini ofiste otomatik odak", isOn: $autoFocus).disabled(!richOffice)
+            Text("Çalışma modunda sağdaki ofis dikkat isteyen masaya kendiliğinden döner: soru soran, işi bitip görülmemiş, çalışan. Elle gezinince son hareketten 3 sn sonra devam eder; yeni bir soru beklemeden döndürür.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)

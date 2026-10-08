@@ -20,7 +20,7 @@ struct OfficeCards: View {
         ZStack(alignment: .topLeading) {
             ForEach(plan.rooms, id: \.key) { room in
                 let anchor = OfficeOverlay.roomSignAnchor(room, viewport: viewport, viewSize: size)
-                if shown(room.doorZ, anchor.y) {
+                if shown(room.z, anchor.y) {
                     RoomSign(title: room.title, roomKey: room.key, icon: icons[room.key], compact: detail == .far && !interactive)
                         .position(x: anchor.x, y: anchor.y)
                 }
@@ -38,14 +38,16 @@ struct OfficeCards: View {
                 if case .waiting = info.state { return true }
                 return info.unseenFinish
             }.map(\.id))
-            let frames = plan.cardFrames(visibleDesks, standing: standing, bubbles: bubbles, viewport: viewport,
-                                         viewSize: size, detail: detail)
+            let focused = desks.values.filter(\.focused).map(\.id)
+            let frames = plan.cardFrames(visibleDesks, standing: standing, bubbles: bubbles, focused: focused,
+                                         viewport: viewport, viewSize: size, detail: detail)
             let cardSize = OfficeOverlay.cardSize(detail)
             ForEach(visibleDesks, id: \.id) { desk in
                 if let info = desks[desk.id] {
                     let anchor = plan.headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: size)
                     if let frame = frames[desk.id] {
                         DeskCard(info: info, near: detail == .near, size: cardSize)
+                            .scaleEffect(frame.scale)
                             .position(x: frame.x, y: frame.y)
                     }
                     if case .waiting = info.state {

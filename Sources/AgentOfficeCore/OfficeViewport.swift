@@ -307,10 +307,11 @@ public enum OfficeOverlay {
 
     public static func bubbleSize(zoom: Double) -> Double { max(18, min(zoom * 0.35, 34)) }
 
-    /// Bir kartın görünümdeki merkezi.
+    /// Bir kartın görünümdeki merkezi ve ölçeği (uzaktaki kartlar biraz küçük).
     public struct CardFrame: Equatable, Sendable {
         public var x: Double
         public var y: Double
+        public var scale: Double = 1
     }
 
     /// Kartların örtmemesi gereken alan (görünüm noktası, merkez ve boyut): başlar, oda ve arsa tabelaları.
@@ -321,10 +322,20 @@ public enum OfficeOverlay {
         }
     }
 
-    /// Oda tabelasının yeri ve tahmini boyutu (SwiftUI katmanı aynı noktaya çizer).
+    /// Oda tabelasının yeri: arka duvarın orta üstü (masa kartlarıyla çakışmasın). SwiftUI katmanı aynı noktaya çizer.
     public static func roomSignAnchor(_ room: OfficePlan.Room, viewport: OfficeViewport,
                                       viewSize: OfficeViewport.ViewSize) -> (x: Double, y: Double) {
-        viewport.project(x: room.doorX, y: OfficePlan.wallHeight + 0.25, z: room.doorZ, viewSize: viewSize)
+        let p = viewport.project(x: room.x + room.width / 2, y: room.backWallHeight + 0.3, z: room.z, viewSize: viewSize)
+        // Tam boy arka duvarın tepesi ekranın üst bandına düşebilir: tabela bandın hemen altında kalır.
+        return (p.x, max(p.y, viewSize.height * horizonBand + 14))
+    }
+
+    /// Kartın ölçeği: başın bulunduğu yerde 1 m'nin görünümdeki boyu / hedefteki boyu; uzaklaştıkça en fazla %30 küçülür.
+    public static func cardScale(at point: (x: Double, y: Double, z: Double), viewport: OfficeViewport,
+                                 viewSize: OfficeViewport.ViewSize) -> Double {
+        let a = viewport.project(x: point.x - 0.5, y: point.y, z: point.z, viewSize: viewSize)
+        let b = viewport.project(x: point.x + 0.5, y: point.y, z: point.z, viewSize: viewSize)
+        return min(max(hypot(b.x - a.x, b.y - a.y) / max(viewport.zoom, 1e-6), 0.7), 1)
     }
 
     public static func signObstacle(title: String, at p: (x: Double, y: Double)) -> Obstacle {
@@ -336,30 +347,43 @@ public enum OfficeOverlay {
     /// `headRadius`: başın görünümdeki yarıçapı (nokta).
     public static func layoutCards(_ anchors: [(String, (x: Double, y: Double))], headRadius: Double,
                                    cardSize: (width: Double, height: Double),
-                                   viewSize: OfficeViewport.ViewSize, avoiding obstacles: [Obstacle] = []) -> [String: CardFrame] {
-        let w = cardSize.width, h = cardSize.height
+                                   viewSize: OfficeViewport.ViewSize, avoiding obstacles: [Obstacle] = [],
+                                   priority: [String] = [], scales: [String: Double] = [:]) -> [String: CardFrame] {
         // Bütün başlar da kaçınılacak alandır (kart kendi başının yanında, başkasının başının üstünde olmasın).
         let blocked = obstacles + anchors.map { Obstacle(x: $0.1.x, y: $0.1.y, width: 2 * headRadius, height: 2 * headRadius) }
+        // Önce odaktakiler, sonra öndekiler (ekranda aşağıdakiler); sonuç girdi sırasından bağımsız.
         let ordered = anchors.sorted { a, b in
-            a.1.y != b.1.y ? a.1.y > b.1.y : a.1.x != b.1.x ? a.1.x < b.1.x : a.0 < b.0
+            let pa = priority.firstIndex(of: a.0) ?? Int.max, pb = priority.firstIndex(of: b.0) ?? Int.max
+            if pa != pb { return pa < pb }
+            return a.1.y != b.1.y ? a.1.y > b.1.y : a.1.x != b.1.x ? a.1.x < b.1.x : a.0 < b.0
         }
         var placed: [String: CardFrame] = [:]
-        func free(_ f: CardFrame) -> Bool {
-            f.x - w / 2 >= 0 && f.x + w / 2 <= viewSize.width && f.y - h / 2 >= 0 && f.y + h / 2 <= viewSize.height
-                && placed.values.allSatisfy { abs($0.x - f.x) >= w || abs($0.y - f.y) >= h }
-                && blocked.allSatisfy { abs($0.x - f.x) >= (w + $0.width) / 2 || abs($0.y - f.y) >= (h + $0.height) / 2 }
-        }
         for (id, anchor) in ordered {
-            let gap = headRadius + 6
-            let right = anchor.x + gap + w / 2, left = anchor.x - gap - w / 2
-            var candidates = [CardFrame(x: right, y: anchor.y), CardFrame(x: left, y: anchor.y)]
-            for k in 1...8 {
-                let dy = Double(k) * (h + 4)
-                candidates += [CardFrame(x: right, y: anchor.y + dy), CardFrame(x: left, y: anchor.y + dy),
-                               CardFrame(x: right, y: anchor.y - dy), CardFrame(x: left, y: anchor.y - dy)]
+            let scale = scales[id] ?? 1
+            let w = cardSize.width * scale, h = cardSize.height * scale
+            func free(_ f: CardFrame) -> Bool {
+                f.x - w / 2 >= 0 && f.x + w / 2 <= viewSize.width && f.y - h / 2 >= 0 && f.y + h / 2 <= viewSize.height
+                    && placed.values.allSatisfy { p in
+                        abs(p.x - f.x) >= (w + cardSize.width * p.scale) / 2 || abs(p.y - f.y) >= (h + cardSize.height * p.scale) / 2
+                    }
+                    && blocked.allSatisfy { abs($0.x - f.x) >= (w + $0.width) / 2 || abs($0.y - f.y) >= (h + $0.height) / 2 }
             }
-            placed[id] = candidates.first(where: free)
-                ?? CardFrame(x: min(max(right, w / 2), viewSize.width - w / 2), y: anchor.y)
+            let gap = headRadius * scale + 6
+            var candidates: [CardFrame] = []
+            // Yan yana iki sütun (başın sağı ve solu), sonra bir kart genişliği daha uzak; aşağı ve yukarı kaydırarak.
+            for column in 0...1 {
+                let right = anchor.x + gap + w / 2 + Double(column) * (w + 8)
+                let left = anchor.x - gap - w / 2 - Double(column) * (w + 8)
+                for k in 0...10 {
+                    let dy = Double(k) * (h + 4)
+                    candidates += [CardFrame(x: right, y: anchor.y + dy, scale: scale), CardFrame(x: left, y: anchor.y + dy, scale: scale)]
+                    if k > 0 {
+                        candidates += [CardFrame(x: right, y: anchor.y - dy, scale: scale), CardFrame(x: left, y: anchor.y - dy, scale: scale)]
+                    }
+                }
+            }
+            // Yer yoksa gösterilmez: uzaktaki kart yakındakinin (ya da odaktakinin) üstüne binmesin.
+            if let frame = candidates.first(where: free) { placed[id] = frame }
         }
         return placed
     }
@@ -393,26 +417,35 @@ extension OfficePlan {
     }
 
     /// Gösterilen masaların kart yerleri (uzak seviyede kart yok): başın yanında, başları ve tabelaları örtmeden.
-    /// `bubbles`: `?` ya da `✓` balonu olan masalar (kartlar balonları da örtmez).
-    public func cardFrames(_ desks: [Desk], standing: Set<String>, bubbles: Set<String> = [], viewport: OfficeViewport,
-                           viewSize: OfficeViewport.ViewSize, detail: OfficeDetail) -> [String: OfficeOverlay.CardFrame] {
+    /// `bubbles`: `?` ya da `✓` balonu olan masalar (kartlar balonları da örtmez). `focused`: önce yerleşecekler
+    /// (odaktaki terminal); kameranın baktığı masa da önce gelir.
+    public func cardFrames(_ desks: [Desk], standing: Set<String>, bubbles: Set<String> = [], focused: [String] = [],
+                           viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
+                           detail: OfficeDetail) -> [String: OfficeOverlay.CardFrame] {
         guard detail != .far else { return [:] }
         let anchors = desks.map { desk in
             (desk.id, headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: viewSize))
         }
+        let scales = Dictionary(uniqueKeysWithValues: desks.map { desk in
+            (desk.id, OfficeOverlay.cardScale(at: (desk.x, OfficeOverlay.seatedHead, desk.z), viewport: viewport, viewSize: viewSize))
+        })
+        let looked = desks.min { a, b in
+            hypot(a.x - viewport.targetX, a.z - viewport.targetZ) < hypot(b.x - viewport.targetX, b.z - viewport.targetZ)
+        }.map { [$0.id] } ?? []
         let bubble = OfficeOverlay.bubbleSize(zoom: viewport.zoom)
         let bubbleRects = anchors.filter { bubbles.contains($0.0) }.map { _, a in
             OfficeOverlay.Obstacle(x: a.x, y: a.y - OfficeOverlay.bubbleOffset(detail), width: bubble, height: bubble)
         }
         return OfficeOverlay.layoutCards(anchors, headRadius: OfficeOverlay.headRadius(zoom: viewport.zoom),
                                          cardSize: OfficeOverlay.cardSize(detail), viewSize: viewSize,
-                                         avoiding: OfficeOverlay.signObstacles(self, viewport: viewport, viewSize: viewSize) + bubbleRects)
+                                         avoiding: OfficeOverlay.signObstacles(self, viewport: viewport, viewSize: viewSize) + bubbleRects,
+                                         priority: focused + looked, scales: scales)
     }
 
     /// Tıklama: önce bekleyenlerin `?` balonu, sonra (uzak seviye değilse) masa kartı, sonra sahnedeki masa.
     /// Örtüşen balon ya da kartlarda öndeki (ekranda daha aşağıdaki) kazanır.
     public func desk(atViewX x: Double, y: Double, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize,
-                     detail: OfficeDetail, waiting: Set<String>, standing: Set<String> = []) -> String? {
+                     detail: OfficeDetail, waiting: Set<String>, standing: Set<String> = [], focused: [String] = []) -> String? {
         let horizon = viewport.horizonZ(viewSize: viewSize)
         let desks = rooms.flatMap(\.desks).filter { desk in
             OfficeOverlay.isShown(z: desk.z, anchorY: OfficeOverlay.anchor(desk, viewport: viewport, viewSize: viewSize).y,
@@ -429,8 +462,10 @@ extension OfficePlan {
         if let id = front(bubbles) { return id }
         if detail != .far {
             let size = OfficeOverlay.cardSize(detail)
-            let frames = cardFrames(desks, standing: standing, bubbles: waiting, viewport: viewport, viewSize: viewSize, detail: detail)
-            if let hit = frames.first(where: { abs(x - $0.value.x) <= size.width / 2 && abs(y - $0.value.y) <= size.height / 2 }) {
+            let frames = cardFrames(desks, standing: standing, bubbles: waiting, focused: focused, viewport: viewport,
+                                    viewSize: viewSize, detail: detail)
+            if let hit = frames.first(where: { abs(x - $0.value.x) <= size.width * $0.value.scale / 2
+                                               && abs(y - $0.value.y) <= size.height * $0.value.scale / 2 }) {
                 return hit.key
             }
         }

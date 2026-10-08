@@ -3,7 +3,7 @@ import Foundation
 /// Mini ofisin kendiliğinden odaklanması: kamera dikkat isteyen masaya döner. Öncelik:
 /// soru soran > işi bitip görülmemiş > çalışan; aynı öncelikte kullanıcının panelde açık tutmadığı (bakmadığı)
 /// oturum, sonra en son olayı olan. Zaten baktığımız masa aynı öncelikteyse yerinde kalınır (kamera zıplamasın).
-/// Kullanıcı kamerayı elle oynattıysa bir süre kendiliğinden odak durur.
+/// Kullanıcı kamerayı elle oynattıysa son jestten 3 sn sonrasına kadar kendiliğinden odak durur.
 public enum OfficeAutoFocus {
     public struct Candidate: Equatable, Sendable {
         public var id: String
@@ -18,8 +18,8 @@ public enum OfficeAutoFocus {
         }
     }
 
-    /// Elle kamera hareketinden sonra kendiliğinden odağın beklediği süre (sn).
-    public static let manualPause: TimeInterval = 45
+    /// Elle kamera hareketinden (son jestten) sonra kendiliğinden odağın beklediği süre (sn).
+    public static let manualPause: TimeInterval = 3
 
     /// Yüksek daha önemli; nil: odaklanmaya değmez (boşta, başlıyor, çıktı).
     static func score(_ c: Candidate) -> Int? {

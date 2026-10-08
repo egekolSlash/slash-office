@@ -224,6 +224,22 @@ import simd
     }
 }
 
+@Suite struct OfficeRoomSignTests {
+    /// Oda tabelası arka duvarın orta üstünde; üst banda düşerse bandın altında kalır (gizlenmez).
+    @Test func signSitsAtTheTopCenterAndStaysBelowTheBand() {
+        let members = [OfficePlan.Member(id: "a", roomKey: "/a"), OfficePlan.Member(id: "b", roomKey: "/a")]
+        let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+        let room = plan.rooms[0], size = (width: 900.0, height: 600.0)
+        let fit = OfficeViewport.fitting(plan.bounds, height: 1.6, viewSize: size)
+        let sign = OfficeOverlay.roomSignAnchor(room, viewport: fit, viewSize: size)
+        let top = fit.project(x: room.x + room.width / 2, y: room.backWallHeight + 0.3, z: room.z, viewSize: size)
+        #expect(abs(sign.x - top.x) < 1e-9)
+        #expect(sign.y >= size.height * OfficeOverlay.horizonBand + 14 - 1e-9)
+        let near = OfficeViewport.focusing(x: room.desks[0].x, z: room.desks[0].z + 2, zoom: 220, fit: fit)
+        #expect(OfficeOverlay.roomSignAnchor(room, viewport: near, viewSize: size).y >= size.height * OfficeOverlay.horizonBand + 14 - 1e-9)
+    }
+}
+
 @Suite struct OfficeHorizonTests {
     let size = (width: 1000.0, height: 650.0)
 
