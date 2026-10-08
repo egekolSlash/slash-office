@@ -1,3 +1,4 @@
+import Metal
 import AgentOfficeCore
 import AppKit
 import SwiftUI
@@ -53,9 +54,12 @@ enum OfficeMeasureWindow {
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
             let now = CACurrentMediaTime(), cpu = processCPU(), count = frames.load(ordering: .relaxed)
             let dt = now - lastTime
-            print(String(format: "fps=%.1f  process CPU=%%%.1f (user %%%.1f, system %%%.1f)", Double(count - lastFrames) / dt,
+            // Bizim ayırdığımız GPU kaynakları (sürücünün çizim sırasındaki kendi payı hariç).
+            let gpuMB = Double(MTLCreateSystemDefaultDevice()?.currentAllocatedSize ?? 0) / 1_048_576
+            print(String(format: "fps=%.1f  process CPU=%%%.1f (user %%%.1f, system %%%.1f)  GPU allocated %.0f MB",
+                         Double(count - lastFrames) / dt,
                          (cpu.user + cpu.system - lastCPU.user - lastCPU.system) / dt * 100,
-                         (cpu.user - lastCPU.user) / dt * 100, (cpu.system - lastCPU.system) / dt * 100))
+                         (cpu.user - lastCPU.user) / dt * 100, (cpu.system - lastCPU.system) / dt * 100, gpuMB))
             lastTime = now; lastCPU = cpu; lastFrames = count
         }
     }
