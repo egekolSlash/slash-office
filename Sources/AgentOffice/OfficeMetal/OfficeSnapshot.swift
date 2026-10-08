@@ -3,7 +3,7 @@ import AppKit
 import Metal
 import SwiftUI
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--size WxH] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--villager <id>] [--size WxH] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -98,6 +98,13 @@ enum OfficeSnapshot {
         // `--advance <sn>`: köylüleri önce bu kadar ilerlet (dolaşma, koltuk, sebil anlarını görmek için).
         if let i = arguments.firstIndex(of: "--advance"), let seconds = Double(arguments[i + 1]) {
             for _ in 0..<Int(seconds * 30) { sim.tick(dt: 1.0 / 30) }
+        }
+        // `--villager <id>`: kamera o köylünün o anki yerine yakından (pozları görmek için).
+        if let i = arguments.firstIndex(of: "--villager"), i + 1 < arguments.count,
+           let position = sim.position(of: arguments[i + 1]) {
+            camera.userMoved = true
+            camera.viewport = CameraFollow.target(x: position.x, z: position.z, seated: position.seated,
+                                                  zoom: zoom ?? 240, fit: camera.fitViewport)
         }
         for _ in 0..<45 { await renderFrame(dt: 1.0 / 30) }
         let anchors = plan.rooms.flatMap(\.desks).map { OfficeOverlay.anchor($0, viewport: camera.viewport, viewSize: camera.viewSize) }

@@ -401,4 +401,40 @@ import simd
         }
         #expect(!checked.isEmpty)
     }
+
+    /// Köylü bir eşyaya giderken ya da kullanırken eşya kapatılır: noktayı bırakır, engelin içinde kalmaz,
+    /// kapalı eşyaya bir daha gitmez.
+    @Test func furnitureTurnedOffWhileUsedReplans() {
+        var s = sim()
+        let full = plan(["a"])
+        s.sync(plan: full, desks: desks([("a", .idle)]), looks: [:], projectColors: [:], live: true)
+        run(&s, 3)
+        let kind = try? #require(s.reservedSpots["a"])
+        guard let kind else { return }
+        let without = full.applying(furniture: [full.rooms[0].key: RoomFurniture.all.subtracting([RoomFurniture(rawValue: kind.rawValue)!])])
+        s.sync(plan: without, desks: desks([("a", .idle)]), looks: [:], projectColors: [:], live: true)
+        #expect(s.reservedSpots["a"] != kind)
+        let nav = RoomNav(room: without.rooms[0])
+        run(&s, 60) { sim in
+            #expect(sim.reservedSpots["a"] != kind, "kapalı eşyaya gitti")
+            let p = sim.instances[0].position
+            let pt = PlanPoint(x: Double(p.x), z: Double(p.z))
+            #expect(nav.isFree(pt) || nav.room.desks.contains { nav.room.seat(for: $0).distance(to: pt) < 0.7 }
+                    || without.rooms[0].spots.contains { $0.kind == .sofa && hypot($0.x - pt.x, $0.z - pt.z) < 0.8 },
+                    "engelde: \(pt)")
+        }
+    }
+
+    /// Çok köylülü odada eşyalar dolunca boşta olanlar boş noktalarda bekler; hiçbiri masada uyuklamaz.
+    @Test func noFreeSpotWandersToAFreePoint() {
+        var s = sim()
+        let ids = (0..<8).map { "v\($0)" }
+        let p = plan(ids).applying(furniture: [plan(ids).rooms[0].key: [.sofa]])
+        s.sync(plan: p, desks: desks(ids.map { ($0, .idle) }), looks: [:], projectColors: [:], live: false)
+        run(&s, 30) { sim in
+            #expect(!sim.instances.contains { $0.clip == .sitDoze }, "masada uyuklayan var")
+        }
+        #expect(Set(s.reservedSpots.values).count <= 1)
+    }
 }
+

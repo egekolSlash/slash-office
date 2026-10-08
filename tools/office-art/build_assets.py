@@ -332,6 +332,12 @@ for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115
                     ("sitDraw", 653), ("sitWrite", 703), ("sitRead", 763), ("readBook", 826), ("playArcade", 877),
                     ("drawBoard", 927), ("stepBackLook", 990), ("brewCoffee", 1025)):
     scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"pose_{name}.png"); bpy.ops.render.render(write_still=True)
+# Ofis hayatı klipleri yandan (+X): kolların ileri-yukarı hareketi okunur.
+cam.location = Vector((5, 0, 0.6)); cam.rotation_euler = (Vector((0, 0, 0.6)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
+cd.ortho_scale = 1.6
+for name, frame in (("sitDraw", 653), ("sitWrite", 703), ("sitRead", 763), ("readBook", 826), ("playArcade", 877),
+                    ("drawBoard", 927), ("stepBackLook", 990), ("brewCoffee", 1025), ("brewCoffee2", 1062)):
+    scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"side_{name}.png"); bpy.ops.render.render(write_still=True)
 for h in hairs[1:] + [glasses]: h.hide_render = False
 bpy.data.objects.remove(cam, do_unlink=True)
 scn.frame_set(1)

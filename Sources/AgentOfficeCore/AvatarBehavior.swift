@@ -8,15 +8,18 @@ public enum AvatarGoal: Equatable, Sendable {
     case stand(loop: AvatarClip)
     /// Dinlenme köşesindeki bir noktaya git: varınca tek seferlik hareket (varsa), sonra döngü; `dwell` sn kal.
     case spot(RoomSpot.Kind, loop: AvatarClip?, oneShot: AvatarClip?, dwell: Double)
+    /// Bütün eşyalar doluyken odada boş bir noktada dur: döngü (etrafa bakma, gerinme, bekleme), `dwell` sn.
+    case point(PlanPoint, loop: AvatarClip, dwell: Double)
     /// Kapıdan çık.
     case leave
 }
 
 /// Köylünün davranışı (v5 spec §5): sabit tohumlu, kendi saatiyle karar veren durum makinesi. Ne yapacağına karar
 /// verir; yürüme, klipler ve rezervasyon `AvatarSim`'dedir.
-/// - Çalışıyor: masada `sitType`; 8–20 sn'de bir `sitSip` / `sitThink` / `sitStretch`.
+/// - Çalışıyor: masada `sitType`; 8–20 sn'de bir `sitSip` / `sitThink` / `sitStretch` / `sitDraw` / `sitWrite` / `sitRead`.
 /// - Bekliyor: masanın yanında `wave`; 2–3 el sallamada bir `waitTap` / `lookAround`.
-/// - Boşta: masada `sitDoze`; 20–60 sn sonra boş bir ilgi noktasına gider, sonra başka bir noktaya ya da masaya döner.
+/// - Boşta (ofis hayatı): masada oturup beklemez; boş bir eşyaya gider, kalır, sonra başka bir eşyaya (son ikisini
+///   tekrar seçmez). Eşya kalmadıysa odada boş bir noktada etrafa bakar; o da yoksa masanın yanında ayakta bekler.
 /// - İş bitince (görülmemiş): bir kez ayağa kalkıp `cheer`, sonra boşta kuralları.
 /// - Çıktı: kapıdan çıkar.
 public struct AvatarBehavior: Sendable {
@@ -36,6 +39,10 @@ public struct AvatarBehavior: Sendable {
     private var atDesk = false
     /// Noktaya gidilirken: varınca başlayacak kalma süresi.
     private var pendingDwell: Double?
+    /// Son gidilen iki eşya (tekrar seçilmez).
+    private var recent: [RoomSpot.Kind] = []
+    /// Eşyada kalırken ara hareket: arcade'de sevinç, tahtada geri çekilip bakma (aralıklı), kahveden sonra içme (bir kez).
+    private var extra: (clip: AvatarClip, interval: ClosedRange<Double>?, timer: Double)?
 
     public init(id: String) {
         rng = SeededRandom(seed: StableHash.mixed("behavior:" + id))
@@ -54,6 +61,12 @@ public struct AvatarBehavior: Sendable {
         if let dwell = pendingDwell {
             pendingDwell = nil
             timer = dwell
+            switch atSpot {
+            case .arcade?: extra = (.cheer, 4...7, random(4...7))
+            case .whiteboard?: extra = (.stepBackLook, 5...8, random(5...8))
+            case .coffeeMachine?: extra = (.drink, nil, AvatarClip.brewCoffee.duration + 0.3)
+            default: extra = nil
+            }
         }
     }
 
@@ -63,6 +76,7 @@ public struct AvatarBehavior: Sendable {
         queued = nil
         atSpot = nil
         pendingDwell = nil
+        extra = nil
     }
 
     public mutating func setActivity(_ activity: AvatarActivity, finishedNow: Bool) {
@@ -72,9 +86,11 @@ public struct AvatarBehavior: Sendable {
         needGoal = true
         queued = nil
         atSpot = nil
+        extra = nil
     }
 
-    public mutating func advance(dt: Double, freeSpots: [RoomSpot.Kind]) -> Decision? {
+    /// `freePoints`: eşya kalmadıysa gidilebilecek boş noktalar (sim önerir).
+    public mutating func advance(dt: Double, freeSpots: [RoomSpot.Kind], freePoints: [PlanPoint] = []) -> Decision? {
         guard let activity else { return nil }
         if needGoal {
             needGoal = false
@@ -87,6 +103,7 @@ public struct AvatarBehavior: Sendable {
                 atDesk = false
                 return .goal(.stand(loop: .idle))
             }
+            if activity == .dozing { return wander(freeSpots: freeSpots, freePoints: freePoints) }
             return startGoal(for: activity)
         }
         if var q = queued {
@@ -98,11 +115,20 @@ public struct AvatarBehavior: Sendable {
             }
             queued = q
         }
+        if var e = extra {
+            e.timer -= dt
+            if e.timer <= 0 {
+                if let interval = e.interval { e.timer = random(interval); extra = e } else { extra = nil }
+                timer -= dt
+                return .oneShot(e.clip)
+            }
+            extra = e
+        }
         timer -= dt
         guard timer <= 0 else { return nil }
         switch activity {
         case .typing:
-            let clip = pick([AvatarClip.sitSip, .sitThink, .sitStretch])
+            let clip = pick([AvatarClip.sitSip, .sitThink, .sitStretch, .sitDraw, .sitWrite, .sitRead])
             timer = random(8...20) + clip.duration
             return .oneShot(clip)
         case .waving:
@@ -110,7 +136,7 @@ public struct AvatarBehavior: Sendable {
             timer = clip.duration + AvatarClip.wave.duration * random(2...3)
             return .oneShot(clip)
         case .dozing:
-            return wander(freeSpots: freeSpots)
+            return wander(freeSpots: freeSpots, freePoints: freePoints)
         case .away:
             timer = .infinity
             return nil
@@ -129,33 +155,33 @@ public struct AvatarBehavior: Sendable {
             timer = AvatarClip.wave.duration * random(2...3)
             return .goal(.stand(loop: .wave))
         case .dozing:
-            timer = random(20...60)
-            return .goal(.seat(loop: .sitDoze))
+            // Boşta masada beklenmez (advance doğrudan `wander`'a gider); buraya sadece güvenlik için.
+            timer = random(6...12)
+            return .goal(.stand(loop: .idle))
         case .away:
             timer = .infinity
             return .goal(.leave)
         }
     }
 
-    /// Boşta: masadaysa boş bir noktaya git; noktadaysa ya başka bir noktaya ya da masaya dön.
-    private mutating func wander(freeSpots: [RoomSpot.Kind]) -> Decision? {
-        let choices = freeSpots.filter { $0 != atSpot }
-        let goBack = atSpot != nil && (choices.isEmpty || rng.next() < 0.5)
-        if goBack || (atSpot == nil && choices.isEmpty) {
-            if atSpot == nil && atDesk {
-                // Gidecek yer yok: masada uyumaya devam.
-                timer = random(20...60)
-                return nil
-            }
-            // Noktadan (ya da sevinçten sonra ayakta) masaya dön.
+    /// Boşta: son iki eşya dışında boş bir eşyaya git; yoksa odada boş bir noktaya; o da yoksa masanın yanında dur.
+    private mutating func wander(freeSpots: [RoomSpot.Kind], freePoints: [PlanPoint]) -> Decision? {
+        atDesk = false
+        extra = nil
+        var choices = freeSpots.filter { !recent.contains($0) }
+        if choices.isEmpty, freePoints.isEmpty { choices = freeSpots.filter { $0 != recent.last } }
+        guard !choices.isEmpty else {
             atSpot = nil
-            atDesk = true
-            timer = random(20...60)
-            return .goal(.seat(loop: .sitDoze))
+            let loop = pick([AvatarClip.lookAround, .stretch, .idle])
+            let dwell = random(6...12)
+            pendingDwell = dwell
+            timer = .infinity
+            if freePoints.isEmpty { return .goal(.stand(loop: .idle)) }
+            return .goal(.point(pick(freePoints), loop: loop, dwell: dwell))
         }
         let kind = pick(choices)
         atSpot = kind
-        atDesk = false
+        recent = Array((recent + [kind]).suffix(2))
         let goal: AvatarGoal
         switch kind {
         case .sofa: goal = .spot(.sofa, loop: .sofaSit, oneShot: nil, dwell: random(10...30))
@@ -165,8 +191,9 @@ public struct AvatarBehavior: Sendable {
         case .bookshelf: goal = .spot(.bookshelf, loop: .readBook, oneShot: nil, dwell: random(12...30))
         case .arcade: goal = .spot(.arcade, loop: .playArcade, oneShot: nil, dwell: random(12...30))
         case .whiteboard: goal = .spot(.whiteboard, loop: .drawBoard, oneShot: nil, dwell: random(12...30))
-        case .coffeeMachine: goal = .spot(.coffeeMachine, loop: .idle, oneShot: .brewCoffee,
-                                         dwell: AvatarClip.brewCoffee.duration + random(2...4))
+        case .coffeeMachine:
+            goal = .spot(.coffeeMachine, loop: .idle, oneShot: .brewCoffee,
+                         dwell: AvatarClip.brewCoffee.duration + AvatarClip.drink.duration + random(1...3))
         }
         // Kalma süresi köylü varınca başlar (`arrived`); o zamana kadar karar yok.
         if case .spot(_, _, _, let dwell) = goal { pendingDwell = dwell; timer = .infinity }

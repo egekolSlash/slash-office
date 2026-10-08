@@ -143,6 +143,12 @@ public struct AvatarSim: Sendable {
                     // Masa ya da oda kaydı: yeni hedefe ışınla (odalar arası yürüme yok).
                     avatars[desk.id]?.target = nil
                     decide(desk.id, dt: 0, place: true, force: true)
+                } else if roomChanged, case .spot(let kind, _, _, _)? = avatars[desk.id]?.goal,
+                          !room.spots.contains(where: { $0.kind == kind }) {
+                    // Gittiği ya da kullandığı eşya kapatıldı: noktayı bırakır, yeni bir hedefe yürür (yürüyorsa da).
+                    avatars[desk.id]?.spot = nil
+                    avatars[desk.id]?.behavior.reset()
+                    decide(desk.id, dt: 0, place: false)
                 } else if roomChanged {
                     // Oda büyüdü: masalar yerinde ama dinlenme köşesi dışa kaydı. Yürüyorsa yol yeniden planlanır;
                     // bir noktada duruyorsa noktanın yeni yerine geçer (eski yer artık bir masanın içinde olabilir).
@@ -177,7 +183,7 @@ public struct AvatarSim: Sendable {
     private mutating func decide(_ id: String, dt: Double, place: Bool, force: Bool = false) {
         guard var avatar = avatars[id] else { return }
         let free = freeSpots(for: id, in: avatar.room)
-        var decision = avatar.behavior.advance(dt: dt, freeSpots: free)
+        var decision = avatar.behavior.advance(dt: dt, freeSpots: free, freePoints: freePoints(for: id, in: avatar.room))
         if decision == nil, force, let goal = avatar.goal {
             // Zorla yeniden yerleştirme: son hedef, yeni masa ve oda yerine göre.
             avatars[id] = avatar
@@ -215,6 +221,13 @@ public struct AvatarSim: Sendable {
         decision = nil
     }
 
+    /// Odada boş noktalar; başka bir köylünün hedefine yakın olanlar hariç.
+    private func freePoints(for id: String, in room: OfficePlan.Room) -> [PlanPoint] {
+        guard let nav = navs[room.key] else { return [] }
+        let others = avatars.filter { $0.key != id && $0.value.room.key == room.key }.compactMap { $0.value.target?.point }
+        return nav.freePoints.filter { p in others.allSatisfy { $0.distance(to: p) > 0.7 } }
+    }
+
     private func freeSpots(for id: String, in room: OfficePlan.Room) -> [RoomSpot.Kind] {
         let taken = Set(avatars.filter { $0.key != id && $0.value.room.key == room.key }.compactMap(\.value.spot))
         return room.spots.map(\.kind).filter { !taken.contains($0) }
@@ -229,10 +242,15 @@ public struct AvatarSim: Sendable {
             return Target(point: room.standSpot(for: desk), facing: room.seatFacing(for: desk), loop: loop)
         case .spot(let kind, let loop, let oneShot, _):
             guard let spot = room.spots.first(where: { $0.kind == kind }) else {
-                return Target(point: room.seat(for: desk), facing: room.seatFacing(for: desk), loop: .sitDoze, seat: room.seat(for: desk))
+                // Eşya kapatıldı: masanın yanında ayakta (sync yeni bir hedef seçtirir).
+                return Target(point: room.standSpot(for: desk), facing: room.seatFacing(for: desk), loop: .idle)
             }
             let a = room.approach(to: spot)
             return Target(point: a.stand, facing: a.facing, loop: loop ?? .idle, oneShot: oneShot, seat: a.seat)
+        case .point(let p, let loop, _):
+            // Odanın ortasına doğru bakar.
+            let center = (x: room.x + room.width / 2, z: room.z + room.depth / 2)
+            return Target(point: p, facing: atan2(center.x - p.x, center.z - p.z), loop: loop)
         case .leave:
             return Target(point: room.doorOutside, facing: 0, loop: .idle, leave: true)
         }
@@ -251,6 +269,8 @@ public struct AvatarSim: Sendable {
             avatar.instance.facing = Float(target.facing)
             avatar.instance.position = Self.position(avatar.point)
             avatar.instance.play(target.loop, skeleton: skeleton)
+            // Yerinde başladı (yürümeden): kalma süresi şimdi başlar.
+            avatar.behavior.arrived()
             avatars[id] = avatar
             return
         }

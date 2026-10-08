@@ -55,6 +55,25 @@ public struct RoomNav: Sendable {
         nz = max(1, Int(room.depth / Self.cell))
     }
 
+    /// Boştaki köylülerin eşya kalmadığında durabileceği noktalar: boş, masalardan, taburelerden, eşyaların önünden
+    /// ve kapıdan uzak; ızgarada aralıklı (iki köylü yan yana düşmesin). Sıra sabit.
+    public var freePoints: [PlanPoint] {
+        let seats = room.desks.map { room.seat(for: $0) }
+        let fronts = room.spots.map { room.approach(to: $0).stand }
+        var out: [PlanPoint] = []
+        for j in stride(from: 1, to: nz, by: 3) {
+            for i in stride(from: 1, to: nx, by: 3) {
+                let p = center(i, j)
+                guard isFree(p), p.distance(to: room.doorInside) > 0.8,
+                      room.desks.allSatisfy({ hypot(p.x - $0.x, p.z - $0.z) > 1.0 }),
+                      seats.allSatisfy({ p.distance(to: $0) > 0.7 }),
+                      fronts.allSatisfy({ p.distance(to: $0) > 0.6 }) else { continue }
+                out.append(p)
+            }
+        }
+        return out
+    }
+
     // MARK: - Serbest alan
 
     func inside(_ p: PlanPoint) -> Bool {
