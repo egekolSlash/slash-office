@@ -48,6 +48,12 @@ final class AppModel {
     var editingRoom: String?
     @ObservationIgnored private var iconLookups: Set<String> = []
     @ObservationIgnored private(set) var terminals: [String: AgentTerminalView] = [:]
+    /// Sürüklenen panel ya da listeden sürüklenen oturum. Bırakınca sağlayıcıdaki kimlikle doğrulanır (iptal edilen
+    /// eski bir sürükleme yanlışlıkla uygulanmasın).
+    @ObservationIgnored private(set) var draggedPane: String?
+    /// Listede seçim fare basılınca olur ve oturumu odaktaki panele açar; satır sürüklenmeye başlarsa geri alınır.
+    @ObservationIgnored private var listSelectionUndo: (id: String, layout: TerminalLayout, at: Date)?
+
     /// Arka plan oturum listesi beklenen devam ettirmeler.
     @ObservationIgnored private var resuming: Set<String> = []
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
@@ -696,6 +702,30 @@ extension AppModel {
 
     func closePane(_ id: String) {
         layout.close(id)
+        focusTerminalView()
+    }
+
+    func noteListSelection(_ id: String, before: TerminalLayout) {
+        listSelectionUndo = (id, before, Date())
+    }
+
+    /// Sürükleme başlar: listeden geliyorsa az önceki seçimin paneli değiştirmesi geri alınır.
+    func beginPaneDrag(_ id: String, fromList: Bool) -> NSItemProvider {
+        if fromList, let undo = listSelectionUndo, undo.id == id, Date().timeIntervalSince(undo.at) < 2 {
+            layout = undo.layout
+        }
+        listSelectionUndo = nil
+        draggedPane = id
+        return NSItemProvider(object: id as NSString)
+    }
+
+    /// Kenara bırakılınca panel o yönden bölünür, ortaya bırakılınca değiştirilir (ya da yer değiştirir).
+    func dropPane(_ id: String, on target: String, edge: PaneEdge) {
+        draggedPane = nil
+        guard id == target || store.session(id) != nil || (TerminalLayout.isLauncher(id) && layout.visible.contains(id)) else { return }
+        DebugLog.write("pane drop \(id) on \(target) \(edge)")
+        layout.drop(id, on: target, edge: edge)
+        store.markSeen(id)
         focusTerminalView()
     }
 

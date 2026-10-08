@@ -34,6 +34,8 @@ struct TerminalPane: View {
         .background(isFocused ? Color.accentColor.opacity(0.15) : Color.clear)
         .contentShape(Rectangle())
         .onTapGesture { model.showTerminal(id) }
+        // Başlıktan tutup başka bir panelin kenarına (bölme) ya da ortasına (yer değiştirme) sürüklenir.
+        .onDrag { model.beginPaneDrag(id, fromList: false) }
     }
 
     @ViewBuilder private var content: some View {

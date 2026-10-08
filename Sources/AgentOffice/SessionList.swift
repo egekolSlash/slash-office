@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Sağ sütundaki oturum listesi. Native seçim: satırın her yeri tıklanır; ⇧ ile terminal yanına eklenir.
 /// Seçim terminali gösterir ama klavye listede kalır: ↑/↓ ile gezinilir, ↩ ya da çift tık terminale geçer,
-/// ⌫ / ⌘⌫ oturumu listeden kaldırır.
+/// ⌫ / ⌘⌫ oturumu listeden kaldırır. Satır bir panelin kenarına sürüklenirse panel o yönden bölünür.
 struct SessionList: View {
     @Bindable var model: AppModel
     let requestRemove: (String) -> Void
@@ -31,11 +31,13 @@ struct SessionList: View {
             get: { model.layout.focused },
             set: { id in
                 guard let id else { return }
+                let before = model.layout
                 if NSEvent.modifierFlags.contains(.shift) {
                     model.addTerminal(id, takeKeyboard: false)
                 } else {
                     model.showTerminal(id, takeKeyboard: false)
                 }
+                model.noteListSelection(id, before: before)
             }
         )) {
             ForEach(model.store.sessions) { session in
@@ -54,6 +56,8 @@ struct SessionList: View {
                     }
                 }
                 .tag(session.id)
+                // Terminal alanındaki bir panelin kenarına sürükleyip bırakınca o yönden bölünür.
+                .onDrag { model.beginPaneDrag(session.id, fromList: true) }
             }
         }
         .contextMenu(forSelectionType: String.self) { ids in

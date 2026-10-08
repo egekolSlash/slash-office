@@ -64,17 +64,81 @@ import Testing
         #expect(single.focused == nil)
     }
 
-    @Test func gridShape() {
+    /// Eklemeler eski ızgarayı verir: 2 yan yana, 3–4 2×2 (yeni panel en büyük panelin uzun kenarından bölünür).
+    @Test func addBuildsTheOldGrid() {
         var layout = TerminalLayout()
-        #expect((layout.columns, layout.rows) == (1, 1))
+        #expect(layout.root == nil)
         layout.add("a")
-        #expect((layout.columns, layout.rows) == (1, 1))
+        #expect(layout.root == .leaf("a"))
         layout.add("b")
-        #expect((layout.columns, layout.rows) == (2, 1))
+        #expect(layout.root == .split(.horizontal, .leaf("a"), .leaf("b")))
         layout.add("c")
-        #expect((layout.columns, layout.rows) == (2, 2))
         layout.add("d")
-        #expect((layout.columns, layout.rows) == (2, 2))
+        #expect(layout.root == .split(.horizontal, .split(.vertical, .leaf("a"), .leaf("c")),
+                                      .split(.vertical, .leaf("b"), .leaf("d"))))
+    }
+
+    @Test func edgeZones() {
+        #expect(TerminalLayout.edge(x: 10, y: 300, width: 800, height: 600) == .left)
+        #expect(TerminalLayout.edge(x: 790, y: 300, width: 800, height: 600) == .right)
+        #expect(TerminalLayout.edge(x: 400, y: 20, width: 800, height: 600) == .top)
+        #expect(TerminalLayout.edge(x: 400, y: 590, width: 800, height: 600) == .bottom)
+        #expect(TerminalLayout.edge(x: 400, y: 300, width: 800, height: 600) == .center)
+        // Köşede daha yakın kenar kazanır.
+        #expect(TerminalLayout.edge(x: 30, y: 10, width: 800, height: 600) == .top)
+    }
+
+    /// Listeden sürüklenen oturum bırakılan kenara yerleşir; ortaya bırakılırsa o paneli değiştirir.
+    @Test func droppingANewSessionSplitsTheTargetOnThatEdge() {
+        var layout = TerminalLayout()
+        layout.add("a")
+        layout.drop("b", on: "a", edge: .bottom)
+        #expect(layout.root == .split(.vertical, .leaf("a"), .leaf("b")))
+        #expect(layout.focused == "b")
+        layout.drop("c", on: "b", edge: .left)
+        #expect(layout.root == .split(.vertical, .leaf("a"), .split(.horizontal, .leaf("c"), .leaf("b"))))
+        layout.drop("d", on: "a", edge: .center)
+        #expect(layout.root == .split(.vertical, .leaf("d"), .split(.horizontal, .leaf("c"), .leaf("b"))))
+        #expect(Set(layout.visible) == ["b", "c", "d"] && layout.focused == "d")
+    }
+
+    /// Panelin kendisi sürüklenince yerinden kalkıp yeni yerine geçer; ortaya bırakılırsa iki panel yer değiştirir.
+    @Test func draggingAPaneMovesOrSwapsIt() {
+        var layout = TerminalLayout()
+        for id in ["a", "b", "c"] { layout.add(id) }
+        // (a/c | b): c'yi b'nin altına taşı.
+        layout.drop("c", on: "b", edge: .bottom)
+        #expect(layout.root == .split(.horizontal, .leaf("a"), .split(.vertical, .leaf("b"), .leaf("c"))))
+        layout.drop("a", on: "c", edge: .center)
+        #expect(layout.root == .split(.horizontal, .leaf("c"), .split(.vertical, .leaf("b"), .leaf("a"))))
+        #expect(layout.focused == "a")
+        // Kendi üstüne bırakmak bir şey değiştirmez.
+        let before = layout.root
+        layout.drop("b", on: "b", edge: .left)
+        #expect(layout.root == before)
+    }
+
+    /// Alan doluyken yeni oturum kenara bırakılamaz, bırakıldığı paneli değiştirir; var olan paneller taşınabilir.
+    @Test func fullLayoutOnlyReplacesButStillMoves() {
+        var layout = TerminalLayout()
+        for id in ["a", "b", "c", "d"] { layout.add(id) }
+        #expect(layout.dropEdge(for: "e", on: "a", edge: .left) == .center)
+        #expect(layout.dropEdge(for: "b", on: "a", edge: .left) == .left)
+        layout.drop("e", on: "a", edge: .left)
+        #expect(Set(layout.visible) == ["e", "b", "c", "d"])
+        layout.drop("b", on: "e", edge: .top)
+        #expect(layout.visible.count == 4)
+        #expect(layout.root == .split(.horizontal, .split(.vertical, .split(.vertical, .leaf("b"), .leaf("e")), .leaf("c")),
+                                      .leaf("d")))
+    }
+
+    @Test func closeCollapsesTheSplit() {
+        var layout = TerminalLayout()
+        for id in ["a", "b", "c"] { layout.add(id) }
+        layout.close("a")
+        #expect(layout.root == .split(.horizontal, .leaf("c"), .leaf("b")))
+        layout.close("b")
+        #expect(layout.root == .leaf("c"))
     }
 
     @Test func cycleBackwardWraps() {
