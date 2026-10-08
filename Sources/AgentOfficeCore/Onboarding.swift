@@ -2,7 +2,7 @@
 /// devam. Bitirmek de atlamak da rehberi tamamlanmış sayar; bir daha kendiliğinden açılmaz.
 public struct Onboarding: Equatable, Sendable {
     public enum Step: Int, CaseIterable, Sendable {
-        case language, claude, permissions, office, preferences, shortcuts, firstSession
+        case language, claude, permissions, office, preferences, agents, shortcuts, firstSession
     }
 
     public static let completedKey = "onboardingCompleted"

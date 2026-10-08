@@ -571,6 +571,16 @@
         }
       }
     },
+    "Every new session gets a villager with a random look.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her yeni oturum rastgele görünümlü bir köylüyle gelir."
+          }
+        }
+      }
+    },
     "Every project gets a room and every session a villager at a desk. Their pose tells you what the agent is doing.": {
       "localizations": {
         "tr": {
@@ -777,6 +787,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eşyalar"
+          }
+        }
+      }
+    },
+    "Give your villagers names and their own look. You can change them any time in Agents › Customize Agents… (⇧⌘A).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Köylülerine isim ver ve onlara kendi görünümlerini seç. İstediğin zaman Ajanlar › Köylüleri Özelleştir… (⇧⌘A) ile değiştirebilirsin."
           }
         }
       }
@@ -1921,6 +1941,16 @@
         }
       }
     },
+    "Shuffle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karıştır"
+          }
+        }
+      }
+    },
     "Skin tone": {
       "localizations": {
         "tr": {
@@ -2567,6 +2597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hazırsın"
+          }
+        }
+      }
+    },
+    "Your agents": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Köylülerin"
           }
         }
       }

@@ -24,7 +24,7 @@ struct OnboardingView: View {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for step in Onboarding.Step.allCases {
             let host = NSHostingView(rootView: OnboardingView(model: model, step: step))
-            host.frame = NSRect(x: 0, y: 0, width: 620, height: 540)
+            host.frame = NSRect(x: 0, y: 0, width: 780, height: 600)
             // Arka plan saydam: koyu modda beyaz metin PNG'de kaybolmasın.
             host.appearance = NSAppearance(named: .aqua)
             let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -60,7 +60,7 @@ struct OnboardingView: View {
             }
             .padding(16)
         }
-        .frame(width: 620, height: 540)
+        .frame(width: 780, height: 600)
         .onChange(of: guide.current) { UserDefaults.standard.set(guide.savedStep, forKey: Onboarding.stepKey) }
     }
 
@@ -81,6 +81,7 @@ struct OnboardingView: View {
         case .permissions: PermissionsStep()
         case .office: OfficeStep()
         case .preferences: PreferencesStep()
+        case .agents: AgentsStep(model: model)
         case .shortcuts: ShortcutsStep()
         case .firstSession: FirstSessionStep(model: model) { finish { $0.skip() } }
         }
@@ -266,6 +267,42 @@ private struct PreferenceToggle: View {
             Toggle(title, isOn: $isOn).font(.headline).disabled(!enabled)
             Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 .padding(.leading, 20)
+        }
+    }
+}
+
+/// Köylüleri adlandırıp görünümlerini ayarlama (özelleştirme penceresinin aynısı); henüz oturum yoksa rastgele
+/// bir köylü ve nereden değiştirileceği.
+private struct AgentsStep: View {
+    @Bindable var model: AppModel
+    @State private var sample: AvatarLook = {
+        var rng = SystemRandomNumberGenerator()
+        return AvatarLook.random(using: &rng)
+    }()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            StepHeader(symbol: "person.2", title: "Your agents",
+                       detail: "Give your villagers names and their own look. You can change them any time in Agents › Customize Agents… (⇧⌘A).")
+            if model.store.sessions.isEmpty {
+                HStack(spacing: 20) {
+                    VillagerPreview(look: sample, shirtColor: AvatarLook.shirtColors[0])
+                        .frame(width: 200, height: 280)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Every new session gets a villager with a random look.")
+                        Button("Shuffle") {
+                            var rng = SystemRandomNumberGenerator()
+                            sample = AvatarLook.random(using: &rng)
+                        }
+                    }
+                }
+            } else {
+                AgentCustomizer(model: model, compact: true)
+                    .frame(height: 340)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.25)))
+            }
         }
     }
 }

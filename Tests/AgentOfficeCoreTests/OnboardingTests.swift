@@ -11,7 +11,11 @@ import Testing
         #expect(guide.current == .claude)
         guide.back()
         #expect(guide.current == .language)
-        for _ in 0..<5 { guide.next() }
+        for _ in 0..<4 { guide.next() }
+        #expect(guide.current == .preferences)
+        guide.next()
+        #expect(guide.current == .agents)
+        guide.next()
         #expect(guide.current == .shortcuts)
         guide.next()
         #expect(guide.current == .firstSession && guide.isLast && !guide.isCompleted)
