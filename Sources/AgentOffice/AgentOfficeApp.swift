@@ -44,6 +44,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { model.zoom(by: 1) }
             return nil
         }
+        // Kullanıcı hareketi: odaktaki oturumun "bitti, görülmedi" işareti ancak böyle kalkar (SeenPolicy).
+        NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDown, .rightMouseDown, .keyDown, .scrollWheel, .magnify]) { [model] event in
+            MainActor.assumeIsolated { model.noteUserActivity() }
+            return event
+        }
+        // Fare hareketi olayları ancak pencere isterse gelir.
+        NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { NSApp.keyWindow?.acceptsMouseMovedEvents = true }
+        }
         // Uygulamaya dönünce odaktaki oturumun "bitti, görülmedi" işareti kalkar.
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [model] _ in
             MainActor.assumeIsolated { model.markFocusedSeen() }

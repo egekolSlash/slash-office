@@ -60,6 +60,8 @@ final class AppModel {
     /// Listede seçim fare basılınca olur ve oturumu odaktaki panele açar; satır sürüklenmeye başlarsa geri alınır.
     @ObservationIgnored private var listSelectionUndo: (id: String, layout: TerminalLayout, at: Date)?
 
+    /// Son kullanıcı hareketi kontrolü (saniyede en fazla bir kez).
+    @ObservationIgnored var lastActivityCheck = Date.distantPast
     /// Arka plan oturum listesi beklenen devam ettirmeler.
     @ObservationIgnored private var resuming: Set<String> = []
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
@@ -157,7 +159,7 @@ final class AppModel {
             if !events.isEmpty { shellsWithClaudeHooks.insert(envelope.session) }
         }
         noteBackgroundHook(envelope.session, events: events)
-        store.apply(events, to: envelope.session, watched: isWatched(envelope.session))
+        store.apply(events, to: envelope.session, watched: SeenPolicy.finishIsWatched)
         if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) { refreshWorkTitle(envelope.session, transcript: path) }
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: session.title, reason: reason)
@@ -586,14 +588,14 @@ final class AppModel {
             if command == "claude", let claudePID = foregroundPID, isClaudeViewer(shell: id, pid: claudePID) {
                 // Kendi oturumu olmayan claude (arka plandaki bir oturumu izliyor ya da ajan görünümünde): durumunu
                 // bilemeyiz, gerçek durum o oturumun kaydında. Terminal olarak görünür.
-                store.setState(.idle, for: id, watched: isWatched(id))
+                store.setState(.idle, for: id, watched: SeenPolicy.finishIsWatched)
                 continue
             }
             // Terminalde açılan claude hook gönderiyorsa durumu (çalışıyor, soru soruyor, boşta) hook belirler.
             if command == "claude", shellsWithClaudeHooks.contains(id) { continue }
             shellsWithClaudeHooks.remove(id)
             if previous != state { DebugLog.write("shell \(id) -> \(state)") }
-            store.setState(state, for: id, watched: isWatched(id))
+            store.setState(state, for: id, watched: SeenPolicy.finishIsWatched)
             if case .working = previous, state == .idle { diffChanged(id) }
             if previous == .idle, case .working = state { takeTurnSnapshot(id) }
         }
@@ -681,6 +683,19 @@ extension AppModel {
     /// Kullanıcı bu oturumu şu an görüyor mu: odaktaki panel, çalışma ya da odak modu, uygulama önde.
     func isWatched(_ id: String) -> Bool {
         layout.focused == id && mode != .office && NSApp.isActive
+    }
+
+    /// Uygulamada kullanıcı hareketi (fare, tıklama, tuş, kaydırma): odaktaki görünen oturumun "bitti, görülmedi"
+    /// işareti kalkar. Saniyede en fazla bir kez bakılır.
+    func noteUserActivity() {
+        let now = Date()
+        guard now.timeIntervalSince(lastActivityCheck) >= 1 else { return }
+        lastActivityCheck = now
+        guard let id = layout.focused, let session = store.session(id) else { return }
+        if SeenPolicy.marksSeen(appActive: NSApp.isActive, officeMode: mode == .office,
+                                focusedVisible: layout.visible.contains(id), unseen: session.unseenFinish) {
+            store.markSeen(id)
+        }
     }
 
     /// Uygulamaya dönünce ya da mod değişince odaktaki oturumun "bitti" işareti kalkar.
@@ -956,7 +971,7 @@ extension AppModel {
             if let fix = ClaudeAgents.correction(current: session.state, entry: entry) {
                 DebugLog.write("background \(id): \(session.state) -> \(fix)")
                 if session.state == .exited { store.restart(id) }
-                store.setState(fix, for: id, watched: isWatched(id))
+                store.setState(fix, for: id, watched: SeenPolicy.finishIsWatched)
             }
         }
         Notifier.updateBadge(waiting: store.waitingCount)
