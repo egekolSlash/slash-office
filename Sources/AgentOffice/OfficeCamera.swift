@@ -37,34 +37,41 @@ final class OfficeCamera {
 
     /// Takip edilen köylü: kamera onu yürürken de ortalar; elle gezinme ya da sığdırma bırakır.
     private(set) var follow: String?
-    @ObservationIgnored private var followZoom = 0.0
+    private(set) var followZoom = 0.0
 
-    /// Köylüye yaklaşır ve onu takip eder. Konumlar çizim döngüsünden gelir (`villagersMoved`): görünüm gizliyken
-    /// ya da köylü dururken hiçbir şey çalışmaz.
+    /// Köylüye yaklaşır ve onu takip eder. Takipte kamerayı çizim döngüsü her karede köylünün o karedeki yerine göre
+    /// yürütür (`followed(to:)` ile buraya yansır): görünüm gizliyken ya da köylü dururken hiçbir şey çalışmaz.
+    /// Köylü sahnede değilse (henüz gelmedi) masasına yaklaşılır, takip edilmez.
     func follow(_ id: String, zoom: Double, fallback: (x: Double, y: Double, z: Double)) {
-        if follow != id { DebugLog.write("office camera follow \(id)") }
-        follow = id
-        followZoom = min(max(zoom, limits.lowerBound), limits.upperBound)
+        let zoom = min(max(zoom, limits.lowerBound), limits.upperBound)
         userMoved = true
-        if let position = OfficeSharedScene.shared.position(of: id), CameraFollow.shouldContinue(position) {
-            target = CameraFollow.target(x: position.x, z: position.z, seated: position.seated, zoom: followZoom, fit: fitViewport)
-        } else {
-            target = OfficeViewport.focusing(x: fallback.x, y: fallback.y, z: fallback.z, zoom: followZoom, fit: fitViewport)
+        guard CameraFollow.shouldContinue(OfficeSharedScene.shared.position(of: id)) else {
+            stopFollowing()
+            target = OfficeViewport.focusing(x: fallback.x, y: fallback.y, z: fallback.z, zoom: zoom, fit: fitViewport)
+            return
         }
+        if follow != id { DebugLog.write("office camera follow \(id)") }
+        target = nil
+        follow = id
+        followZoom = zoom
+    }
+
+    /// Çizim döngüsünün takip karesindeki görünüm (köylü konumlarıyla aynı anda gelir).
+    func followed(to viewport: OfficeViewport) {
+        guard follow != nil else { return }
+        self.viewport = viewport
+    }
+
+    /// Köylü odadan çıktı: takip, döngünün son görünümünde biter.
+    func followEnded(_ id: String, at viewport: OfficeViewport) {
+        guard follow == id else { return }
+        self.viewport = viewport
+        stopFollowing()
     }
 
     func stopFollowing() {
         if let follow { DebugLog.write("office camera follow ends \(follow)") }
         follow = nil
-    }
-
-    /// Köylüler yer değiştirdi (çizim döngüsünden): takip edilen kaydıysa hedef güncellenir, çıktıysa takip biter.
-    func villagersMoved(_ positions: [String: AvatarSim.Position]) {
-        guard let id = follow else { return }
-        let position = positions[id]
-        guard CameraFollow.shouldContinue(position), let position else { return stopFollowing() }
-        let next = CameraFollow.target(x: position.x, z: position.z, seated: position.seated, zoom: followZoom, fit: fitViewport)
-        if CameraFollow.needsUpdate(current: target ?? viewport, next: next) { target = next }
     }
 
     func pan(dx: Double, dy: Double) {

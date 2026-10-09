@@ -30,6 +30,7 @@ final class OfficeMetalView: NSView {
     private var lastScene: OfficeSceneInput?
     private var worldKey: OfficeWorldKey?
     private var worldGeneration = 0
+    private var postedFollow: OfficeRenderLoop.Follow?
     /// Görünüm uzun süre gizli kalınca GPU kaynakları bırakılır; tekrar görününce dünya yeniden kurulur.
     private var releaseTimer: Timer?
     private var released = false
@@ -49,12 +50,16 @@ final class OfficeMetalView: NSView {
         wantsLayer = true
         layer = metalLayer
         observeCamera()
-        loop.onVillagers = { [weak self] positions in
+        loop.onVillagers = { [weak self] positions, followView in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.camera.villagersMoved(positions)
+                // Takipte kamerayı çizim döngüsü yürütür; görünüm konumlarla aynı anda gelir (kartlar onunla hizalı).
+                if let followView { self.camera.followed(to: followView) }
                 self.onVillagers?(positions)
             }
+        }
+        loop.onFollowEnded = { [weak self] id, viewport in
+            MainActor.assumeIsolated { self?.camera.followEnded(id, at: viewport) }
         }
         loop.start()
         // Gece/gündüz: dakikada bir saatin ışığı; ayar değişince hemen.
@@ -159,6 +164,8 @@ final class OfficeMetalView: NSView {
             _ = camera.viewSize
             _ = camera.target
             _ = camera.follow
+            _ = camera.followZoom
+            _ = camera.fitViewport
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.cameraChanged()
@@ -169,26 +176,19 @@ final class OfficeMetalView: NSView {
     }
 
     private func cameraChanged() {
-        // Takipten gelen kamera hareketi jest değil: yerinde hareket gibi (enerji tasarrufunda 12/30 fps).
-        let following = camera.follow != nil
-        loop.post(viewport: camera.viewport, viewSize: camera.viewSize,
-                  cameraMoving: camera.target != nil && !following, following: camera.target != nil && following)
-        if let cameraLink { cameraLink.preferredFrameRateRange = Self.linkRate(following: following, mini: mini) }
+        // Takip: kamerayı çizim döngüsü her karede köylünün o karedeki yerine göre yürütür (ana thread adımlamaz).
+        let follow = camera.follow.map { OfficeRenderLoop.Follow(id: $0, zoom: camera.followZoom, fit: camera.fitViewport) }
+        if follow != postedFollow {
+            postedFollow = follow
+            loop.post(follow: follow)
+        }
+        loop.post(viewport: camera.viewport, viewSize: camera.viewSize, cameraMoving: camera.target != nil)
         if camera.target != nil, cameraLink == nil, window != nil {
             DebugLog.write("office camera transition start (mini: \(mini)) to \(camera.target.map { "\($0.targetX),\($0.targetZ) z\($0.zoom)" } ?? "-")")
             let link = displayLink(target: self, selector: #selector(stepCamera))
-            link.preferredFrameRateRange = Self.linkRate(following: following, mini: mini)
             link.add(to: .main, forMode: .common)
             cameraLink = link
         }
-    }
-
-    /// Kamera adım hızı: takipte kare hızıyla aynı sınır (enerji tasarrufunda mini 12, ofis 30), elle geçişte ekran hızı.
-    private static func linkRate(following: Bool, mini: Bool) -> CAFrameRateRange {
-        let saving = UserDefaults.standard.object(forKey: energySavingKey) == nil || UserDefaults.standard.bool(forKey: energySavingKey)
-        guard following, saving else { return .default }
-        let fps: Float = mini ? 12 : 30
-        return CAFrameRateRange(minimum: fps, maximum: fps, preferred: fps)
     }
 
     @objc private func stepCamera(_ link: CADisplayLink) {
@@ -371,8 +371,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
         var viewSize: OfficeViewport.ViewSize = (800, 500)
         var cameraMoving = false
-        /// Kamera bir köylüyü takip ederek kayıyor (jest sayılmaz).
-        var following = false
+        /// Takip edilen köylü: kamerayı döngü yürütür.
+        var follow: Follow?
         var interactionUntil = 0.0
         var visible = false
         var mini = false
@@ -429,9 +429,18 @@ final class OfficeRenderLoop: @unchecked Sendable {
         }
     }
 
-    func post(viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, cameraMoving: Bool, following: Bool = false) {
-        send(urgent: cameraMoving) { $0.viewport = viewport; $0.viewSize = viewSize; $0.cameraMoving = cameraMoving; $0.following = following }
+    func post(viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, cameraMoving: Bool) {
+        send(urgent: cameraMoving) { $0.viewport = viewport; $0.viewSize = viewSize; $0.cameraMoving = cameraMoving }
     }
+
+    /// Kamera takibi: köylü, yakınlık ve sığdırılmış görünüm (eğim için).
+    struct Follow: Equatable, Sendable {
+        var id: String
+        var zoom: Double
+        var fit: OfficeViewport
+    }
+
+    func post(follow: Follow?) { send { $0.follow = follow } }
 
     func post(visible: Bool, mini: Bool) { send { $0.visible = visible; $0.mini = mini } }
     func postRelease() { send { $0.release = true } }
@@ -463,7 +472,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
             let state = scene.peek()
             let animating = !state.instances.isEmpty
             let moving = state.moving
-            var mode = FramePacing.mode(moving: moving, acting: state.acting || box.following,
+            // Takipte kamera hedefe varmadıysa (köylü yürüyor ya da yaklaşma sürüyor) yerinde hareket gibi kare çizilir.
+            var mode = FramePacing.mode(moving: moving, acting: state.acting || (follow != nil && !followArrived),
                                         interacting: box.cameraMoving || now < box.interactionUntil,
                                         animating: animating, visible: box.visible, mini: box.mini,
                                         saving: box.saving)
@@ -529,29 +539,62 @@ final class OfficeRenderLoop: @unchecked Sendable {
             worldGeneration = world.generation
             renderer.setWorld(world.mesh, site: world.bounds)
         }
-        viewport = box.viewport
+        if box.follow != follow {
+            follow = box.follow
+            followArrived = false
+        }
+        // Takipteyken görünüm döngünündür; ana thread'in gönderdiği (bir önceki takip karesi) yok sayılır.
+        if follow == nil { viewport = box.viewport }
         viewSize = box.viewSize
     }
 
     private var viewport = OfficeViewport(targetX: 0, targetZ: 0, zoom: 40, fitZoom: 40, planMinZ: 0)
     private var viewSize: OfficeViewport.ViewSize = (800, 500)
+    private var follow: Follow?
+    private var followArrived = true
+    /// Takip, köylü odadan çıktığı (ya da kaldırıldığı) için bitti: ana thread'e son görünümle bildirilir.
+    var onFollowEnded: (@Sendable (String, OfficeViewport) -> Void)?
+
+    /// Takip edilen köylünün bu karedeki yerine doğru kamera adımı.
+    private func stepFollow(dt: Double) {
+        guard let spec = follow else { return }
+        guard let position = scene.position(of: spec.id), CameraFollow.shouldContinue(position) else {
+            follow = nil
+            followArrived = true
+            lock.lock()
+            if mailbox.follow == spec { mailbox.follow = nil }
+            lock.unlock()
+            let viewport = viewport
+            if let onFollowEnded { DispatchQueue.main.async { onFollowEnded(spec.id, viewport) } }
+            return
+        }
+        let goal = CameraFollow.target(x: position.x, z: position.z, seated: position.seated, zoom: spec.zoom, fit: spec.fit)
+        guard !followArrived || CameraFollow.needsUpdate(current: viewport, next: goal) else { return }
+        (viewport, followArrived) = CameraFollow.step(viewport, toward: goal, dt: dt)
+    }
 
     /// Köylü konumları değişince (en çok 0,2 sn'de bir) ana thread'e: kartlar ve kamera takibi. Sadece kare
     /// çizilirken sorulur; görünüm gizliyken döngü durduğundan hiçbir şey çalışmaz.
-    var onVillagers: (@Sendable ([String: AvatarSim.Position]) -> Void)?
+    /// Takipteyken saniyede 30 kez ve kameranın görünümüyle birlikte (kartlar ekrandaki köylüyle hizalı kalsın).
+    var onVillagers: (@Sendable ([String: AvatarSim.Position], OfficeViewport?) -> Void)?
     private var lastPositionsCheck = 0.0
     private var lastPositions: [String: AvatarSim.Position] = [:]
+    private var lastPostedViewport: OfficeViewport?
 
     private func frame() {
         let now = CACurrentMediaTime()
+        let dt = now - lastFrame
         lastFrame = now
         let state = scene.advance(now: now)
-        if now - lastPositionsCheck >= 0.2, let onVillagers {
+        stepFollow(dt: dt)
+        if now - lastPositionsCheck >= (follow != nil ? 1.0 / 30 : 0.2), let onVillagers {
             lastPositionsCheck = now
             let positions = scene.positions()
-            if positions != lastPositions {
+            let followView = follow != nil ? viewport : nil
+            if positions != lastPositions || (followView != nil && followView != lastPostedViewport) {
                 lastPositions = positions
-                DispatchQueue.main.async { onVillagers(positions) }
+                lastPostedViewport = followView
+                DispatchQueue.main.async { onVillagers(positions, followView) }
             }
         }
         guard let drawable = layer.nextDrawable(), let cb = gpu.queue.makeCommandBuffer() else { return }
