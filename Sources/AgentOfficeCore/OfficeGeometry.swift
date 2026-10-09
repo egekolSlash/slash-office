@@ -140,7 +140,6 @@ public struct OfficeMesh: Sendable {
         let c = cos(yaw), s = sin(yaw)
         func rotate(_ p: SIMD3<Float>) -> SIMD3<Float> { SIMD3(p.x * c + p.z * s, p.y, -p.x * s + p.z * c) }
         let base = UInt32(vertices.count)
-        vertices.reserveCapacity(vertices.count + art.vertexCount)
         for i in 0..<art.vertexCount {
             let p = SIMD3(art.positions[3 * i], art.positions[3 * i + 1], art.positions[3 * i + 2])
             let n = SIMD3(art.normals[3 * i], art.normals[3 * i + 1], art.normals[3 * i + 2])

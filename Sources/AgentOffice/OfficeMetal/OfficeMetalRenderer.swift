@@ -34,6 +34,8 @@ final class OfficeGPU: @unchecked Sendable {
         do {
             let art = try OfficeArtFile.load(from: dir.appendingPathComponent("office-art.json"))
             let gpu = try OfficeGPU(art: art)
+            // JSON çözümünün geçici bellekleri sisteme geri verilsin.
+            malloc_zone_pressure_relief(nil, 0)
             DebugLog.write("office metal resources loaded from \(dir.path)")
             return gpu
         } catch {

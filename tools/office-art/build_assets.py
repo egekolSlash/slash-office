@@ -50,7 +50,17 @@ def finish(o, m, group=None, bevel=0.0):
     PARTS.append(o)
     return o
 
+# Eşyalarda küçük parçalar (çiçek, kupa, kalem, düğme…) daha az dilimle: en yakın görünümde bile ekranda birkaç
+# düzine piksel; silüet ve yumuşak gölgeleme aynı kalır, köşe sayısı yarıya iner. Köylüde (yakın önizleme) kapalı.
+SMALL_PART_LOD = False
+def lod(radius, seg, rings):
+    if not SMALL_PART_LOD: return seg, rings
+    if radius < 0.03: return min(seg, 12), min(rings, 6)
+    if radius < 0.06: return min(seg, 16), min(rings, 8)
+    return seg, rings
+
 def sphere(r, loc, m, group=None, scale=(1, 1, 1), seg=24, rings=12):
+    seg, rings = lod(r * max(scale), seg, rings)
     bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=loc, segments=seg, ring_count=rings)
     o = bpy.context.active_object; o.scale = scale; bpy.ops.object.transform_apply(scale=True)
     return finish(o, m, group)
@@ -70,6 +80,7 @@ def box(size, loc, m, bevel=0.02, rot=None):
     return finish(o, m, bevel=bevel)
 
 def cyl(r, h, loc, m, bevel=0.0, verts=24, rot=(0, 0, 0)):
+    verts, _ = lod(r, verts, 0)
     bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=h, location=loc, vertices=verts, rotation=rot)
     o = bpy.context.active_object; bpy.ops.object.transform_apply(rotation=True)
     return finish(o, m, bevel=bevel)
@@ -437,6 +448,7 @@ bpy.data.objects.remove(cam, do_unlink=True)
 scn.frame_set(1)
 
 # ---------------------------------------------------------------- eşyalar
+SMALL_PART_LOD = True
 for o in list(scn.objects): o.hide_set(True)
 P = dict(
     wood=mat("Wood", (0.62, 0.40, 0.22), 0.45), woodL=mat("WoodLight", (0.85, 0.62, 0.38), 0.4),

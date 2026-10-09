@@ -139,6 +139,8 @@ final class OfficeMetalView: NSView {
             let site = OfficeWorldBuilder.siteRect(key.plan)
             OfficeSharedScene.shared.store(world: mesh, site: site, for: key)
             loop.post(world: mesh, bounds: site, generation: generation)
+            // Kurulumun büyüyen geçici dizileri serbest kaldı; malloc onları sisteme geri versin (yoksa ~100 MB kalır).
+            malloc_zone_pressure_relief(nil, 0)
         }
     }
 
