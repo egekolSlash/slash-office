@@ -31,13 +31,11 @@ struct SessionList: View {
             get: { model.layout.focused },
             set: { id in
                 guard let id else { return }
-                let before = model.layout
                 if NSEvent.modifierFlags.contains(.shift) {
                     model.addTerminal(id, takeKeyboard: false)
                 } else {
                     model.showTerminal(id, takeKeyboard: false)
                 }
-                model.noteListSelection(id, before: before)
             }
         )) {
             ForEach(model.store.sessions) { session in
@@ -61,8 +59,10 @@ struct SessionList: View {
                 }
                 .contentShape(Rectangle())
                 .tag(session.id)
-                // Terminal alanındaki bir panelin kenarına sürükleyip bırakınca o yönden bölünür.
-                .onDrag { model.beginPaneDrag(session.id, fromList: true) }
+                // Terminal alanındaki bir panelin kenarına sürükleyip bırakınca o yönden bölünür. `.onDrag` değil:
+                // listede o, satırın yazısına ve ikonuna gelen tıklamaları yutar (satır seçilmez). `itemProvider`
+                // tablonun kendi sürüklemesini kullanır; fare basılınca çağrılır, satır bırakınca seçilir, sürüklenince seçilmez.
+                .itemProvider { model.beginPaneDrag(session.id) }
             }
         }
         .contextMenu(forSelectionType: String.self) { ids in

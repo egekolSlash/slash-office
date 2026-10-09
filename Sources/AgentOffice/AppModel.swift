@@ -60,8 +60,6 @@ final class AppModel {
     /// Sürüklenen panel ya da listeden sürüklenen oturum. Bırakınca sağlayıcıdaki kimlikle doğrulanır (iptal edilen
     /// eski bir sürükleme yanlışlıkla uygulanmasın).
     @ObservationIgnored private(set) var draggedPane: String?
-    /// Listede seçim fare basılınca olur ve oturumu odaktaki panele açar; satır sürüklenmeye başlarsa geri alınır.
-    @ObservationIgnored private var listSelectionUndo: (id: String, layout: TerminalLayout, at: Date)?
 
     /// Son kullanıcı hareketi kontrolü (saniyede en fazla bir kez).
     @ObservationIgnored var lastActivityCheck = Date.distantPast
@@ -796,16 +794,8 @@ extension AppModel {
         focusTerminalView()
     }
 
-    func noteListSelection(_ id: String, before: TerminalLayout) {
-        listSelectionUndo = (id, before, Date())
-    }
-
-    /// Sürükleme başlar: listeden geliyorsa az önceki seçimin paneli değiştirmesi geri alınır.
-    func beginPaneDrag(_ id: String, fromList: Bool) -> NSItemProvider {
-        if fromList, let undo = listSelectionUndo, undo.id == id, Date().timeIntervalSince(undo.at) < 2 {
-            layout = undo.layout
-        }
-        listSelectionUndo = nil
+    /// Sürüklenebilecek panel (listede fare basılınca da çağrılır; yan etkisi yalnızca bu).
+    func beginPaneDrag(_ id: String) -> NSItemProvider {
         draggedPane = id
         return NSItemProvider(object: id as NSString)
     }
