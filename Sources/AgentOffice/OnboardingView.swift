@@ -351,6 +351,18 @@ private struct FirstSessionStep: View {
                 }
                 .controlSize(.large)
             }
+            Divider().padding(.vertical, 4)
+            // Rehberin sonunda: beğendiyse projeyi GitHub'da yıldızlasın.
+            HStack(spacing: 12) {
+                Text("Enjoying Slash Office? A star on GitHub helps others find it.")
+                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Button {
+                    NSWorkspace.shared.open(AppLinks.repository)
+                } label: {
+                    Label("Star on GitHub", systemImage: "star.fill")
+                }
+            }
         }
         .task { hasClaude = model.findClaude() != nil }
     }

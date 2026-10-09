@@ -561,6 +561,16 @@
         }
       }
     },
+    "Enjoying Slash Office? A star on GitHub helps others find it.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slash Office’u beğendin mi? GitHub’da bir yıldız, başkalarının da onu bulmasına yardım eder."
+          }
+        }
+      }
+    },
     "Error": {
       "localizations": {
         "tr": {
@@ -2097,6 +2107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajanın sorusu olduğunda ya da izne ihtiyacı olduğunda ? işaretiyle ayakta durur. Ayrıca bildirim alırsın."
+          }
+        }
+      }
+    },
+    "Star on GitHub": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub’da yıldızla"
           }
         }
       }
