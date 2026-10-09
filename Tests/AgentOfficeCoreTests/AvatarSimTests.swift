@@ -131,6 +131,8 @@ import simd
         let a = s.instances[0], b = s.instances[1]
         #expect(a.position == position(room.seat(for: room.desks[0])) && a.clip == .sitType)
         #expect(b.position == position(room.standSpot(for: room.desks[1])) && b.clip == .wave && b.waving)
+        // Masa koridora döndü ama el sallayan kameraya bakar.
+        #expect(b.facing == Float(OfficePlan.Room.cameraFacing))
         #expect(!s.isMoving)
     }
 

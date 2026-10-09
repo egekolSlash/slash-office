@@ -251,11 +251,12 @@ public struct AvatarSim: Sendable {
         case .seat(let loop):
             return Target(point: room.seat(for: desk), facing: room.seatFacing(for: desk), loop: loop, seat: room.seat(for: desk))
         case .stand(let loop):
-            return Target(point: room.standSpot(for: desk), facing: room.seatFacing(for: desk), loop: loop)
+            // Ayakta bekleyen (el sallayan, sevinen) masaya değil kameraya bakar.
+            return Target(point: room.standSpot(for: desk), facing: OfficePlan.Room.cameraFacing, loop: loop)
         case .spot(let kind, let loop, let oneShot, _):
             guard let spot = room.spots.first(where: { $0.kind == kind }) else {
                 // Eşya kapatıldı: masanın yanında ayakta (sync yeni bir hedef seçtirir).
-                return Target(point: room.standSpot(for: desk), facing: room.seatFacing(for: desk), loop: .idle)
+                return Target(point: room.standSpot(for: desk), facing: OfficePlan.Room.cameraFacing, loop: .idle)
             }
             let a = room.approach(to: spot)
             return Target(point: a.stand, facing: a.facing, loop: loop ?? .idle, oneShot: oneShot, seat: a.seat)

@@ -127,7 +127,9 @@ extension OfficePlan.Room {
     public func seat(for desk: OfficePlan.Desk) -> PlanPoint {
         PlanPoint(x: desk.x + outward * DeskGeometry.seatOffset, z: desk.z)
     }
-    /// Masada (oturan ya da yanında duran) köylünün yönü: koridora (sol oda +x, sağ oda −x). Masa da bu açıyla döner.
+    /// Kameraya (+z, ekranın altına) dönük yön: masanın yanında ayakta bekleyen köylü böyle durur.
+    public static let cameraFacing = 0.0
+    /// Masada oturan köylünün yönü: koridora (sol oda +x, sağ oda −x). Masa da bu açıyla döner.
     public func seatFacing(for desk: OfficePlan.Desk) -> Double { -outward * Double.pi / 2 }
     /// Taburenin arkasındaki boşluk (bir sonraki masa sütununa kadar): köylüler masaya buradan yürür.
     public func aisleX(for desk: OfficePlan.Desk) -> Double { desk.x + outward * OfficePlan.columnSpacing / 2 }
