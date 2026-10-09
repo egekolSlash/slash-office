@@ -266,8 +266,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     private var lightViewProj = matrix_identity_float4x4
     private var shadowDirection = SIMD3<Double>(0, -1, 0)
     private var staticShadowDirty = false
-    private let staticShadow: MTLTexture
-    private let villagerShadow: MTLTexture
+    /// Gölge haritaları gerektiğinde oluşur; uzun süre gizli kalınca `releaseResources` bırakır.
+    private var staticShadow: MTLTexture?
+    private var villagerShadow: MTLTexture?
     private var colorMSAA: MTLTexture?
     private var depthMSAA: MTLTexture?
     private var villagerBuffers: [MTLBuffer?]
@@ -279,18 +280,29 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     init(gpu: OfficeGPU) throws {
         self.gpu = gpu
         Self.checkLayouts()
-        func shadowMap(_ size: Int) throws -> MTLTexture {
-            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: OfficeGPU.depthFormat, width: size, height: size, mipmapped: false)
-            d.usage = [.renderTarget, .shaderRead]
-            d.storageMode = .private
-            guard let t = gpu.device.makeTexture(descriptor: d) else { throw OfficeGPU.Failure.resource("shadow map") }
-            return t
-        }
-        staticShadow = try shadowMap(Self.staticShadowSize)
-        villagerShadow = try shadowMap(Self.villagerShadowSize)
         villagerBuffers = Array(repeating: nil, count: Self.framesInFlight)
         boneBuffers = Array(repeating: nil, count: Self.framesInFlight)
         ringBuffers = Array(repeating: nil, count: Self.framesInFlight)
+    }
+
+    private func shadowMap(_ size: Int) -> MTLTexture? {
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: OfficeGPU.depthFormat, width: size, height: size, mipmapped: false)
+        d.usage = [.renderTarget, .shaderRead]
+        d.storageMode = .private
+        return gpu.device.makeTexture(descriptor: d)
+    }
+
+    /// Görünüm uzun süre gizli: dünya tamponları, gölge haritaları, MSAA hedefleri ve kare tamponları bırakılır
+    /// (tekrar görününce dünya yeniden gönderilir, gölgeler yeniden çizilir).
+    func releaseResources() {
+        worldVertices = nil
+        worldIndices = nil
+        worldIndexCount = 0
+        staticShadow = nil
+        villagerShadow = nil
+        colorMSAA = nil
+        depthMSAA = nil
+        for i in villagerBuffers.indices { villagerBuffers[i] = nil; boneBuffers[i] = nil; ringBuffers[i] = nil }
     }
 
     /// Yeni statik dünya: tamponlar burada (çizim thread'inde) değişir, yani kare ortasında yarım dünya çizilmez.
@@ -328,6 +340,8 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         cb.addCompletedHandler { _ in semaphore.signal() }
         frame = (frame + 1) % Self.framesInFlight
         ensureTargets(width: target.width, height: target.height)
+        if staticShadow == nil { staticShadow = shadowMap(Self.staticShadowSize); staticShadowDirty = true }
+        if villagerShadow == nil { villagerShadow = shadowMap(Self.villagerShadowSize) }
 
         var u = Uniforms(viewProj: viewport.viewProjection(viewSize: viewSize), lightViewProj: lightViewProj,
                          lightDir: SIMD4(SIMD3<Float>(shadowDirection), 0),
@@ -341,7 +355,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         let villagerCount = writeVillagers(avatars)
         let ringCount = writeRings(avatars, time: time)
 
-        if staticShadowDirty, let vb = worldVertices, let ib = worldIndices {
+        if staticShadowDirty, let vb = worldVertices, let ib = worldIndices, let staticShadow {
             staticShadowDirty = false
             shadowPass(cb, staticShadow) { e in
                 e.setRenderPipelineState(gpu.worldShadowPipe)
@@ -350,7 +364,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
                 e.drawIndexedPrimitives(type: .triangle, indexCount: worldIndexCount, indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0)
             }
         }
-        if villagerCount > 0 {
+        if villagerCount > 0, let villagerShadow {
             shadowPass(cb, villagerShadow) { e in
                 e.setRenderPipelineState(gpu.villagerShadowPipe)
                 bindVillagers(e, &u)

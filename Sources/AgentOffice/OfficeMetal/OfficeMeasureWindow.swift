@@ -47,6 +47,17 @@ enum OfficeMeasureWindow {
                 }
             }
         }
+        // `--hide-after N`: N sn sonra pencere gizlenir (kaynak bırakma ölçümü); `--show-after M` ile geri gelir.
+        if let i = arguments.firstIndex(of: "--hide-after"), let seconds = Double(arguments[i + 1]) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+                MainActor.assumeIsolated { window.orderOut(nil); print("window hidden") }
+            }
+        }
+        if let i = arguments.firstIndex(of: "--show-after"), let seconds = Double(arguments[i + 1]) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+                MainActor.assumeIsolated { window.orderFrontRegardless(); print("window shown") }
+            }
+        }
         if let i = arguments.firstIndex(of: "--seconds"), let seconds = Double(arguments[i + 1]) {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { exit(0) }
         }

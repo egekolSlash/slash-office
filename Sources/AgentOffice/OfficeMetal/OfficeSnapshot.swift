@@ -88,6 +88,12 @@ enum OfficeSnapshot {
             cb.commit()
             for await _ in done {}
         }
+        // `--release-cycle`: bir kare çiz, kaynakları bırak, dünyayı yeniden ver (uzun süre gizli kalıp geri gelen ofis).
+        if arguments.contains("--release-cycle") {
+            await renderFrame(dt: 0)
+            renderer.releaseResources()
+            renderer.setWorld(mesh, site: OfficeWorldBuilder.siteRect(plan))
+        }
         // `--bench <fps>`: ölçüm için ekran dışında bu kare hızında 20 sn çizer (pencere başka Space'teyken de çalışır).
         if let i = arguments.firstIndex(of: "--bench"), let fps = Double(arguments[i + 1]) {
             print("office bench: \(fps) fps, 20 s")

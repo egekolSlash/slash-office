@@ -74,6 +74,11 @@ final class OfficeSharedScene: @unchecked Sendable {
         return (world.mesh, world.site)
     }
 
+    func dropWorld() {
+        lock.lock(); defer { lock.unlock() }
+        world = nil
+    }
+
     func store(world mesh: OfficeMesh, site: PlanRect, for key: OfficeWorldKey) {
         lock.lock(); defer { lock.unlock() }
         world = (key, mesh, site)

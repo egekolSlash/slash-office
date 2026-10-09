@@ -30,6 +30,11 @@ final class OfficeMetalView: NSView {
     private var lastScene: OfficeSceneInput?
     private var worldKey: OfficeWorldKey?
     private var worldGeneration = 0
+    /// Görünüm uzun süre gizli kalınca GPU kaynakları bırakılır; tekrar görününce dünya yeniden kurulur.
+    private var releaseTimer: Timer?
+    private var released = false
+    private var lastVisible = false
+    static let releaseAfter = ProcessInfo.processInfo.environment["OFFICE_RELEASE_AFTER"].flatMap(Double.init) ?? 30
 
     init(gpu: OfficeGPU, camera: OfficeCamera) throws {
         self.camera = camera
@@ -101,6 +106,7 @@ final class OfficeMetalView: NSView {
 
     isolated deinit {
         loop.stop()
+        releaseTimer?.invalidate()
         cameraLink?.invalidate()
         clockTimer?.invalidate()
         if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
@@ -120,6 +126,8 @@ final class OfficeMetalView: NSView {
         lastScene = scene
         OfficeSharedScene.shared.apply(scene, skeleton: loop.gpu.skeleton)
         loop.postSceneChanged()
+        // Kaynaklar bırakıldıysa dünya görününce kurulur.
+        guard !released else { return }
         let key = OfficeWorldKey(plan: scene.plan, terminals: scene.terminals, styles: scene.styles)
         guard key != worldKey else { return }
         worldKey = key
@@ -241,6 +249,35 @@ final class OfficeMetalView: NSView {
         let visible = window.map { !isHiddenOrHasHiddenAncestor && bounds.width > 1 && bounds.height > 1
             && $0.occlusionState.contains(.visible) } ?? false
         loop.post(visible: visible, mini: mini)
+        guard visible != lastVisible else { return }
+        lastVisible = visible
+        releaseTimer?.invalidate()
+        releaseTimer = nil
+        if visible {
+            guard released, let scene = lastScene else { return }
+            released = false
+            lastScene = nil
+            update(scene)
+            needsLayout = true
+        } else if !released {
+            let timer = Timer(timeInterval: Self.releaseAfter, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.releaseResources() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            releaseTimer = timer
+        }
+    }
+
+    /// Uzun süredir gizli: dünya tamponları, gölge haritaları ve ekran hedefleri bırakılır (sürücünün sürekli çizim
+    /// belleği zaten çizim durunca kalkar). Paylaşılan dünya önbelleği de bırakılır; görününce yeniden kurulur.
+    private func releaseResources() {
+        releaseTimer = nil
+        guard !lastVisible, !released else { return }
+        released = true
+        worldKey = nil
+        OfficeSharedScene.shared.dropWorld()
+        loop.postRelease()
+        DebugLog.write("office resources released after \(Self.releaseAfter) s hidden")
     }
 
     // MARK: - Jestler
@@ -346,6 +383,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
         /// Sabit kare hızında bekleyen döngüyü hemen uyandırsın mı (jest, görünürlük, yeni dünya…). Takip adımları
         /// ve sahne güncellemeleri acil değil: bir sonraki karede işlenir.
         var urgent = false
+        /// Uzun süre gizli: çizici kaynaklarını bıraksın.
+        var release = false
     }
     private var mailbox = Mailbox()
 
@@ -395,6 +434,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
     }
 
     func post(visible: Bool, mini: Bool) { send { $0.visible = visible; $0.mini = mini } }
+    func postRelease() { send { $0.release = true } }
     func post(saving: Bool) { send { $0.saving = saving } }
     func post(lighting: OfficeDaylight.Lighting) { send { $0.lighting = lighting } }
     func post(drawableSize: CGSize) { send { $0.drawableSize = drawableSize } }
@@ -413,6 +453,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
             mailbox.world = nil
             mailbox.drawableSize = nil
             mailbox.lighting = nil
+            mailbox.release = false
             mailbox.dirty = false
             lock.unlock()
             guard box.running else { return }
@@ -466,6 +507,16 @@ final class OfficeRenderLoop: @unchecked Sendable {
     }
 
     private func apply(_ box: Mailbox) {
+        if box.release, box.world == nil {
+            renderer.releaseResources()
+            // Boyut 1×1: katmanın drawable havuzu da küçülsün (görününce `layout` gerçek boyutu yeniden gönderir).
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.drawableSize = CGSize(width: 1, height: 1)
+            CATransaction.commit()
+            DispatchQueue.global(qos: .utility).async { malloc_zone_pressure_relief(nil, 0) }
+            return
+        }
         if let size = box.drawableSize, layer.drawableSize != size {
             // Run loop'suz thread'de örtük transaction açılmasın.
             CATransaction.begin()
