@@ -151,6 +151,17 @@ import Testing
         }
     }
 
+    /// Başı ekranda görünmeyen köylünün kartı kenara yığılmaz, gizlenir; başı kenarda yarım görünenin kartı gösterilir.
+    @Test func cardOfAVillagerFarOffScreenIsHidden() {
+        let view = (width: 800.0, height: 500.0)
+        let anchors: [(String, (x: Double, y: Double))] = [
+            ("below", (x: 400, y: 900)), ("left", (x: -300, y: 200)), ("edge", (x: 812, y: 250)), ("justBelow", (x: 400, y: 525)), ("inside", (x: 400, y: 250)),
+        ]
+        let frames = OfficeOverlay.layoutCards(anchors, headRadius: 20, cardSize: card, viewSize: view)
+        #expect(frames["below"] == nil && frames["left"] == nil && frames["justBelow"] == nil)
+        #expect(frames["edge"] != nil && frames["inside"] != nil)
+    }
+
     /// Engel (başka bir baş ya da tabela) yüzünden yer bulamayan kart da gösterilir; sadece kartlar çakışmaz.
     @Test func obstaclesDoNotHideTheOnlyCard() {
         let view = (width: 400.0, height: 300.0)

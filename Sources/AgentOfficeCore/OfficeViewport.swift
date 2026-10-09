@@ -377,6 +377,11 @@ public enum OfficeOverlay {
         for (id, anchor) in ordered {
             let scale = scales[id] ?? 1
             let w = cardSize.width * scale, h = cardSize.height * scale
+            // Başı ekranda görünmeyen köylünün kartı yok (kenara yığılıp kimin olduğu anlaşılmıyordu). Başı kenarda
+            // yarım görünenin kartı gösterilir.
+            let margin = headRadius * scale
+            guard anchor.x > -margin, anchor.x < viewSize.width + margin,
+                  anchor.y > -margin, anchor.y < viewSize.height + margin else { continue }
             func free(_ f: CardFrame) -> Bool {
                 f.x - w / 2 >= 0 && f.x + w / 2 <= viewSize.width && f.y - h / 2 >= 0 && f.y + h / 2 <= viewSize.height
                     && placed.values.allSatisfy { p in
