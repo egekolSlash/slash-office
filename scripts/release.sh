@@ -19,11 +19,21 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 APP="$OUT/SlashOffice.app"
 
+# Derleme çıktısı günlüğe gider; başarısız olursa sonu gösterilir (yoksa hata sessizce kaybolur).
+LOG="$OUT/make-app.log"
+build() {
+    echo "building the universal app (arm64 + x86_64; the first build takes a few minutes)…"
+    if ! "$@" > "$LOG" 2>&1; then
+        echo "error: scripts/make-app.sh failed; last lines of $LOG:" >&2
+        tail -n 40 "$LOG" >&2
+        exit 1
+    fi
+}
 if [ -n "${DEVELOPER_ID:-}" ]; then
-    ARCHS="arm64 x86_64" CODESIGN_IDENTITY="$DEVELOPER_ID" CODESIGN_RUNTIME=1 scripts/make-app.sh "$APP" >/dev/null
+    build env ARCHS="arm64 x86_64" CODESIGN_IDENTITY="$DEVELOPER_ID" CODESIGN_RUNTIME=1 scripts/make-app.sh "$APP"
 else
     echo "note: DEVELOPER_ID not set — ad-hoc signed; use install.sh or Homebrew to avoid Gatekeeper prompts" >&2
-    ARCHS="arm64 x86_64" CODESIGN_IDENTITY=- scripts/make-app.sh "$APP" >/dev/null
+    build env ARCHS="arm64 x86_64" CODESIGN_IDENTITY=- scripts/make-app.sh "$APP"
 fi
 lipo -archs "$APP/Contents/MacOS/AgentOffice"
 codesign --verify --strict "$APP"
