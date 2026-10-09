@@ -2,7 +2,7 @@
 # Builds from source: a locally built app is not quarantined, so Gatekeeper does not block it.
 # scripts/release.sh prints the sha256 of the release tarball to put below.
 class SlashOffice < Formula
-  desc "Run Claude Code and terminal sessions side by side and watch your agents in a little office"
+  desc "Mac workspace for parallel Claude Code agents, with a little office view"
   homepage "https://github.com/egekolSlash/slash-office"
   url "https://github.com/egekolSlash/slash-office/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "RELEASE_TARBALL_SHA256"
