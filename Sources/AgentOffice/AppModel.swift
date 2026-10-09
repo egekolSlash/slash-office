@@ -65,6 +65,9 @@ final class AppModel {
     @ObservationIgnored var lastActivityCheck = Date.distantPast
     /// Arka plan oturum listesi beklenen devam ettirmeler.
     @ObservationIgnored private var resuming: Set<String> = []
+    /// Esc ile kesilen turu kayıt dosyasından yakalar (Claude o an hook göndermez).
+    @ObservationIgnored private let transcriptWatcher = TranscriptWatcher()
+    @ObservationIgnored private var transcriptPaths: [String: String] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
 
@@ -108,6 +111,7 @@ final class AppModel {
 
     func start() {
         guard server == nil else { return }
+        transcriptWatcher.onInterrupt = { [weak self] id in self?.transcriptInterrupted(id) }
         shellTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pollShells() }
         }
@@ -161,7 +165,11 @@ final class AppModel {
         }
         noteBackgroundHook(envelope.session, events: events)
         store.apply(events, to: envelope.session, watched: SeenPolicy.finishIsWatched)
-        if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) { refreshWorkTitle(envelope.session, transcript: path) }
+        if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) {
+            transcriptPaths[envelope.session] = path
+            refreshWorkTitle(envelope.session, transcript: path)
+        }
+        watchTranscript(envelope.session)
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
         }
@@ -405,6 +413,8 @@ final class AppModel {
         }
         terminals[id]?.terminate()
         terminals[id] = nil
+        transcriptWatcher.stop(id)
+        transcriptPaths[id] = nil
         coordinators[id] = nil
         records[id] = nil
         if avatarLooks[id] != nil { setLook(nil, for: id) }
@@ -737,6 +747,27 @@ extension AppModel {
                 self.saveRecords()
             }
         }
+    }
+
+    /// Çalışırken ya da beklerken kayıt izlenir; boşta ve kapalıyken izlenmez.
+    private func watchTranscript(_ id: String) {
+        let active: Bool = switch store.session(id)?.state {
+        case .working?, .waiting?: true
+        default: false
+        }
+        transcriptWatcher.watch(id, path: active ? transcriptPaths[id] : nil)
+    }
+
+    private func transcriptInterrupted(_ id: String) {
+        guard let state = store.session(id)?.state else { return }
+        switch state {
+        case .working, .waiting: break
+        default: return
+        }
+        DebugLog.write("turn interrupted (transcript) \(id)")
+        store.apply([.interrupted], to: id, watched: SeenPolicy.finishIsWatched)
+        Notifier.updateBadge(waiting: store.waitingCount)
+        watchTranscript(id)
     }
 
     /// Panel, liste ve ofiste gösterilen "ne üzerinde çalışıyor" metni.

@@ -24,4 +24,6 @@ public enum AgentEvent: Equatable, Sendable {
     case todosChanged([TodoItem])
     case sessionEnded
     case inputIdle
+    /// Kullanıcı turu Esc ile kesti (kayıt dosyasında görüldü; Claude bunun için hook göndermez).
+    case interrupted
 }

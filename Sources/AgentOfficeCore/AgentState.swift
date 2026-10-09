@@ -48,6 +48,12 @@ public enum AgentStateMachine {
             case .working, .waiting(.permission): return .idle
             default: return state
             }
+        case .interrupted:
+            // Kesilen tur: açık soru ya da izin de iptal olmuştur.
+            switch state {
+            case .working, .waiting: return .idle
+            default: return state
+            }
         }
     }
 }
