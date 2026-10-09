@@ -53,7 +53,7 @@ public struct Shortcut: Equatable, Sendable, Identifiable {
         self.group = group
     }
 
-    /// Değiştiriciler Apple sırasıyla (⌃⌥⇧⌘), sonra tuş: "⌥⌘←".
+    /// Değiştiriciler Apple sırasıyla (⌃⌥⇧⌘), sonra tuş: "⇧⌘←".
     public var symbols: String { Self.modifierSymbols(modifiers) + key.description }
 
     public static func modifierSymbols(_ modifiers: Modifiers) -> String {
@@ -74,10 +74,10 @@ public enum ShortcutCatalog {
         Shortcut("text.smaller", "Smaller Text", .character("-"), .command, .text),
         Shortcut("text.actual", "Actual Size", .character("0"), .command, .text),
         Shortcut("session.jumpToWaiting", "Jump to Waiting Agent", .character("j"), .command, .sessions),
-        Shortcut("session.previous", "Previous Session", .up, [.command, .option], .sessions),
-        Shortcut("session.next", "Next Session", .down, [.command, .option], .sessions),
-        Shortcut("pane.previous", "Previous Pane", .left, [.command, .option], .panes),
-        Shortcut("pane.next", "Next Pane", .right, [.command, .option], .panes),
+        Shortcut("session.previous", "Previous Session", .up, [.command, .shift], .sessions),
+        Shortcut("session.next", "Next Session", .down, [.command, .shift], .sessions),
+        Shortcut("pane.previous", "Previous Pane", .left, [.command, .shift], .panes),
+        Shortcut("pane.next", "Next Pane", .right, [.command, .shift], .panes),
         Shortcut("session.resume", "Resume Session", .character("r"), .command, .sessions),
         Shortcut("session.removeStopped", "Remove Stopped Session", .delete, [.command, .shift], .sessions),
         Shortcut("session.resumeAll", "Resume All Stopped Sessions", .character("r"), [.command, .shift], .sessions),

@@ -9,14 +9,14 @@ import Testing
         #expect(Set(combos).count == combos.count)
     }
 
-    /// Oturum ve panel gezinmesi her klavye düzeninde aynı: ⌘⌥ + ok tuşları.
+    /// Oturum ve panel gezinmesi her klavye düzeninde aynı: ⇧⌘ + ok tuşları.
     @Test func arrowShortcutsForSessionsAndPanes() {
         let expected: [(String, Shortcut.Key)] = [("session.previous", .up), ("session.next", .down),
                                                    ("pane.previous", .left), ("pane.next", .right)]
         for (id, key) in expected {
             let s = ShortcutCatalog.shortcut(id)
             #expect(s.key == key)
-            #expect(s.modifiers == [.command, .option])
+            #expect(s.modifiers == [.command, .shift])
         }
     }
 
@@ -28,7 +28,7 @@ import Testing
     }
 
     @Test func symbolsRenderModifiersInAppleOrder() {
-        #expect(ShortcutCatalog.shortcut("session.previous").symbols == "⌥⌘↑")
+        #expect(ShortcutCatalog.shortcut("session.previous").symbols == "⇧⌘↑")
         #expect(ShortcutCatalog.shortcut("session.resumeAll").symbols == "⇧⌘R")
         #expect(ShortcutCatalog.shortcut("text.bigger").symbols == "⌘+")
         #expect(ShortcutCatalog.shortcut("session.removeStopped").symbols == "⇧⌘⌫")
