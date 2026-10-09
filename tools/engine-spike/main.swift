@@ -1,4 +1,4 @@
-// Ofis motoru denemesi (docs/notes/spike-office-engines.md). Uygulamanın parçası değil.
+// Ofis motoru denemesi. Uygulamanın parçası değil.
 // Yüzen (tüm Space'lerde görünen) pencerede çalışır; her 2 sn'de fps, kare başına CPU ve süreç CPU'sunu yazar.
 //   tools/engine-spike/build.sh
 //   tools/engine-spike/.build/EngineSpike metal native 0     (native = ekran yenileme hızı; 0 = kapatana kadar)

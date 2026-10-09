@@ -1771,6 +1771,16 @@
         }
       }
     },
+    "Room unlock rules": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oda açılma kuralları"
+          }
+        }
+      }
+    },
     "Round": {
       "localizations": {
         "tr": {

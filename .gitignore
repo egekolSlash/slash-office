@@ -9,3 +9,7 @@ xcuserdata/
 build/
 tools/office-art/out/
 tools/engine-spike/.build/
+
+# Yerel geliştirme notları ve planlar (repoya girmez).
+docs/notes/
+docs/superpowers/

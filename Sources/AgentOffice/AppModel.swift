@@ -956,6 +956,7 @@ extension AppModel {
         // "Ne üzerinde çalışıyor" ve "bitti, görülmedi" demo verisi.
         store.setWorkTitle(String(localized: "Fix the merge animation"), for: "demo-0")
         store.setWorkTitle(String(localized: "Grid bug in the level editor"), for: "demo-1")
+        store.setWorkTitle(String(localized: "Room unlock rules"), for: "demo-3")
         store.apply([.promptSubmitted(text: String(localized: "Add API pagination")), .turnEnded], to: "demo-4", watched: false)
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {

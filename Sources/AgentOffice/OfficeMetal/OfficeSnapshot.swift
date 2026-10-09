@@ -3,7 +3,7 @@ import AppKit
 import Metal
 import SwiftUI
 
-/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--villager <id>] [--size WxH] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
+/// `AgentOffice --office-snapshot <png> [--zoom <z>] [--live] [--advance <sn>] [--hour <saat>] [--focus-waiting] [--villager <id>] [--size WxH] [--target X,Z] [--rooms a,b] [--custom] [--bench <fps>] [--anchors]` (kartlar SwiftUI katmanından eklenir; --anchors çapaları kırmızı noktayla gösterir): demo ofisini ekran dışı çizip PNG yazar ve çıkar.
 /// Masa çapalarına (kartların asıldığı nokta) kırmızı nokta basılır: 3D sahne ile SwiftUI katmanının hizasını
 /// gözle kontrol etmek için. `--live`: köylüler kapıdan yürüyerek gelir (1,5 sn sonraki an).
 @MainActor
@@ -43,6 +43,19 @@ enum OfficeSnapshot {
             camera.userMoved = true
             camera.viewport.zoom = zoom
         }
+        // `--target X,Z`: kamera bu plan noktasına (ör. README görüntüsünde üstteki iki oda); `--zoom` ile birlikte.
+        if let i = arguments.firstIndex(of: "--target"), i + 1 < arguments.count {
+            let parts = arguments[i + 1].split(separator: ",").compactMap { Double($0) }
+            if parts.count == 2 {
+                camera.userMoved = true
+                camera.viewport.targetX = parts[0]
+                camera.viewport.targetZ = parts[1]
+            }
+        }
+        for room in plan.rooms {
+            print("room \(room.title): x \(room.x)…\(room.x + room.width), z \(room.z)…\(room.z + room.depth)")
+        }
+        print("fit viewport: target \(camera.viewport.targetX), \(camera.viewport.targetZ) zoom \(camera.viewport.zoom)")
         // `--focus-waiting`: kamera bekleyen ilk masaya (el sallama pozunu yakından görmek için).
         if arguments.contains("--focus-waiting"),
            let desk = plan.rooms.flatMap(\.desks).first(where: { if case .waiting = model.store.session($0.id)?.state { true } else { false } }) {
@@ -120,7 +133,15 @@ enum OfficeSnapshot {
         for _ in 0..<45 { await renderFrame(dt: 1.0 / 30) }
         let anchors = plan.rooms.flatMap(\.desks).map { OfficeOverlay.anchor($0, viewport: camera.viewport, viewSize: camera.viewSize) }
         // SwiftUI kart katmanı (tabelalar, kartlar, ? ve ✓ balonları) da resme eklenir.
-        let cards = ImageRenderer(content: OfficeCards(plan: plan, desks: desks, camera: camera, icons: model.projectIcons, interactive: true,
+        // `--rooms a,b`: kart katmanında sadece bu odalar (kadraj dışındaki odaların kartları kenara yığılmasın).
+        var cardPlan = plan, cardDesks = desks
+        if let i = arguments.firstIndex(of: "--rooms"), i + 1 < arguments.count {
+            let titles = Set(arguments[i + 1].split(separator: ",").map(String.init))
+            cardPlan.rooms = plan.rooms.filter { titles.contains($0.title) }
+            let ids = Set(cardPlan.rooms.flatMap(\.desks).map(\.id))
+            cardDesks = desks.filter { ids.contains($0.key) }
+        }
+        let cards = ImageRenderer(content: OfficeCards(plan: cardPlan, desks: cardDesks, camera: camera, icons: model.projectIcons, interactive: true,
                                                    villagers: sim.positions)
             .frame(width: CGFloat(size.width), height: CGFloat(size.height)))
         cards.scale = 1
