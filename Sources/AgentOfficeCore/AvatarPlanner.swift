@@ -124,18 +124,34 @@ public struct RoomSpot: Equatable, Sendable {
 extension OfficePlan.Room {
     public var doorInside: PlanPoint { PlanPoint(x: corridorEdgeX + outward * 0.35, z: doorZ) }
     public var doorOutside: PlanPoint { PlanPoint(x: corridorEdgeX - outward * 0.6, z: doorZ) }
+    /// Tabure: yatayda masanın arkasında (küçük z), dikeyde masanın koridordan uzak tarafında.
     public func seat(for desk: OfficePlan.Desk) -> PlanPoint {
-        PlanPoint(x: desk.x + outward * DeskGeometry.seatOffset, z: desk.z)
+        switch deskOrientation {
+        case .horizontal: PlanPoint(x: desk.x, z: desk.z - DeskGeometry.seatOffset)
+        case .vertical: PlanPoint(x: desk.x + outward * DeskGeometry.seatOffset, z: desk.z)
+        }
     }
     /// Kameraya (+z, ekranın altına) dönük yön: masanın yanında ayakta bekleyen köylü böyle durur.
     public static let cameraFacing = 0.0
-    /// Masada oturan köylünün yönü: koridora (sol oda +x, sağ oda −x). Masa da bu açıyla döner.
-    public func seatFacing(for desk: OfficePlan.Desk) -> Double { -outward * Double.pi / 2 }
+    /// Masada oturan köylünün yönü: yatayda kameraya, dikeyde koridora (sol oda +x, sağ oda −x). Masa da bu açıyla döner.
+    public func seatFacing(for desk: OfficePlan.Desk) -> Double {
+        switch deskOrientation {
+        case .horizontal: Self.cameraFacing
+        case .vertical: -outward * Double.pi / 2
+        }
+    }
+    /// Masanın x ve z boyunca yarı ölçüleri (yöne göre; uzun kenar yatayda x, dikeyde z boyunca).
+    public var deskHalfExtents: (x: Double, z: Double) {
+        switch deskOrientation {
+        case .horizontal: (DeskGeometry.deskHalfDepth, DeskGeometry.deskHalfWidth)
+        case .vertical: (DeskGeometry.deskHalfWidth, DeskGeometry.deskHalfDepth)
+        }
+    }
     /// Taburenin arkasındaki boşluk (bir sonraki masa sütununa kadar): köylüler masaya buradan yürür.
     public func aisleX(for desk: OfficePlan.Desk) -> Double { desk.x + outward * OfficePlan.columnSpacing / 2 }
     /// Masanın koridor tarafı: köylü beklerken burada ayakta durur.
     public func standSpot(for desk: OfficePlan.Desk) -> PlanPoint {
-        PlanPoint(x: desk.x - outward * (DeskGeometry.deskHalfWidth + 0.35), z: desk.z)
+        PlanPoint(x: desk.x - outward * (deskHalfExtents.x + 0.35), z: desk.z)
     }
 
     /// Eşyalar (açık olanlar): koridor tarafındaki arka köşede ayaklı beyaz tahta (arka penceresi ve oda tabelası

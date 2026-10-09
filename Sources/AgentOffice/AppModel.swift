@@ -671,6 +671,13 @@ extension AppModel {
         roomOrder = OfficePlan.roomOrder(members, previous: roomOrder)
         let plan = OfficePlan.make(members, slots: deskSlots, order: roomOrder)
         return plan.applying(furniture: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, style(for: $0.key).furniture) }))
+            .applying(deskOrientation: Self.deskOrientation)
+    }
+
+    /// Ayarlardaki masa yönü (varsayılan yatay: köylü kameraya bakar).
+    static let deskOrientationKey = "deskOrientation"
+    static var deskOrientation: DeskOrientation {
+        UserDefaults.standard.string(forKey: deskOrientationKey).flatMap(DeskOrientation.init(rawValue:)) ?? .horizontal
     }
 
     /// Henüz bakılmamış proje klasörlerinin ikonunu arka planda bulur.

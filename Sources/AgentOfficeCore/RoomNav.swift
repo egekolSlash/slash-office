@@ -32,9 +32,13 @@ public struct RoomNav: Sendable {
         var obstacles: [Obstacle] = []
         let b = Self.body
         for desk in room.desks {
-            // Masa (koridora dönük): koridor ve yan taraflardan gövde payı; tabure tarafında az.
-            obstacles.append(Obstacle(x: desk.x, z: desk.z, shape: .rect(halfX: DeskGeometry.deskHalfWidth + 0.05,
-                                                                           halfZ: DeskGeometry.deskHalfDepth + b), soft: false))
+            // Masa: yanlardan gövde payı; tabure tarafında ve önünde az (tabure masanın hemen arkasında).
+            let half = room.deskHalfExtents
+            let shape: Obstacle.Shape = switch room.deskOrientation {
+            case .horizontal: .rect(halfX: half.x + b, halfZ: half.z + 0.05)
+            case .vertical: .rect(halfX: half.x + 0.05, halfZ: half.z + b)
+            }
+            obstacles.append(Obstacle(x: desk.x, z: desk.z, shape: shape, soft: false))
             let seat = room.seat(for: desk)
             obstacles.append(Obstacle(x: seat.x, z: seat.z, shape: .circle(radius: 0.19 + 0.12), soft: true))
         }

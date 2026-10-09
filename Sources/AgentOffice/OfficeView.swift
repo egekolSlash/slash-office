@@ -16,6 +16,8 @@ struct OfficeView: View {
     @State private var unavailable = false
     /// Köylülerin yerleri: 0,2 sn'de bir okunur, sadece değişince güncellenir (dururken kartlar yeniden çizilmez).
     @State private var villagers: [String: AvatarSim.Position] = [:]
+    /// Ayar değişince plan (masa yönü) yeniden kurulsun.
+    @AppStorage(AppModel.deskOrientationKey) private var deskOrientation = DeskOrientation.horizontal
 
     var body: some View {
         Group {
@@ -38,6 +40,7 @@ struct OfficeView: View {
     }
 
     private func content(_ gpu: OfficeGPU) -> some View {
+        _ = deskOrientation
         let plan = model.officePlan()
         let desks = deskInfos(plan)
         let scene = OfficeSceneInput(

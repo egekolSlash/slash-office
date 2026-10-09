@@ -511,6 +511,16 @@
         }
       }
     },
+    "Desks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masalar"
+          }
+        }
+      }
+    },
     "Done": {
       "localizations": {
         "tr": {
@@ -907,6 +917,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hook yardımcısı bulunamadı: %@\nÖnce `swift build` çalıştır (sadece `swift run AgentOffice` onu derlemez)."
+          }
+        }
+      }
+    },
+    "Horizontal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yatay"
+          }
+        }
+      }
+    },
+    "Horizontal: agents sit behind their desks facing you. Vertical: desks run along the room and agents face the corridor.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yatay: ajanlar masalarının arkasında oturur ve sana bakar. Dikey: masalar odanın boyunca durur ve ajanlar koridora bakar."
           }
         }
       }
@@ -2457,6 +2487,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commit edilmemiş"
+          }
+        }
+      }
+    },
+    "Vertical": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikey"
           }
         }
       }

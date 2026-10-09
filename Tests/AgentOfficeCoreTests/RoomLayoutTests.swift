@@ -2,18 +2,34 @@ import Foundation
 import Testing
 @testable import AgentOfficeCore
 
-/// Ofis hayatı: masalar koridora bakar, odada sekiz eşya var ve hepsi oda düzenleyicisinden kapatılabilir.
+/// Ofis hayatı: masalar yatay (kameraya) ya da dikey (koridora) durur, odada sekiz eşya var ve hepsi oda
+/// düzenleyicisinden kapatılabilir. Yerleşim testleri iki yön için de.
 @Suite struct RoomLayoutTests {
     /// İki proje: ilk oda solda, ikincisi sağda.
-    func rooms(_ desks: Int, furniture: Set<RoomFurniture> = Set(RoomFurniture.allCases)) -> [OfficePlan.Room] {
+    func rooms(_ desks: Int, furniture: Set<RoomFurniture> = Set(RoomFurniture.allCases),
+               orientation: DeskOrientation = .horizontal) -> [OfficePlan.Room] {
         let members = (0..<desks).flatMap { i in [OfficePlan.Member(id: "a\(i)", roomKey: "/a"), OfficePlan.Member(id: "b\(i)", roomKey: "/b")] }
         let plan = OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
             .applying(furniture: ["/a": furniture, "/b": furniture])
+            .applying(deskOrientation: orientation)
         return plan.rooms
     }
 
-    @Test func seatFacesTheCorridor() {
+    /// Varsayılan yatay: köylü masanın arkasında oturur ve kameraya bakar.
+    @Test func horizontalSeatIsBehindTheDeskFacingTheCamera() {
         for room in rooms(2) {
+            #expect(room.deskOrientation == .horizontal)
+            for desk in room.desks {
+                let seat = room.seat(for: desk)
+                #expect(seat.x == desk.x && desk.z - seat.z > 0.3)
+                #expect(room.seatFacing(for: desk) == OfficePlan.Room.cameraFacing)
+                #expect(room.deskHalfExtents.x > room.deskHalfExtents.z)
+            }
+        }
+    }
+
+    @Test func verticalSeatFacesTheCorridor() {
+        for room in rooms(2, orientation: .vertical) {
             for desk in room.desks {
                 let seat = room.seat(for: desk)
                 // Köylü masanın koridordan uzak tarafında oturur ve koridora bakar.
@@ -36,9 +52,9 @@ import Testing
     }
 
     /// Eşyalar masalara, kapıya ve birbirine binmez (gövde payları çıkarılınca).
-    @Test(arguments: [1, 2, 3, 5, 8])
-    func desksAndFurnitureDoNotOverlap(desks: Int) {
-        for room in rooms(desks) {
+    @Test(arguments: [1, 2, 3, 5, 8], DeskOrientation.allCases)
+    func desksAndFurnitureDoNotOverlap(desks: Int, orientation: DeskOrientation) {
+        for room in rooms(desks, orientation: orientation) {
             let hard = RoomNav(room: room).obstacles.filter { !$0.soft }
             for (i, a) in hard.enumerated() {
                 for b in hard[(i + 1)...] {
@@ -51,8 +67,9 @@ import Testing
     }
 
     /// Bütün eşyalar kapalıyken de masalara ve kapıya yol var; kapalı eşya engel ve ilgi noktası değildir.
-    @Test func furnitureOffIsNotAnObstacleOrSpot() {
-        for room in rooms(4, furniture: []) {
+    @Test(arguments: DeskOrientation.allCases)
+    func furnitureOffIsNotAnObstacleOrSpot(orientation: DeskOrientation) {
+        for room in rooms(4, furniture: [], orientation: orientation) {
             #expect(room.spots.isEmpty)
             let nav = RoomNav(room: room)
             #expect(nav.obstacles.count == room.desks.count * 2)
@@ -62,14 +79,29 @@ import Testing
         #expect(Set(some.spots.map(\.kind)) == [.arcade, .whiteboard])
     }
 
-    @Test func everySpotIsReachableInBothSides() {
-        for room in rooms(6) {
+    @Test(arguments: DeskOrientation.allCases)
+    func everySpotIsReachableInBothSides(orientation: DeskOrientation) {
+        for room in rooms(6, orientation: orientation) {
             #expect(Set(room.spots.map(\.kind)) == Set(RoomSpot.Kind.allCases))
             let nav = RoomNav(room: room)
             for spot in room.spots {
                 let target = room.approach(to: spot)
                 #expect(nav.isFree(target.stand), "\(room.side) \(spot.kind) yaklaşma noktası dolu")
                 #expect(nav.path(from: room.doorInside, to: target.stand)?.last == target.stand, "\(room.side) \(spot.kind)")
+            }
+        }
+    }
+
+    /// Her masanın taburesine ve ayakta durma yerine kapıdan yol var; ayakta durma yeri boş (iki yön için).
+    @Test(arguments: [1, 4, 8], DeskOrientation.allCases)
+    func seatsAndStandSpotsAreReachable(desks: Int, orientation: DeskOrientation) {
+        for room in rooms(desks, orientation: orientation) {
+            let nav = RoomNav(room: room)
+            for desk in room.desks {
+                let stand = room.standSpot(for: desk), seat = room.seat(for: desk)
+                #expect(nav.isFree(stand), "\(room.side) \(orientation) ayakta durma yeri dolu")
+                #expect(nav.path(from: room.doorInside, to: stand)?.last == stand, "\(room.side) \(orientation)")
+                #expect(nav.path(from: room.doorInside, to: seat)?.last == seat, "\(room.side) \(orientation)")
             }
         }
     }

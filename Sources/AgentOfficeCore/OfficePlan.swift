@@ -79,6 +79,8 @@ public struct OfficePlan: Equatable, Sendable {
         public var desks: [Desk]
         /// Odadaki eşyalar (oda stilinden, `OfficePlan.applying(furniture:)`).
         public var furniture: Set<RoomFurniture> = RoomFurniture.all
+        /// Masaların yönü (ayarlardan, `OfficePlan.applying(deskOrientation:)`).
+        public var deskOrientation: DeskOrientation = .horizontal
 
         public var title: String { (key as NSString).lastPathComponent }
         public var rect: PlanRect { PlanRect(minX: x, minZ: z, maxX: x + width, maxZ: z + depth) }

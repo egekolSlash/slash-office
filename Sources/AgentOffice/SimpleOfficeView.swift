@@ -111,6 +111,7 @@ struct SettingsView: View {
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
     @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
     @AppStorage(OfficeMetalView.energySavingKey) private var energySaving = true
+    @AppStorage(AppModel.deskOrientationKey) private var deskOrientation = DeskOrientation.horizontal
 
     var body: some View {
         Form {
@@ -130,6 +131,14 @@ struct SettingsView: View {
             Divider()
             Toggle("Office view", isOn: $richOffice)
             Text("When on, the office is drawn with rooms and animation, and you can navigate it. When off, it shows plain cards without animation (less CPU and GPU).")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Picker("Desks", selection: $deskOrientation) {
+                Text("Horizontal").tag(DeskOrientation.horizontal)
+                Text("Vertical").tag(DeskOrientation.vertical)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!richOffice)
+            Text("Horizontal: agents sit behind their desks facing you. Vertical: desks run along the room and agents face the corridor.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Day and night", isOn: $dayNight).disabled(!richOffice)
             Text("The sky and light follow your computer's clock: sunrise, day, sunset and a starry night. When off, it is always daytime.")
