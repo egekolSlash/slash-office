@@ -2,7 +2,7 @@
 
 [![Star on GitHub](https://img.shields.io/github/stars/egekolSlash/slash-office?style=social)](https://github.com/egekolSlash/slash-office)
 
-A lightweight Mac workspace for running many [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agents in parallel — and a little office where you can watch them work.
+A **lightweight Mac workspace** for running many [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agents in parallel — and a little office where you can watch them work.
 
 Slash Office belongs to the same family as the multi-agent workspaces and agent managers: you start several Claude Code sessions across your projects, keep them side by side in split panes, see at a glance which one is working, which one is waiting for you and which one is done, jump straight to the one that needs you, resume sessions later, and review what each agent changed. It does that as a small native app — no Electron, no server, no account, and Slash Office itself sends nothing over the network.
 
