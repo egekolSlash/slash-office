@@ -65,9 +65,11 @@ struct ChangesInspector: View {
                 ContentUnavailableView("Not a Git repository", systemImage: "folder",
                                        description: Text("Files the agent touches will be listed here."))
             } else {
-                List(session.touchedFiles, id: \.self) { path in
+                let urls = Dictionary(session.touchedFiles.map { ($0, Self.url(of: $0, in: session.cwd)) }) { first, _ in first }
+                List(session.touchedFiles, id: \.self, selection: $selection) { path in
                     FileRow(path: path, detail: nil)
                 }
+                .fileActions(selection: $selection) { urls[$0] }
             }
         case .ready(let groups, _)?:
             if groups.isEmpty {
@@ -75,6 +77,7 @@ struct ChangesInspector: View {
                                        description: Text(model.changesScope == .uncommitted ? String(localized: "Everything is committed.") : ""))
             } else {
                 let selected = selectedFile(in: groups)
+                let urls = Dictionary(groups.flatMap { group in group.files.map { (Self.tag(group, $0), group.url(of: $0)) } }) { first, _ in first }
                 VSplitView {
                     List(selection: $selection) {
                         ForEach(groups) { group in
@@ -85,9 +88,15 @@ struct ChangesInspector: View {
                             }
                         }
                     }
+                    .fileActions(selection: $selection) { urls[$0] }
                     .frame(minHeight: 80)
-                    DiffTextView(file: selected?.file)
-                        .frame(minHeight: 80)
+                    if let selected, FileKind.isImage(selected.file.path) {
+                        ImageDiffView(group: selected.group, file: selected.file)
+                            .frame(minHeight: 80)
+                    } else {
+                        DiffTextView(file: selected?.file)
+                            .frame(minHeight: 80)
+                    }
                 }
             }
         }
@@ -95,10 +104,31 @@ struct ChangesInspector: View {
 
     private static func tag(_ group: ChangeGroup, _ file: FileDiff) -> String { "\(group.title)|\(file.path)" }
 
+    /// Git olmayan klasörde dokunulan dosyanın yolu (tool'lar genelde mutlak yol verir).
+    private static func url(of path: String, in cwd: String) -> URL {
+        URL(fileURLWithPath: path.hasPrefix("/") ? path : (cwd as NSString).appendingPathComponent(path))
+    }
+
     /// Seçili dosya; seçim yoksa ya da artık listede değilse ilk dosya.
-    private func selectedFile(in groups: [ChangeGroup]) -> (tag: String, file: FileDiff)? {
-        let all = groups.flatMap { group in group.files.map { (Self.tag(group, $0), $0) } }
-        return all.first { $0.0 == selection } ?? all.first
+    private func selectedFile(in groups: [ChangeGroup]) -> (tag: String, group: ChangeGroup, file: FileDiff)? {
+        let all = groups.flatMap { group in group.files.map { (tag: Self.tag(group, $0), group: group, file: $0) } }
+        return all.first { $0.tag == selection } ?? all.first
+    }
+}
+
+private extension View {
+    /// Dosya listesi: boşluk Quick Look, çift tık varsayılan uygulamayla açar, sağ tık menüsünde Finder ve yol kopyalama.
+    func fileActions(selection: Binding<String?>, url: @escaping (String) -> URL?) -> some View {
+        contextMenu(forSelectionType: String.self) { tags in
+            if let tag = tags.first, let url = url(tag) { FileActions.menu(for: url) }
+        } primaryAction: { tags in
+            if let tag = tags.first, let url = url(tag), FileActions.exists(url) { FileActions.open(url) }
+        }
+        .onKeyPress(.space) {
+            guard let tag = selection.wrappedValue, let url = url(tag), FileActions.exists(url) else { return .ignored }
+            QuickLook.shared.toggle([url])
+            return .handled
+        }
     }
 }
 

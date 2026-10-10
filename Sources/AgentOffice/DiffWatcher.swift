@@ -15,7 +15,15 @@ enum ChangesScope: Hashable, CaseIterable {
 struct ChangeGroup: Equatable, Identifiable {
     var title: String
     var files: [FileDiff]
+    /// Diff yollarının göre olduğu depo kökü.
+    var root: String
+    /// Eski halin okunacağı sürüm (commit, tree; index için boş dizgi).
+    var before: String
+    /// Yeni halin okunacağı sürüm; nil ise diskteki dosya.
+    var after: String?
     var id: String { title }
+
+    func url(of file: FileDiff) -> URL { URL(fileURLWithPath: root).appendingPathComponent(file.path) }
 }
 
 enum DiffState: Equatable {
@@ -75,18 +83,23 @@ final class DiffWatcher {
         let workspace = GitWorkspace(directory: cwd)
         guard workspace.isRepository else { return .noRepository }
         let branch = workspace.branch()
+        let root = workspace.topLevel() ?? cwd
         switch scope {
         case .uncommitted:
-            let groups = [ChangeGroup(title: String(localized: "Staged"), files: parse(workspace.diff(.staged))),
-                          ChangeGroup(title: String(localized: "Changes"), files: parse(workspace.diff(.unstaged)))]
+            let groups = [ChangeGroup(title: String(localized: "Staged"), files: parse(workspace.diff(.staged)),
+                                      root: root, before: "HEAD", after: ""),
+                          ChangeGroup(title: String(localized: "Changes"), files: parse(workspace.diff(.unstaged)),
+                                      root: root, before: "", after: nil)]
             return .ready(groups: groups.filter { !$0.files.isEmpty }, branch: branch)
         case .lastTurn:
             guard let turnTree else { return .unavailable(String(localized: "No request has been sent yet. After the first request, what changed in that turn will appear here.")) }
-            return .ready(groups: [ChangeGroup(title: String(localized: "Last Turn"), files: parse(workspace.diff(.since(tree: turnTree))))]
+            return .ready(groups: [ChangeGroup(title: String(localized: "Last Turn"), files: parse(workspace.diff(.since(tree: turnTree))),
+                                               root: root, before: turnTree, after: nil)]
                 .filter { !$0.files.isEmpty }, branch: branch)
         case .session:
             guard let base = baseline else { return .unavailable(String(localized: "This session's starting point is unknown (it started before the Git repository was opened).")) }
-            return .ready(groups: [ChangeGroup(title: String(localized: "This Session"), files: parse(workspace.diff(since: base)))]
+            return .ready(groups: [ChangeGroup(title: String(localized: "This Session"), files: parse(workspace.diff(since: base)),
+                                               root: root, before: base, after: nil)]
                 .filter { !$0.files.isEmpty }, branch: branch)
         }
     }

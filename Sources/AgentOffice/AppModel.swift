@@ -523,6 +523,7 @@ final class AppModel {
     private func startTerminal(record: SessionRecord, command: LaunchCommand) {
         let terminal = AgentTerminalView(frame: .init(x: 0, y: 0, width: 800, height: 600))
         terminal.apply(appearance, fontSize: terminalFontSize)
+        terminal.directory = record.cwd
         // Kullanıcı terminale tıklayıp yazmaya başlayınca odak vurgusu o panele geçsin.
         let id = record.id
         terminal.onFocus = { [weak self] in self?.noteKeyboardFocus(id) }

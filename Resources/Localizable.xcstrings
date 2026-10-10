@@ -71,6 +71,16 @@
         }
       }
     },
+    "After": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonra"
+          }
+        }
+      }
+    },
     "Agents": {
       "localizations": {
         "tr": {
@@ -167,6 +177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bere"
+          }
+        }
+      }
+    },
+    "Before": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önce"
           }
         }
       }
@@ -457,6 +477,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Devam"
+          }
+        }
+      }
+    },
+    "Copy Path": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yolu Kopyala"
           }
         }
       }
@@ -1651,6 +1681,16 @@
         }
       }
     },
+    "Quick Look": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hızlı Bakış"
+          }
+        }
+      }
+    },
     "Quit": {
       "localizations": {
         "tr": {
@@ -1977,6 +2017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kısayollar"
+          }
+        }
+      }
+    },
+    "Show in Finder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder'da Göster"
           }
         }
       }

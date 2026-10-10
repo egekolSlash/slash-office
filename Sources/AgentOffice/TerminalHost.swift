@@ -8,6 +8,8 @@ import SwiftUI
 final class AgentTerminalView: LocalProcessTerminalView {
     var onFocus: (() -> Void)?
     var wantsKeyboard = false
+    /// Oturumun klasörü: terminaldeki göreli yollar buna göre çözülür.
+    var directory: String?
     /// SwiftTerm `becomeFirstResponder`'ı ezmeye izin vermiyor; pencerenin ilk yanıtlayıcısı izlenir.
     private var responderObservation: NSKeyValueObservation?
 
@@ -29,6 +31,24 @@ final class AgentTerminalView: LocalProcessTerminalView {
         DebugLog.write("terminal mouseDown, firstResponder=\(window?.firstResponder === self)")
         if window?.firstResponder !== self { window?.makeFirstResponder(self) }
         super.mouseDown(with: event)
+    }
+
+    /// ⌘-tıklanan yol (SwiftTerm ⌘ basılıyken yolların altını çizer): ⌘ Quick Look, ⇧⌘ Finder'da gösterir.
+    /// Web adresleri eskisi gibi tarayıcıda açılır.
+    override func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
+        let fileURL: URL?
+        if let url = URL(string: link), let scheme = url.scheme {
+            guard scheme == "file" else { return super.requestOpenLink(source: source, link: link, params: params) }
+            fileURL = FileManager.default.fileExists(atPath: url.path) ? url : nil
+        } else {
+            fileURL = FileKind.resolve(link, relativeTo: directory)
+        }
+        guard let fileURL else { return }
+        if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
+            FileActions.reveal(fileURL)
+        } else {
+            QuickLook.shared.toggle([fileURL])
+        }
     }
 
     /// Ghostty'nin macOS kısayolları: SwiftTerm ⌘⌫'yu yutuyor, ⌘←/→'yu kelime atlamaya çeviriyor; Option Meta

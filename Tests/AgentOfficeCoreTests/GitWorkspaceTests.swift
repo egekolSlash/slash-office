@@ -131,4 +131,24 @@ import Testing
         #expect(workspace.snapshotTree() == nil)
         #expect(workspace.isRepository == false)
     }
+
+    /// Resim önizlemesi eski hali commit'ten, index'ten ya da tree'den okur; o sürümde olmayan dosya nil.
+    @Test func contentsAtRevisionReadsBinaryBlobs() throws {
+        let dir = try tempDir()
+        try git(dir, "init", "-q", "-b", "main")
+        let old = Data([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff]), staged = Data([0x89, 0x50, 0x4e, 0x47, 0x01])
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("Resimler"), withIntermediateDirectories: true)
+        try old.write(to: dir.appendingPathComponent("Resimler/ikon.png"))
+        try git(dir, "add", ".")
+        try git(dir, "commit", "-q", "-m", "init")
+        try staged.write(to: dir.appendingPathComponent("Resimler/ikon.png"))
+        try git(dir, "add", ".")
+        // Alt klasörden açılan çalışma alanında da yol depo köküne göre.
+        let workspace = GitWorkspace(directory: dir.appendingPathComponent("Resimler").path)
+        #expect(workspace.contents(of: "Resimler/ikon.png", at: "HEAD") == old)
+        #expect(workspace.contents(of: "Resimler/ikon.png", at: "") == staged)
+        #expect(workspace.contents(of: "Resimler/yok.png", at: "HEAD") == nil)
+        let tree = try #require(workspace.snapshotTree())
+        #expect(workspace.contents(of: "Resimler/ikon.png", at: tree) == staged)
+    }
 }

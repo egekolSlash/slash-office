@@ -146,7 +146,19 @@ public struct GitWorkspace: Sendable {
         run(["diff", "--no-color", "--no-ext-diff", baseline]).output + untrackedDiff()
     }
 
+    /// Dosyanın bir sürümdeki içeriği: `revision` bir commit, tree ya da index için boş dizgi (`:yol`). Yol depo
+    /// köküne göre (diff'teki gibi). Sürümde yoksa nil.
+    public func contents(of path: String, at revision: String) -> Data? {
+        let result = runData(["cat-file", "blob", "\(revision):\(path)"])
+        return result.status == 0 ? result.output : nil
+    }
+
     private func run(_ arguments: [String], environment extra: [String: String] = [:]) -> (status: Int32, output: String) {
+        let result = runData(arguments, environment: extra)
+        return (result.status, String(decoding: result.output, as: UTF8.self))
+    }
+
+    private func runData(_ arguments: [String], environment extra: [String: String] = [:]) -> (status: Int32, output: Data) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: gitPath)
         process.arguments = ["-C", directory, "-c", "core.quotePath=false"] + arguments
@@ -156,10 +168,10 @@ public struct GitWorkspace: Sendable {
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
         process.standardInput = FileHandle.nullDevice
-        do { try process.run() } catch { return (-1, "") }
+        do { try process.run() } catch { return (-1, Data()) }
         // Büyük çıktı pipe'ı doldurup süreci bekletmesin diye önce oku, sonra bekle.
         let data = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        return (process.terminationStatus, String(decoding: data, as: UTF8.self))
+        return (process.terminationStatus, data)
     }
 }
