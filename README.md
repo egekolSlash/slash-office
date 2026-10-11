@@ -1,6 +1,6 @@
 # Slash Office
 
-[![Star on GitHub](https://img.shields.io/github/stars/egekolSlash/slash-office?style=social)](https://github.com/egekolSlash/slash-office)
+[![Star on GitHub](https://img.shields.io/badge/Star_on_GitHub-%E2%98%85-181717?logo=github&style=flat)](https://github.com/egekolSlash/slash-office)
 
 A **lightweight Mac workspace** for running many [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agents in parallel — and a little office where you can watch them work.
 
