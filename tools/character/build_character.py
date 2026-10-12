@@ -154,7 +154,7 @@ ears = G.ellipsoid((0.268, 0.805, -0.045), (0.030, 0.048, 0.028), 10, 6) + \
     G.ellipsoid((-0.268, 0.805, -0.045), (0.030, 0.048, 0.028), 10, 6)
 nose = G.ellipsoid((0.0, 0.808, 0.222), (0.021, 0.016, 0.014), 8, 5)
 
-# Yüz bölgeleri kafa yüzeyinin kendisi (AC'deki gibi ayrı alt mesh'ler, aynı köşe ve normaller: dikiş yok).
+# Yüz bölgeleri kafa yüzeyinin kendisi (ayrı alt mesh'ler, aynı köşe ve normaller: dikiş yok).
 # (phi: yatay açı, 0 = ön, +x'e doğru artar; el: yükseklik açısı). Öncelik sırası: göz, ağız, yanak.
 FACE_REGIONS = {"eyes": ((-0.62, 0.62), (-0.20, 0.16)), "mouth": ((-0.34, 0.34), (-0.50, -0.22)),
                 "cheeks": ((-0.95, 0.95), (-0.40, 0.02))}

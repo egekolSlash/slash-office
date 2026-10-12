@@ -1,5 +1,5 @@
 # Slash Office karakteri (21 kemik) için ofis klipleri.
-# Pakete yazmak: Blender -b --factory-startup --python tools/ac-import/clips.py -- <ac-player.json>
+# Pakete yazmak: Blender -b --factory-startup --python tools/character/clips.py -- <character.json>
 # (numpy gerektiği için Blender'ın Python'u; Blender API'si kullanılmaz.)
 #
 # Poz dili: {kemik: (x, y, z) derece} model eksenlerinde (Y yukarı, Z ileri, X karakterin solu), ebeveynin pozlu
@@ -200,7 +200,7 @@ def sit_think(n):
 
 
 def stretch_keys(base, up_y, n):
-    # Kollar kısa (0,29 m), kafa iri: eller başın üstünde buluşamaz (kafanın içine girer). AC'deki gibi yukarı-dışarı V.
+    # Kollar kısa (0,29 m), kafa iri: eller başın üstünde buluşamaz (kafanın içine girer). yukarı-dışarı V.
     up = merge(base, {"_ikL": (0.31, up_y, -0.01), "_ikR": (-0.31, up_y, -0.01), "Spine2": (-8, 0, 0), "Head": (-14, 0, 0)})
     yawn = merge(up, {"Spine3": (-4, 0, 4), "Head": (-18, 0, -6)})
     return [(0, base), (9, up), (18, yawn), (26, up), (n - 1, base)]
@@ -338,7 +338,7 @@ def brew_coffee(n):
 
 @clip("scratchHead")
 def scratch_head(n):
-    # AC "terleme": sağ el başın yanında kaşır, baş o yana eğik, sol el hafif önde.
+    # Terleme: sağ el başın yanında kaşır, baş o yana eğik, sol el hafif önde.
     up = {"_poleR": (-1, -0.3, -0.4), "Head": (2, -6, 3), "Spine3": (0, -4, 1), "_ikL": (0.15, 0.33, 0.06)}
     a = merge(STAND, up, {"_ikR": (-0.31, 0.77, 0.03)})
     b = merge(STAND, up, {"_ikR": (-0.32, 0.73, 0.05), "Head": (2, -6, 4)})
@@ -347,7 +347,7 @@ def scratch_head(n):
 
 @clip("notice")
 def notice(n):
-    # AC "fark etme": küçük çömelme, kollar hafif açık zıplama, baş geri.
+    # Fark etme: küçük çömelme, kollar hafif açık zıplama, baş geri.
     crouch = merge(STAND, {"Thigh_L": (-10, 0, 0), "Thigh_R": (-10, 0, 0), "Shin_L": (22, 0, 0), "Shin_R": (22, 0, 0),
                            "Foot_L": (-10, 0, 0), "Foot_R": (-10, 0, 0), "_off": (0, -0.02, 0)})
     air = merge(STAND, {"_ikL": (0.25, 0.45, 0.08), "_ikR": (-0.25, 0.45, 0.08), "Head": (-10, 0, 0), "Spine2": (-4, 0, 0),

@@ -1,5 +1,5 @@
 # Karakter paketi + kliplerin önizlemesi (Blender headless, CPU skinning).
-# Blender -b --factory-startup --python tools/ac-import/preview.py -- <ac-player.json> <çıktı.png> <çekim>...
+# Blender -b --factory-startup --python tools/character/preview.py -- <character.json> <çıktı.png> <çekim>...
 # çekim: "look=<saç>,<üst>,<alt>,<ayakkabı>,<göz stili>,<göz>,<ağız>,<desen>;clip=<ad>;t=<0..1>;view=<x,y,z>"
 import math, os, sys
 
