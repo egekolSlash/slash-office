@@ -13,3 +13,4 @@ tools/engine-spike/.build/
 # Yerel geliştirme notları ve planlar (repoya girmez).
 docs/notes/
 docs/superpowers/
+__pycache__/
