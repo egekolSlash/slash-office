@@ -11,12 +11,11 @@ import simd
         })
     }
 
-    static let skeleton = VillagerSkeleton(art: OfficeArtFile(
-        bones: ["Root"],
+    static let skeleton = VillagerSkeleton(
+        boneCount: 1,
         clips: ["idle": clip([0, 1, 2]), "walk": clip([10, 10]), "wave": clip([-4, -4]),
                 "sitType": clip([3, 3]), "sitDoze": clip([5, 5]), "sitDown": clip([0, 7]), "standUp": clip([7, 0]),
-                "cheer": clip([1, 9])],
-        villager: OfficeArtFile.emptyMesh, props: [:]))
+                "cheer": clip([1, 9])])
 
     func x(_ m: [simd_float4x4]) -> Float { m[0].columns.3.x }
 
@@ -48,7 +47,7 @@ import simd
     }
 
     @Test func missingClipGivesIdentity() {
-        let s = VillagerSkeleton(art: OfficeArtFile(bones: ["Root", "Hips"], clips: [:], villager: OfficeArtFile.emptyMesh, props: [:]))
+        let s = VillagerSkeleton(boneCount: 2, clips: [:])
         #expect(s.matrices(clip: .walk, time: 0.3) == [matrix_identity_float4x4, matrix_identity_float4x4])
     }
 
@@ -94,9 +93,8 @@ import simd
         // 0° ve 90° arası yarı geçiş 45° olmalı (matris lerp'i gibi büzülmemeli).
         let r90 = simd_float4x4(simd_quatf(angle: .pi / 2, axis: SIMD3(0, 1, 0)))
         let flat: (simd_float4x4) -> [Float] = { m in (0..<4).flatMap { c in (0..<4).map { m[c][$0] } } }
-        let s = VillagerSkeleton(art: OfficeArtFile(bones: ["Root"],
-            clips: ["idle": ArtClip(frames: 1, matrices: flat(matrix_identity_float4x4)), "walk": ArtClip(frames: 1, matrices: flat(r90))],
-            villager: OfficeArtFile.emptyMesh, props: [:]))
+        let s = VillagerSkeleton(boneCount: 1,
+            clips: ["idle": ArtClip(frames: 1, matrices: flat(matrix_identity_float4x4)), "walk": ArtClip(frames: 1, matrices: flat(r90))])
         var a = AvatarInstance(id: "a", clip: .idle)
         a.play(.walk, skeleton: s)
         a.advance(dt: a.fadeDuration / 2)

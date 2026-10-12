@@ -1,7 +1,7 @@
 /// Köylünün görünüşü (spec §4; ofis hayatı §C1). Varsayılanı oturum kimliğinden türer; kullanıcı değiştirebilir.
 public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
     public typealias RGBA = (red: Double, green: Double, blue: Double)
-    // Yeni seçenekler sona eklenir (eski kayıtlar ve klasik köylünün varyant sırası değişmesin).
+    // Yeni seçenekler sona eklenir (eski kayıtlar bozulmasın).
     public enum HairStyle: String, Codable, CaseIterable, Sendable { case short, pigtails, spiky, bob, curly, long, bun, ponytail, buzz, sidepart }
     public enum ShirtPattern: String, Codable, CaseIterable, Sendable { case plain, stripes, dots, plaid, check, hearts }
     public enum Hat: String, Codable, CaseIterable, Sendable { case none, beanie, cap, headphones }
@@ -138,30 +138,4 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                    bottom: Bottom.allCases.randomElement(using: &rng)!,
                    shoes: Shoes.allCases.randomElement(using: &rng)!)
     }
-
-    /// Çizicinin varyant baytları (16): `VillagerVariant` grubu → seçili değer; 0 o gruptan hiçbir şey göstermez.
-    public var variantValues: [UInt8] {
-        var v = [UInt8](repeating: 0, count: 16)
-        let style = UInt8((HairStyle.allCases.firstIndex(of: hairStyle) ?? 0) + 1)
-        let hatCode = UInt8(Hat.allCases.firstIndex(of: hat) ?? 0)
-        v[VillagerVariant.hair] = style
-        v[VillagerVariant.hat] = hatCode
-        v[VillagerVariant.eyes] = UInt8((Eyes.allCases.firstIndex(of: eyes) ?? 0) + 1)
-        v[VillagerVariant.brows] = UInt8(Brows.allCases.firstIndex(of: brows) ?? 0)
-        v[VillagerVariant.mouth] = UInt8((Mouth.allCases.firstIndex(of: mouth) ?? 0) + 1)
-        v[VillagerVariant.freckles] = freckles ? 1 : 0
-        v[VillagerVariant.blush] = blush ? 1 : 0
-        v[VillagerVariant.glasses] = glasses ? 1 : 0
-        // Şapka varken saçın tepesi ve tepe süsleri (diken, topuz) gizlenir; yanlar ve kâkül kalır.
-        v[VillagerVariant.hairCap] = hat == .none ? 1 : 0
-        v[VillagerVariant.hairTop] = hat == .none ? style : 0
-        return v
-    }
-}
-
-/// Köylü mesh'indeki varyant grupları (Blender `VARIANT_GROUPS` ile aynı): köşe (grup, değer) taşır; seçili değer
-/// farklıysa gizlenir. Grup 0 her zaman görünür.
-public enum VillagerVariant {
-    public static let hair = 1, hat = 2, eyes = 3, brows = 4, mouth = 5, freckles = 6, blush = 7, glasses = 8
-    public static let hairCap = 9, hairTop = 10
 }

@@ -53,7 +53,6 @@ import Testing
         layers += (0..<RoomStyle.floorCount).map(OfficeTextureLayer.floor)
         layers += (0..<RoomStyle.wallpaperCount).map(OfficeTextureLayer.wallpaper)
         layers += RoomStyle.RugPattern.allCases.map(OfficeTextureLayer.rug)
-        layers += [AvatarLook.ShirtPattern.plain, .stripes, .dots].map(OfficeTextureLayer.shirt)   // klasik köylünün desenleri
         #expect(Set(layers).count == layers.count)
         #expect(!layers.contains(OfficeTextureLayer.none))
         #expect(layers.allSatisfy { Int($0) < OfficeTextureLayer.count })

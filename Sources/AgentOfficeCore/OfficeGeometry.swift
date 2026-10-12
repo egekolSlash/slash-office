@@ -2,7 +2,6 @@ import Foundation
 import simd
 
 /// Metal köşesi (40 bayt; shader'daki köşe tanımıyla aynı sıra). Konum ve normal paketli üç float'tır.
-/// Köylü mesh'inde `layer` saç modeli kodunu taşır (köylünün desen katmanı instance'tan gelir).
 public struct OfficeVertex: Equatable, Sendable {
     public var px, py, pz: Float
     public var nx, ny, nz: Float
@@ -21,7 +20,7 @@ public struct OfficeVertex: Equatable, Sendable {
         self.color = color; self.layer = layer; self.bone = bone; self.part = part
     }
 
-    /// Dünya mesh'inde `part`: oda içi geometri (gece sıcak oda ışığı alır). Köylüde 0…4 parça kodlarıdır.
+    /// Dünya mesh'inde `part`: oda içi geometri (gece sıcak oda ışığı alır).
     public static let interiorPart: UInt8 = 5
 
     public var position: SIMD3<Float> { SIMD3(px, py, pz) }
@@ -39,11 +38,7 @@ public enum OfficeTextureLayer {
     public static let grass: UInt16 = 13
     public static let dirt: UInt16 = 14
     public static let path: UInt16 = 15
-    /// Klasik köylünün üç deseni (düz, çizgili, puantiyeli); yeni desenler klasik köylüde düz görünür.
-    public static func shirt(_ p: AvatarLook.ShirtPattern) -> UInt16 {
-        16 + UInt16(min(AvatarLook.ShirtPattern.allCases.firstIndex(of: p)!, 2))
-    }
-    public static let count = 19
+    public static let count = 16
 }
 
 /// sRGB 8 bit renk yardımcıları.
@@ -136,10 +131,10 @@ public struct OfficeMesh: Sendable {
         }
     }
 
-    /// Blender eşyası: tek tip ölçek, y etrafında `yaw` (radyan) döndürme, sonra öteleme.
+    /// Eşya: tek tip ölçek, y etrafında `yaw` (radyan) döndürme, sonra öteleme.
     /// `recolor`: bu renkteki köşeler (±3) yeni renge boyanır (çiçek renkleri).
     public mutating func append(_ art: ArtMesh, at position: SIMD3<Float>, scale: Float = 1, yaw: Float = 0,
-                                recolor: (from: SIMD4<UInt8>, to: SIMD4<UInt8>)? = nil, skinned: Bool = false) {
+                                recolor: (from: SIMD4<UInt8>, to: SIMD4<UInt8>)? = nil) {
         let c = cos(yaw), s = sin(yaw)
         func rotate(_ p: SIMD3<Float>) -> SIMD3<Float> { SIMD3(p.x * c + p.z * s, p.y, -p.x * s + p.z * c) }
         let base = UInt32(vertices.count)
@@ -149,10 +144,7 @@ public struct OfficeMesh: Sendable {
             var color = SIMD4(art.colors[4 * i], art.colors[4 * i + 1], art.colors[4 * i + 2], art.colors[4 * i + 3])
             if let recolor, Self.close(color, recolor.from) { color = recolor.to }
             vertices.append(OfficeVertex(position: position + rotate(p) * scale, normal: rotate(n),
-                                         uv: SIMD2(art.uvs[2 * i], art.uvs[2 * i + 1]), color: color,
-                                         // Köylüde katman = varyant (üst bayt grup, alt bayt değer).
-                                         layer: skinned ? UInt16(art.variantGroups[i]) << 8 | UInt16(art.variantValues[i]) : 0,
-                                         bone: skinned ? art.bones[i] : 0, part: skinned ? art.parts[i] : 0))
+                                         uv: SIMD2(art.uvs[2 * i], art.uvs[2 * i + 1]), color: color))
         }
         indices += art.indices.map { $0 + base }
     }

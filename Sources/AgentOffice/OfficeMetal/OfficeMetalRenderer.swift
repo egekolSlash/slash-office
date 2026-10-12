@@ -3,8 +3,8 @@ import Foundation
 import Metal
 import simd
 
-/// Uygulama başına bir kez kurulan Metal kaynakları (spec v4 §2): varlık dosyası, iskelet, shader'lar, desen dokusu
-/// dizisi ve köylü mesh'i. Değişmez; birden çok çizici (mini ofis + ofis modu) paylaşır.
+/// Uygulama başına bir kez kurulan Metal kaynakları (spec v4 §2): varlık dosyası, karakter paketi, shader'lar ve
+/// desen dokusu dizisi. Değişmez; birden çok çizici (mini ofis + ofis modu) paylaşır.
 final class OfficeGPU: @unchecked Sendable {
     static let sampleCount = 4
     static let colorFormat = MTLPixelFormat.bgra8Unorm_srgb
@@ -14,17 +14,15 @@ final class OfficeGPU: @unchecked Sendable {
     let queue: MTLCommandQueue
     let art: OfficeArtFile
     let skeleton: VillagerSkeleton
-    let worldPipe, villagerPipe, ringPipe, skyPipe, worldShadowPipe, villagerShadowPipe: MTLRenderPipelineState
+    let worldPipe, ringPipe, skyPipe, worldShadowPipe: MTLRenderPipelineState
     let skyDepth: MTLDepthStencilState
     let depthWrite, depthTestOnly: MTLDepthStencilState
     let patterns: MTLTexture
     let patternSampler, shadowSampler: MTLSamplerState
-    let villagerVertices, villagerIndices: MTLBuffer
-    let villagerIndexCount: Int
     let ringVertices, ringIndices: MTLBuffer
     let ringIndexCount: Int
-    /// Karakter paketi yüklendiyse köylüler onunla çizilir (iskelet de onunki); yoksa klasik köylü.
-    let character: CharacterGPU?
+    /// Köylüler (karakter paketi); paket yüklenemezse ofis sade görünüme düşer.
+    let character: CharacterGPU
     /// Baş üstü efektleri ve baş kemiği + dinlenmedeki baş tepesi (efektlerin dayanağı).
     let effects: OfficeEffects?
     let head: (bone: Int, top: SIMD3<Float>)
@@ -60,21 +58,16 @@ final class OfficeGPU: @unchecked Sendable {
 
     enum Failure: Error { case noDevice, resource(String) }
 
-    init(art: OfficeArtFile, character characterArt: CharacterArt? = nil) throws {
+    init(art: OfficeArtFile, character characterArt: CharacterArt?) throws {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else { throw Failure.noDevice }
         self.device = device
         self.queue = queue
         self.art = art
         let library = try device.makeLibrary(source: OfficeShaders.source, options: nil)
-        if let characterArt, let character = try? CharacterGPU(art: characterArt, device: device, queue: queue, library: library) {
-            self.character = character
-            skeleton = characterArt.skeleton
-            head = (characterArt.bones.firstIndex(of: "Head") ?? 0, SIMD3(0, 1.05, -0.03))
-        } else {
-            character = nil
-            skeleton = VillagerSkeleton(art: art)
-            head = (art.bones.firstIndex(of: "Head") ?? 0, SIMD3(0, 1.10, 0))
-        }
+        guard let characterArt else { throw Failure.resource("character pack") }
+        character = try CharacterGPU(art: characterArt, device: device, queue: queue, library: library)
+        skeleton = characterArt.skeleton
+        head = (characterArt.bones.firstIndex(of: "Head") ?? 0, SIMD3(0, 1.05, -0.03))
         effects = try? OfficeEffects(device: device, queue: queue, library: library)
         let vertex = Self.vertexDescriptor()
 
@@ -98,7 +91,6 @@ final class OfficeGPU: @unchecked Sendable {
             return try device.makeRenderPipelineState(descriptor: d)
         }
         worldPipe = try pipe("worldVS", "shadeFS", color: true)
-        villagerPipe = try pipe("villagerVS", "shadeFS", color: true)
         ringPipe = try pipe("ringVS", "ringFS", color: true, blend: true)
         let sky = MTLRenderPipelineDescriptor()
         sky.vertexFunction = library.makeFunction(name: "skyVS")
@@ -113,7 +105,6 @@ final class OfficeGPU: @unchecked Sendable {
         guard let skyDepth = device.makeDepthStencilState(descriptor: skyDepthDescriptor) else { throw Failure.resource("sky depth") }
         self.skyDepth = skyDepth
         worldShadowPipe = try pipe("worldShadowVS", nil, color: false, samples: 1)
-        villagerShadowPipe = try pipe("villagerShadowVS", nil, color: false, samples: 1)
 
         let write = MTLDepthStencilDescriptor()
         write.depthCompareFunction = .lessEqual
@@ -144,15 +135,6 @@ final class OfficeGPU: @unchecked Sendable {
               let shadowSampler = device.makeSamplerState(descriptor: ss) else { throw Failure.resource("sampler") }
         self.patternSampler = patternSampler
         self.shadowSampler = shadowSampler
-
-        var villager = OfficeMesh()
-        villager.append(art.villager, at: .zero, skinned: true)
-        guard let vv = Self.buffer(device, villager.vertices), let vi = Self.buffer(device, villager.indices) else {
-            throw Failure.resource("villager mesh")
-        }
-        villagerVertices = vv
-        villagerIndices = vi
-        villagerIndexCount = villager.indices.count
 
         let ring = Self.ringMesh()
         guard let rv = Self.buffer(device, ring.vertices), let ri = Self.buffer(device, ring.indices) else { throw Failure.resource("ring") }
@@ -224,7 +206,8 @@ final class OfficeGPU: @unchecked Sendable {
 }
 
 /// Bir ofis görünümünün çizicisi (spec v4 §2–3): sadece çizim thread'inde kullanılır.
-/// Kare başına 4 draw call: köylü gölgesi, statik dünya, köylüler, halkalar (+ dünya değişince bir kez statik gölge).
+/// Kare başına: köylü gölgeleri, statik dünya, köylülerin parçaları, efektler, halkalar (+ dünya değişince bir kez
+/// statik gölge).
 final class OfficeMetalRenderer: @unchecked Sendable {
     struct Uniforms {
         var viewProj: simd_float4x4
@@ -242,29 +225,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         var light: SIMD4<Float>
     }
 
-    struct VillagerData {
-        var model: simd_float4x4
-        var shirt: SIMD4<Float>
-        var skin: SIMD4<Float>
-        var hair: SIMD4<Float>
-        var pants: SIMD4<Float>
-        var shoes: SIMD4<Float>
-        /// 16 bayt: `VillagerVariant` grubu → seçili değer (bayt g).
-        var variants: SIMD4<UInt32>
-        var boneBase: UInt32
-        var pad: (UInt32, UInt32, UInt32) = (0, 0, 0)
-    }
-
-    /// 16 varyant baytı → 4 kelime (küçük uçlu: bayt g, kelime g/4'ün (g%4)·8. biti).
-    static func packVariants(_ bytes: [UInt8]) -> SIMD4<UInt32> {
-        var words = SIMD4<UInt32>(repeating: 0)
-        for (g, value) in bytes.prefix(16).enumerated() { words[g / 4] |= UInt32(value) << UInt32((g % 4) * 8) }
-        return words
-    }
-
     static func checkLayouts() {
-        // MSL yapılarıyla aynı boyut (shader'daki VillagerData 176, Uniforms 272 bayt).
-        assert(MemoryLayout<VillagerData>.stride == 176 && MemoryLayout<Uniforms>.stride == 272)
+        // MSL yapısıyla aynı boyut (shader'daki Uniforms 272 bayt).
+        assert(MemoryLayout<Uniforms>.stride == 272)
     }
 
     /// Saatin ışığı (gece/gündüz döngüsü); varsayılan öğlen.
@@ -291,7 +254,6 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     private var villagerShadow: MTLTexture?
     private var colorMSAA: MTLTexture?
     private var depthMSAA: MTLTexture?
-    private var villagerBuffers: [MTLBuffer?]
     private var boneBuffers: [MTLBuffer?]
     private var ringBuffers: [MTLBuffer?]
     private var frame = 0
@@ -301,7 +263,6 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         self.gpu = gpu
         Self.checkLayouts()
         CharacterGPU.checkLayout()
-        villagerBuffers = Array(repeating: nil, count: Self.framesInFlight)
         boneBuffers = Array(repeating: nil, count: Self.framesInFlight)
         ringBuffers = Array(repeating: nil, count: Self.framesInFlight)
     }
@@ -323,7 +284,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         villagerShadow = nil
         colorMSAA = nil
         depthMSAA = nil
-        for i in villagerBuffers.indices { villagerBuffers[i] = nil; boneBuffers[i] = nil; ringBuffers[i] = nil }
+        for i in boneBuffers.indices { boneBuffers[i] = nil; ringBuffers[i] = nil }
     }
 
     /// Yeni statik dünya: tamponlar burada (çizim thread'inde) değişir, yani kare ortasında yarım dünya çizilmez.
@@ -373,9 +334,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
                          skyTop: SIMD4(Self.linear(lighting.sky * 0.86), 0),
                          skyHorizon: SIMD4(Self.linear(lighting.sky + (SIMD3(1, 1, 1) - lighting.sky) * 0.3), 0),
                          light: SIMD4(Float(lighting.emissive), Float(lighting.stars), Float(lighting.interior), 0))
-        let villagerCount = writeVillagers(avatars)
+        let villagerCount = writeBones(avatars)
         let ringCount = writeRings(avatars, time: time)
-        let characterItems = villagerCount > 0 ? gpu.character?.items(for: avatars, boneCount: gpu.skeleton.boneCount, time: time) : nil
+        let characterItems = villagerCount > 0 ? gpu.character.items(for: avatars, boneCount: gpu.skeleton.boneCount, time: time) : []
 
         if staticShadowDirty, let vb = worldVertices, let ib = worldIndices, let staticShadow {
             staticShadowDirty = false
@@ -388,15 +349,8 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         }
         if villagerCount > 0, let villagerShadow {
             shadowPass(cb, villagerShadow) { e in
-                if let character = gpu.character, let characterItems {
-                    bindVillagers(e, &u)
-                    character.encode(characterItems, on: e, shadow: true)
-                    return
-                }
-                e.setRenderPipelineState(gpu.villagerShadowPipe)
                 bindVillagers(e, &u)
-                e.drawIndexedPrimitives(type: .triangle, indexCount: gpu.villagerIndexCount, indexType: .uint32,
-                                        indexBuffer: gpu.villagerIndices, indexBufferOffset: 0, instanceCount: villagerCount)
+                gpu.character.encode(characterItems, on: e, shadow: true)
             }
         }
 
@@ -435,14 +389,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
             e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
             e.drawIndexedPrimitives(type: .triangle, indexCount: worldIndexCount, indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0)
         }
-        if villagerCount > 0, let character = gpu.character, let characterItems {
+        if villagerCount > 0 {
             bindVillagers(e, &u)
-            character.encode(characterItems, on: e, shadow: false)
-        } else if villagerCount > 0 {
-            e.setRenderPipelineState(gpu.villagerPipe)
-            bindVillagers(e, &u)
-            e.drawIndexedPrimitives(type: .triangle, indexCount: gpu.villagerIndexCount, indexType: .uint32,
-                                    indexBuffer: gpu.villagerIndices, indexBufferOffset: 0, instanceCount: villagerCount)
+            gpu.character.encode(characterItems, on: e, shadow: false)
         }
         if villagerCount > 0, let effects = gpu.effects {
             var sprites = OfficeEffects.sprites(for: avatars, time: time, head: gpu.head) { gpu.skeleton.pose(of: $0) }
@@ -473,10 +422,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         e.endEncoding()
     }
 
+    /// Köylü çizimleri için ortak bağlar: sahne değerleri ve bu karenin kemik paleti (mesh ve parça verisi çizimde).
     private func bindVillagers(_ e: MTLRenderCommandEncoder, _ u: inout Uniforms) {
-        e.setVertexBuffer(gpu.villagerVertices, offset: 0, index: 0)
         e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
-        e.setVertexBuffer(villagerBuffers[frame], offset: 0, index: 2)
         e.setVertexBuffer(boneBuffers[frame], offset: 0, index: 3)
     }
 
@@ -495,29 +443,13 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         e.endEncoding()
     }
 
-    /// Köylü instance'ları ve kemik matrisleri bu karenin halka tamponuna.
-    private func writeVillagers(_ avatars: [AvatarInstance]) -> Int {
+    /// Köylülerin kemik matrisleri bu karenin halka tamponuna (köylü i'nin paleti i × kemik sayısından başlar).
+    private func writeBones(_ avatars: [AvatarInstance]) -> Int {
         guard !avatars.isEmpty else { return 0 }
         let bones = gpu.skeleton.boneCount
-        let villagers = Self.ensure(&villagerBuffers[frame], gpu.device, avatars.count * MemoryLayout<VillagerData>.stride)
         let boneBuffer = Self.ensure(&boneBuffers[frame], gpu.device, max(1, avatars.count * bones) * MemoryLayout<simd_float4x4>.stride)
-        let vp = villagers.contents().bindMemory(to: VillagerData.self, capacity: avatars.count)
         let bp = boneBuffer.contents().bindMemory(to: simd_float4x4.self, capacity: max(1, avatars.count * bones))
         for (i, a) in avatars.enumerated() {
-            var model = simd_float4x4(simd_quatf(angle: a.facing, axis: SIMD3(0, 1, 0)))
-            model.columns.3 = SIMD4(a.position, 1)
-            let skin = AvatarLook.skinTones[a.look.skin % AvatarLook.skinTones.count]
-            let hair = AvatarLook.hairColors[a.look.hairColor % AvatarLook.hairColors.count]
-            let pants = AvatarLook.pantsColors[a.look.pantsColor % AvatarLook.pantsColors.count]
-            let shoes = AvatarLook.shoeColors[a.look.shoeColor % AvatarLook.shoeColors.count]
-            vp[i] = VillagerData(model: model,
-                                 shirt: SIMD4(a.shirtColor, Float(OfficeTextureLayer.shirt(a.look.shirtPattern))),
-                                 skin: SIMD4(Float(skin.red), Float(skin.green), Float(skin.blue), 0),
-                                 hair: SIMD4(Float(hair.red), Float(hair.green), Float(hair.blue), 0),
-                                 pants: SIMD4(Float(pants.red), Float(pants.green), Float(pants.blue), 0),
-                                 shoes: SIMD4(Float(shoes.red), Float(shoes.green), Float(shoes.blue), 0),
-                                 variants: Self.packVariants(a.look.variantValues),
-                                 boneBase: UInt32(i * bones))
             let pose = gpu.skeleton.pose(of: a)
             for b in 0..<bones { bp[i * bones + b] = b < pose.count ? pose[b] : matrix_identity_float4x4 }
         }

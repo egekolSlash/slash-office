@@ -19,15 +19,14 @@ public enum AvatarActivity: Equatable, Sendable {
     }
 }
 
-/// Animasyon klipleri ve Blender zaman çizelgesindeki kareleri (24 fps).
+/// Animasyon klipleri (24 fps). Kare aralıkları tarihsel (ilk Blender zaman çizelgesi); süreyi kare sayısı verir.
 public enum AvatarClip: String, CaseIterable, Sendable {
     case idle, walk, sitType, sitDoze, wave
     // v5 aşama 2: canlı köylüler (Blender zaman çizelgesi 171–638).
     case lookAround, sitSip, sitThink, sitStretch, stretch, waitTap, cheer, inspect, drink, sitDown, standUp, sofaSit
     // Ofis hayatı: masa başı (oturarak) ve eşya klipleri (Blender 641–1062).
     case sitDraw, sitWrite, sitRead, readBook, playArcade, drawBoard, stepBackLook, brewCoffee
-    // Tepkiler (yalnız karakter paketinde var, klasik köylüde dinlenme pozu): izin beklerken
-    // başını kaşıma, soru gelince fark edip zıplama.
+    // Tepkiler: izin beklerken başını kaşıma, soru gelince fark edip zıplama.
     case scratchHead, notice
 
     public var frames: ClosedRange<Int> {
@@ -77,9 +76,6 @@ public enum AvatarClip: String, CaseIterable, Sendable {
         default: false
         }
     }
-
-    /// Klasik (Blender'da pişirilmiş 11 kemikli) köylü dosyasında olan klipler.
-    public var classic: Bool { self != .scratchHead && self != .notice }
 
     /// İki klip arası geçiş süresi (sn): oturma/kalkma ve tepkiler kısa (klipler zaten uyumlu pozda başlar/biter),
     /// yürümeye giriş/çıkış orta, oturarak yapılan hareketler arası daha uzun ve sakin.

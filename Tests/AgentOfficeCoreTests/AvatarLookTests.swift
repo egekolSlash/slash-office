@@ -83,24 +83,6 @@ import Testing
         #expect(AvatarLook.trimmedName("") == nil)
     }
 
-    /// Çizicinin varyant baytları: grup → seçili değer (0: o gruptan hiçbir şey görünmez).
-    @Test func variantValuesMapEveryGroup() {
-        var look = AvatarLook(hairStyle: .bun, hairColor: 0, skin: 0, shirtPattern: .plain, shirtColor: nil, glasses: true)
-        look.eyes = .sleepy; look.brows = .bold; look.mouth = .flat; look.freckles = true; look.blush = false
-        var v = look.variantValues
-        #expect(v.count == 16)
-        #expect(v[VillagerVariant.hair] == 7 && v[VillagerVariant.hat] == 0)
-        #expect(v[VillagerVariant.eyes] == 3 && v[VillagerVariant.brows] == 2 && v[VillagerVariant.mouth] == 3)
-        #expect(v[VillagerVariant.freckles] == 1 && v[VillagerVariant.blush] == 0 && v[VillagerVariant.glasses] == 1)
-        #expect(v[VillagerVariant.hairCap] == 1 && v[VillagerVariant.hairTop] == 7)
-        // Şapka varken saçın tepesi ve tepe süsleri gizlenir; yanlar kalır.
-        look.hat = .cap
-        v = look.variantValues
-        #expect(v[VillagerVariant.hat] == 2 && v[VillagerVariant.hairCap] == 0 && v[VillagerVariant.hairTop] == 0)
-        #expect(v[VillagerVariant.hair] == 7)
-        #expect(v[0] == 0)
-    }
-
     /// Köylünün adı varsa oturum başlığının yerine geçer; başlık (proje) altta kalır.
     @Test func displayNameUsesTheVillagerName() {
         var look = AvatarLook.default(for: "x")

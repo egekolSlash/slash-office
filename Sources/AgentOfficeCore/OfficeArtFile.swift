@@ -1,11 +1,9 @@
 import Foundation
 
-/// Blender'ın yazdığı `office-art.json` (tools/office-art/build_assets.py): Y-yukarı mesh'ler ve kliplerin kemik matrisleri.
+/// Blender'ın yazdığı `office-art.json` (tools/office-art/build_assets.py): ofisin eşyaları (Y-yukarı mesh'ler); yanında
+/// `furniture.json` (dekor eşyaları, tools/furniture) varsa onlar da eklenir. Köylüler ayrı: `CharacterArt`.
 /// Sayısal diziler base64 kodlanmış küçük-sonlu float32 / uint32 / uint8'dir.
 public struct OfficeArtFile: Sendable {
-    public var bones: [String]
-    public var clips: [String: ArtClip]
-    public var villager: ArtMesh
     public var props: [String: ArtMesh]
 
     public enum Failure: Error, Equatable {
@@ -14,30 +12,18 @@ public struct OfficeArtFile: Sendable {
         case indexOutOfRange(String)
     }
 
-    /// Yanında `furniture.json` (dekor eşyaları, tools/furniture) varsa eşyaları ona eklenir.
     public static func load(from url: URL) throws -> OfficeArtFile {
         var art = try decode(Data(contentsOf: url))
         let furniture = url.deletingLastPathComponent().appendingPathComponent("furniture.json")
         if let data = try? Data(contentsOf: furniture) {
-            let raw = try JSONDecoder().decode(RawProps.self, from: data)
-            for (name, mesh) in raw.props { art.props[name] = try ArtMesh(mesh, name: name, skinned: false) }
+            art.props.merge(try decode(data).props) { _, new in new }
         }
         return art
     }
 
-    struct RawProps: Decodable { var props: [String: RawMesh] }
-
     public static func decode(_ data: Data) throws -> OfficeArtFile {
         let raw = try JSONDecoder().decode(Raw.self, from: data)
-        var clips: [String: ArtClip] = [:]
-        for (name, clip) in raw.clips {
-            let matrices: [Float] = try array(clip.matrices, "clip \(name)")
-            guard matrices.count == clip.frames * raw.bones.count * 16 else { throw Failure.badLength("clip \(name)") }
-            clips[name] = ArtClip(frames: clip.frames, matrices: matrices)
-        }
-        return OfficeArtFile(bones: raw.bones, clips: clips,
-                             villager: try ArtMesh(raw.villager, name: "villager", skinned: true, boneCount: raw.bones.count),
-                             props: try raw.props.reduce(into: [:]) { $0[$1.key] = try ArtMesh($1.value, name: $1.key, skinned: false) })
+        return OfficeArtFile(props: try raw.props.reduce(into: [:]) { $0[$1.key] = try ArtMesh($1.value, name: $1.key) })
     }
 
     static func array<T>(_ text: String, _ name: String) throws -> [T] {
@@ -48,12 +34,10 @@ public struct OfficeArtFile: Sendable {
     }
 
     struct Raw: Decodable {
-        var bones: [String]
-        var clips: [String: RawClip]
-        var villager: RawMesh
         var props: [String: RawMesh]
     }
 
+    /// Karakter paketinin klipleri de bu biçimde.
     struct RawClip: Decodable {
         var frames: Int
         var matrices: String
@@ -62,7 +46,6 @@ public struct OfficeArtFile: Sendable {
     struct RawMesh: Decodable {
         var vertexCount: Int
         var positions, normals, uvs, colors, indices: String
-        var bones, parts, variantGroups, variantValues: String?
     }
 }
 
@@ -80,14 +63,8 @@ public struct ArtMesh: Sendable {
     /// RGBA (sRGB); A = emissive × 255.
     public var colors: [UInt8]
     public var indices: [UInt32]
-    /// Köylüde: köşenin kemiği, parça kodu (0 sabit renk, 1 tişört, 2 ten, 3 saç, 6 pantolon, 7 ayakkabı) ve varyantı
-    /// (`VillagerVariant` grubu ve değeri; grup 0 her zaman görünür).
-    public var bones: [UInt8] = []
-    public var parts: [UInt8] = []
-    public var variantGroups: [UInt8] = []
-    public var variantValues: [UInt8] = []
 
-    init(_ raw: OfficeArtFile.RawMesh, name: String, skinned: Bool, boneCount: Int = 0) throws {
+    init(_ raw: OfficeArtFile.RawMesh, name: String) throws {
         typealias F = OfficeArtFile
         vertexCount = raw.vertexCount
         positions = try F.array(raw.positions, name)
@@ -99,25 +76,7 @@ public struct ArtMesh: Sendable {
         guard positions.count == n * 3, normals.count == n * 3, uvs.count == n * 2, colors.count == n * 4,
               indices.count % 3 == 0 else { throw F.Failure.badLength(name) }
         guard indices.allSatisfy({ Int($0) < n }) else { throw F.Failure.indexOutOfRange(name) }
-        if skinned {
-            guard let b = raw.bones, let p = raw.parts, let g = raw.variantGroups, let v = raw.variantValues else {
-                throw F.Failure.badLength(name)
-            }
-            bones = try F.array(b, name)
-            parts = try F.array(p, name)
-            variantGroups = try F.array(g, name)
-            variantValues = try F.array(v, name)
-            guard bones.count == n, parts.count == n, variantGroups.count == n, variantValues.count == n else {
-                throw F.Failure.badLength(name)
-            }
-            guard bones.allSatisfy({ Int($0) < boneCount }) else { throw F.Failure.indexOutOfRange(name) }
-        }
     }
-}
-
-extension OfficeArtFile {
-    /// Testler ve eksik köylü için boş mesh.
-    static let emptyMesh = ArtMesh(vertexCount: 0, positions: [], normals: [], uvs: [], colors: [], indices: [])
 }
 
 extension ArtMesh {

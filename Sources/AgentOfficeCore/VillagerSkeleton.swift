@@ -14,10 +14,6 @@ public struct VillagerSkeleton: Sendable {
     /// Klip → kare → kemik.
     private let clips: [AvatarClip: [[Joint]]]
 
-    public init(art: OfficeArtFile) {
-        self.init(boneCount: art.bones.count, clips: art.clips)
-    }
-
     /// Kemik ağacı (karakter iskeleti): ebeveyn indeksi (önce ebeveyn gelir, kökte -1) ve dinlenme
     /// pozunun dünya matrisleri.
     public struct Hierarchy: Sendable {

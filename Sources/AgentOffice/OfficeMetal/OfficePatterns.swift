@@ -44,15 +44,6 @@ enum OfficePatterns {
             }
             return
         }
-        for p in AvatarLook.ShirtPattern.allCases where layer == Int(L.shirt(p)) {
-            switch p {
-            case .plain: fill(ctx, s, (1, 1, 1))
-            case .stripes: stripes(ctx, s, (1, 1, 1), (0.72, 0.72, 0.72), count: 8, vertical: false)
-            case .dots: dots(ctx, s, base: (1, 1, 1), dot: (0.70, 0.70, 0.70), count: 6)
-            case .plaid, .check, .hearts: fill(ctx, s, (1, 1, 1))   // klasik köylüde yok (düz)
-            }
-            return
-        }
         switch UInt16(layer) {
         case L.wainscot: stripes(ctx, s, (0.62, 0.42, 0.26), (0.56, 0.37, 0.23), count: 6, vertical: true)
         case L.grass: speckle(ctx, s, base: (0.40, 0.74, 0.30), spots: [(0.34, 0.68, 0.26), (0.47, 0.80, 0.34)], seed: 7)

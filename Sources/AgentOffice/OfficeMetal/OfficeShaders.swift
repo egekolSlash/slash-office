@@ -1,5 +1,5 @@
 /// Ofisin tek shader kaynağı (spec v4 §2), çalışma anında derlenir. Köşe yapısı Core'daki `OfficeVertex` ile,
-/// `Uniforms` / `VillagerData` / `RingData` `OfficeMetalRenderer`'daki Swift yapılarıyla aynı sıradadır.
+/// `Uniforms` / `RingData` / `CharDraw` `OfficeMetalRenderer`'daki Swift yapılarıyla aynı sıradadır.
 enum OfficeShaders {
     static let source = """
     #include <metal_stdlib>
@@ -36,18 +36,6 @@ enum OfficeShaders {
         return w;
     }
 
-    struct VillagerData {
-        float4x4 model;
-        float4 shirt;         // rgb (sRGB), w: tişört deseni katmanı
-        float4 skin;          // rgb (sRGB)
-        float4 hair;          // rgb (sRGB)
-        float4 pants;         // rgb (sRGB)
-        float4 shoes;         // rgb (sRGB)
-        uint4 variants;       // bayt g: VillagerVariant grubu g'nin seçili değeri
-        uint boneBase;
-        uint pad0, pad1, pad2;
-    };
-
     struct RingData { float4 posScale; };
 
     struct VOut {
@@ -81,57 +69,6 @@ enum OfficeShaders {
 
     vertex float4 worldShadowVS(VIn v [[stage_in]], constant Uniforms &u [[buffer(1)]]) {
         return u.lightViewProj * float4(v.pos, 1);
-    }
-
-    // MARK: Köylüler
-
-    /// Seçilmeyen varyantın (saç, şapka, yüz, gözlük) köşeleri kırpma alanının dışına atılır (üçgen çizilmez).
-    /// Köşe katmanı = grup << 8 | değer; grup 0 hep görünür.
-    static bool hidden(VIn v, constant VillagerData &d) {
-        uint group = uint(v.layer) >> 8;
-        if (group == 0) return false;
-        uint selected = (d.variants[group / 4] >> ((group % 4) * 8)) & 0xFF;
-        return selected != (uint(v.layer) & 0xFF);
-    }
-
-    static float4x4 skinMatrix(VIn v, constant VillagerData &d, constant float4x4 *bones) {
-        return d.model * bones[d.boneBase + v.bone];
-    }
-
-    vertex VOut villagerVS(VIn v [[stage_in]], constant Uniforms &u [[buffer(1)]],
-                           constant VillagerData *villagers [[buffer(2)]], constant float4x4 *bones [[buffer(3)]],
-                           uint iid [[instance_id]]) {
-        constant VillagerData &d = villagers[iid];
-        VOut o;
-        if (hidden(v, d)) {
-            o.pos = float4(2, 2, 2, 1);
-            return o;
-        }
-        float4x4 m = skinMatrix(v, d, bones);
-        float4 w = m * float4(v.pos, 1);
-        o.pos = u.viewProj * bent(w, u);
-        o.nrm = (m * float4(v.nrm, 0)).xyz;
-        o.uv = v.uv;
-        float3 c = v.color.rgb;
-        ushort layer = 0;
-        if (v.part == 1) { c = d.shirt.rgb; layer = ushort(d.shirt.w); }
-        else if (v.part == 2) { c = d.skin.rgb; }
-        else if (v.part == 3) { c = d.hair.rgb; }
-        else if (v.part == 6) { c = d.pants.rgb; }
-        else if (v.part == 7) { c = d.shoes.rgb; }
-        o.color = float4(linear(c), v.color.a);
-        o.lpos = u.lightViewProj * w;
-        o.layer = layer;
-        o.interior = 1.0;     // köylüler odalarda
-        return o;
-    }
-
-    vertex float4 villagerShadowVS(VIn v [[stage_in]], constant Uniforms &u [[buffer(1)]],
-                                   constant VillagerData *villagers [[buffer(2)]], constant float4x4 *bones [[buffer(3)]],
-                                   uint iid [[instance_id]]) {
-        constant VillagerData &d = villagers[iid];
-        if (hidden(v, d)) return float4(2, 2, 2, 1);
-        return u.lightViewProj * (skinMatrix(v, d, bones) * float4(v.pos, 1));
     }
 
     // MARK: Işık

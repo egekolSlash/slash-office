@@ -8,13 +8,7 @@ import Testing
     }
 
     static let sample = """
-    {"version": 1, "bones": ["Root", "Hips"],
-     "clips": {"idle": {"frames": 1, "matrices": "\(b64([Float](repeating: 1, count: 32)))"}},
-     "villager": {"vertexCount": 3, "positions": "\(b64((0..<9).map(Float.init)))",
-                  "normals": "\(b64([Float](repeating: 0, count: 9)))", "uvs": "\(b64([Float](repeating: 0.5, count: 6)))",
-                  "colors": "\(b64([UInt8](repeating: 255, count: 12)))", "indices": "\(b64([UInt32]([0, 1, 2])))",
-                  "bones": "\(b64([UInt8]([0, 1, 1])))", "parts": "\(b64([UInt8]([0, 1, 4])))", "variantGroups": "\(b64([UInt8]([0, 0, 1])))",
-                  "variantValues": "\(b64([UInt8]([0, 0, 2])))"},
+    {"version": 2,
      "props": {"lamp": {"vertexCount": 3, "positions": "\(b64([Float](repeating: 2, count: 9)))",
                         "normals": "\(b64([Float](repeating: 0, count: 9)))", "uvs": "\(b64([Float](repeating: 0, count: 6)))",
                         "colors": "\(b64([UInt8](repeating: 9, count: 12)))", "indices": "\(b64([UInt32]([2, 1, 0])))"}}}
@@ -22,18 +16,11 @@ import Testing
 
     @Test func decodesSample() throws {
         let art = try OfficeArtFile.decode(Data(Self.sample.utf8))
-        #expect(art.bones == ["Root", "Hips"])
-        #expect(art.clips["idle"]?.frames == 1)
-        #expect(art.clips["idle"]?.matrices.count == 32)
-        #expect(art.villager.positions == (0..<9).map(Float.init))
-        #expect(art.villager.parts == [0, 1, 4])
-        #expect(art.villager.variantGroups == [0, 0, 1] && art.villager.variantValues == [0, 0, 2])
-        #expect(art.villager.bones == [0, 1, 1])
-        #expect(art.villager.vertexCount == 3)
         let lamp = try #require(art.props["lamp"])
+        #expect(lamp.vertexCount == 3)
+        #expect(lamp.positions == [Float](repeating: 2, count: 9))
         #expect(lamp.indices == [2, 1, 0])
         #expect(lamp.colors.count == 12)
-        #expect(lamp.bones.isEmpty && lamp.parts.isEmpty && lamp.variantGroups.isEmpty)
     }
 
     @Test func realArtFileIsSane() throws {
@@ -41,32 +28,13 @@ import Testing
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Resources/OfficeArt/office-art.json")
         let art = try OfficeArtFile.load(from: url)
-        #expect(art.bones.count == 11)
-        #expect(art.clips["walk"]?.frames == 24)
-        #expect(AvatarClip.allCases.filter(\.classic).count == 25)
         #expect(AvatarClip.sofaSit.loops && !AvatarClip.cheer.loops && AvatarClip.sitSip.seated && !AvatarClip.drink.seated)
         #expect(abs(AvatarClip.standUp.duration - 11.0 / 24) < 1e-9)
         // Ofis hayatı: masa başı ve eşya klipleri.
         #expect(AvatarClip.sitDraw.seated && AvatarClip.sitWrite.seated && AvatarClip.sitRead.seated)
         #expect(AvatarClip.readBook.loops && AvatarClip.playArcade.loops && AvatarClip.drawBoard.loops)
         #expect(!AvatarClip.stepBackLook.loops && !AvatarClip.brewCoffee.loops && !AvatarClip.brewCoffee.seated)
-        #expect(AvatarClip.sitDraw.frames.lowerBound == 641 && AvatarClip.brewCoffee.frames.upperBound == 1062)
-        for clip in AvatarClip.allCases where clip.classic {
-            let data = try #require(art.clips[clip.rawValue])
-            #expect(data.frames == clip.frames.count)
-            #expect(data.matrices.count == data.frames * art.bones.count * 16)
-        }
-        // Parçalar: tişört, ten, saç, pantolon, ayakkabı (renk seçilir); 0 sabit renk.
-        #expect(Set(art.villager.parts) == [0, 1, 2, 3, 6, 7])
-        // Her varyant grubu ve değeri için köşe var (grup 0 her zaman görünür).
-        let pairs = Set(zip(art.villager.variantGroups, art.villager.variantValues).map { "\($0.0):\($0.1)" })
-        var expected: Set<String> = ["0:0", "6:1", "7:1", "8:1", "9:1", "10:3", "10:5", "10:7"]
-        for v in 1...7 { expected.insert("1:\(v)") }
-        for v in 1...3 { expected.insert("2:\(v)"); expected.insert("3:\(v)"); expected.insert("5:\(v)") }
-        for v in 1...2 { expected.insert("4:\(v)") }
-        #expect(pairs == expected, "\(pairs.symmetricDifference(expected).sorted())")
-        #expect(art.villager.bones.allSatisfy { Int($0) < art.bones.count })
-        for (name, mesh) in art.props.merging(["villager": art.villager], uniquingKeysWith: { a, _ in a }) {
+        for (name, mesh) in art.props {
             #expect(mesh.indices.count % 3 == 0, "\(name)")
             #expect(mesh.indices.allSatisfy { Int($0) < mesh.vertexCount }, "\(name)")
             #expect(mesh.positions.count == mesh.vertexCount * 3 && mesh.normals.count == mesh.vertexCount * 3, "\(name)")
@@ -93,7 +61,7 @@ import Testing
     @Test func missingOrCorruptArtFile() throws {
         let missing = URL(fileURLWithPath: "/nonexistent/office-art.json")
         #expect(throws: (any Error).self) { try OfficeArtFile.load(from: missing) }
-        #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data("{\"version\": 1}".utf8)) }
+        #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data("{\"version\": 2}".utf8)) }
         let badBase64 = Self.sample.replacingOccurrences(of: "\"indices\": \"", with: "\"indices\": \"%%")
         #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data(badBase64.utf8)) }
         // Dizi uzunlukları köşe sayısına uymuyorsa
@@ -102,8 +70,5 @@ import Testing
         // İndeks sınır dışında
         let outOfRange = Self.sample.replacingOccurrences(of: Self.b64([UInt32]([2, 1, 0])), with: Self.b64([UInt32]([2, 1, 7])))
         #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data(outOfRange.utf8)) }
-        // Köşenin kemiği iskelette yok (GPU başka köylünün matrisini okurdu).
-        let badBone = Self.sample.replacingOccurrences(of: Self.b64([UInt8]([0, 1, 1])), with: Self.b64([UInt8]([0, 1, 5])))
-        #expect(throws: (any Error).self) { try OfficeArtFile.decode(Data(badBone.utf8)) }
     }
 }

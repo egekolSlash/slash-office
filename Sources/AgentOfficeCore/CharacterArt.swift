@@ -3,7 +3,7 @@ import simd
 
 /// Karakter paketi (`tools/character` üretir, `Resources/Character/character.json` + `tex/`): iskelet, klipler ve modüler
 /// parçalar (gövde, saç, üst, alt, ayakkabı; yüz ifadeleri dokudan). Mesh'ler uygulama uzayında (Y yukarı, +z ileri,
-/// metre); köşe başına 4 kemik + ağırlık (u8, toplam 255). Paket yüklenemezse ofis klasik köylüyle çalışır.
+/// metre); köşe başına 4 kemik + ağırlık (u8, toplam 255). Paket yüklenemezse ofis çizicisi kurulmaz.
 public struct CharacterArt: Sendable {
     public enum Mode: String, Codable, Sendable {
         /// Düz ton (ten) ya da sabit renk. `albedo`: doku. `tinted`: gri doku × ton (saç). `pattern`: görünüşün deseni

@@ -1,16 +1,13 @@
-# Slash Office varlıkları: iskeletli Animal Crossing tarzı köylü + eşyalar -> Resources/OfficeArt/office-art.json.
+# Slash Office eşyaları (masa takımı, kitaplık, koltuk, ağaçlar, kayalıklar…) -> Resources/OfficeArt/office-art.json.
 # Çalıştır: scripts/build-office-art.sh  (Blender -b --factory-startup --python build_assets.py -- <depo kökü>)
 #
-# Sözleşme (uygulama buna güvenir, v3 spec §4/§8, v4 spec §4; Core'da OfficeArtFile):
-#  - Blender (x, y, z) -> uygulama (x, z, -y), Y yukarı. Köylü -Y'ye (uygulamada +z'ye, kameraya) bakar; ayakları z=0'da.
-#  - Köylü mesh'leri: Body, HairShort, HairPigtails, HairSpiky, HairBob, Glasses (saç modeli kodu 1…4, gözlük parça 4).
-#  - Değiştirilebilir malzemeler taban rengiyle tanınır: tişört (0.30,0.55,0.95), ten (0.99,0.84,0.72), saç (0.35,0.20,0.10).
-#  - Klipler (24 fps): idle 1-24, walk 31-54, sitType 61-84, sitDoze 91-138, wave 141-164 ve v5 aşama 2'nin
-#    klipleri 171-638 (CLIP_RANGES; AvatarClip.frames ile aynı).
-#  - Eşyalar orijinde, zeminde. Masa takımında köylü +Y tarafında (uygulamada -z) oturur; tabure y=+0.32 (DeskGeometry.seatOffset).
+# Sözleşme (uygulama buna güvenir; Core'da OfficeArtFile):
+#  - Blender (x, y, z) -> uygulama (x, z, -y), Y yukarı. Renkler sRGB 8 bit, alfa = emissive gücü / 4.
+#  - Eşyalar orijinde, zeminde. Masa takımında tabure +Y tarafında (uygulamada -z) y=+0.32 (DeskGeometry.seatOffset).
 #    Masa üstü 0.565; tabure üstü 0.46.
 #    Duvara yaslanan eşyalar (kitaplık, pencere, perde) +X'e bakar.
 #  - Çiçek başı taban rengi (1.0,0.42,0.48): uygulama renk çeşitler.
+#  - Köylüler ayrı: karakter paketi (tools/character, Resources/Character). Dekor eşyaları: tools/furniture.
 import base64, json
 import bpy, math, os, sys
 import numpy as np
@@ -92,360 +89,6 @@ def join(name, objs):
     bpy.ops.object.join()
     o = bpy.context.active_object; o.name = name; o.data.name = name
     return o
-
-# ---------------------------------------------------------------- köylü
-M = dict(
-    shirt=mat("Shirt", (0.30, 0.55, 0.95), 0.7), skin=mat("Skin", (0.99, 0.84, 0.72), 0.5),
-    hair=mat("Hair", (0.35, 0.20, 0.10), 0.6), eye=mat("Eye", (0.04, 0.03, 0.05), 0.15),
-    shine=mat("Shine", (1, 1, 1), 0.2, emit=(1, 1, 1), es=1.0), cheek=mat("Cheek", (1.0, 0.58, 0.58), 0.7),
-    mouth=mat("Mouth", (0.45, 0.15, 0.12), 0.6), pants=mat("Pants", (0.25, 0.30, 0.45), 0.7),
-    shoe=mat("Shoe", (0.55, 0.32, 0.20), 0.5), frame=mat("GlassFrame", (0.15, 0.12, 0.12), 0.3),
-)
-HIP, HZ = 0.34, 0.86
-SH = HIP + 0.17                         # omuz
-FY = -0.23                              # yüzün önü (y)
-J = dict(shoulder=0.155, elbow=0.19, hand=0.21, elbowZ=HIP + 0.05, handZ=HIP - 0.06, leg=0.075, knee=0.19, ankle=0.07)
-
-PARTS.clear()
-capsule(0.14, (0, 0, HIP), (0, 0, HIP + 0.2), M["shirt"], "Hips")
-sphere(0.25, (0, 0, HZ), M["skin"], "Head", (1.0, 0.95, 0.92))
-sphere(0.022, (0, FY - 0.02, HZ - 0.045), M["skin"], "Head")
-for s, side in ((-1, "L"), (1, "R")):
-    sh, el, ha = (s * J["shoulder"], 0, SH), (s * J["elbow"], 0, J["elbowZ"]), (s * J["hand"], 0, J["handZ"])
-    capsule(0.05, sh, el, M["shirt"], "UpperArm" + side)
-    capsule(0.044, el, ha, M["skin"], "ForeArm" + side)
-    sphere(0.056, ha, M["skin"], "ForeArm" + side)
-    hip, knee, ankle = (s * J["leg"], 0, HIP), (s * J["leg"], 0, J["knee"]), (s * J["leg"], 0, J["ankle"])
-    capsule(0.062, hip, knee, M["pants"], "Thigh" + side)
-    capsule(0.056, knee, ankle, M["pants"], "Shin" + side)
-    sphere(0.07, (s * J["leg"], -0.04, 0.06), M["shoe"], "Shin" + side, (1.0, 1.4, 0.7))
-body = join("Body", list(PARTS))
-
-# ---- ofis hayatı §C2: varyantlar. Her nesne (grup, değer) taşır; çizici seçili olmayanları gizler.
-# Gruplar (VillagerVariant): 1 saç, 2 şapka, 3 göz, 4 kaş, 5 ağız, 6 çil, 7 allık, 8 gözlük, 9 saç tepesi, 10 tepe süsü.
-VARIANTS = {}
-def variant(name, group, value, build):
-    PARTS.clear(); build()
-    o = join(name, list(PARTS))
-    VARIANTS[name] = (group, value)
-    return o
-M["freckle"] = mat("Freckle", (0.62, 0.38, 0.28), 0.7)
-M["tongue"] = mat("Tongue", (0.95, 0.45, 0.50), 0.6)
-def eyes_round():
-    for s in (-1, 1):
-        sphere(0.042, (s * 0.09, FY, HZ), M["eye"], "Head", (0.75, 0.35, 1.0))
-        sphere(0.012, (s * 0.09 + 0.012, FY - 0.012, HZ + 0.022), M["shine"], "Head")
-def eyes_happy():
-    for s in (-1, 1):  # ^ ^
-        capsule(0.011, (s * 0.09 - 0.035, FY + 0.005, HZ - 0.01), (s * 0.09, FY - 0.012, HZ + 0.02), M["eye"], "Head")
-        capsule(0.011, (s * 0.09, FY - 0.012, HZ + 0.02), (s * 0.09 + 0.035, FY + 0.005, HZ - 0.01), M["eye"], "Head")
-def eyes_sleepy():
-    for s in (-1, 1):  # yarı kapalı: yassı göz, üstünde ten rengi kapak
-        sphere(0.042, (s * 0.09, FY, HZ - 0.012), M["eye"], "Head", (0.8, 0.35, 0.45))
-        capsule(0.012, (s * 0.09 - 0.035, FY - 0.006, HZ + 0.004), (s * 0.09 + 0.035, FY - 0.006, HZ + 0.004), M["skin"], "Head")
-def brows(r):
-    for s in (-1, 1):
-        capsule(r, (s * 0.09 - 0.03, FY + 0.012, HZ + 0.07), (s * 0.09 + 0.03, FY + 0.008, HZ + 0.078 + s * 0.004), M["hair"], "Head")
-def mouth_smile():
-    sphere(0.03, (0, FY + 0.005, HZ - 0.105), M["mouth"], "Head", (1.0, 0.3, 0.45))
-def mouth_open():
-    sphere(0.036, (0, FY + 0.004, HZ - 0.108), M["mouth"], "Head", (1.1, 0.35, 0.8))
-    sphere(0.018, (0, FY - 0.004, HZ - 0.122), M["tongue"], "Head", (1.0, 0.5, 0.5))
-def mouth_flat():
-    capsule(0.009, (-0.026, FY + 0.004, HZ - 0.105), (0.026, FY + 0.004, HZ - 0.105), M["mouth"], "Head")
-def freckles():
-    for s in (-1, 1):
-        for dx, dz in ((0.0, 0.0), (0.025, 0.012), (0.012, -0.018)):
-            sphere(0.008, (s * (0.14 + dx), FY + 0.035, HZ - 0.055 + dz), M["freckle"], "Head")
-def blush():
-    for s in (-1, 1):
-        sphere(0.04, (s * 0.15, FY + 0.04, HZ - 0.07), M["cheek"], "Head", (1.0, 0.35, 0.6))
-faces = [
-    variant("EyesRound", 3, 1, eyes_round), variant("EyesHappy", 3, 2, eyes_happy), variant("EyesSleepy", 3, 3, eyes_sleepy),
-    variant("BrowsThin", 4, 1, lambda: brows(0.008)), variant("BrowsBold", 4, 2, lambda: brows(0.016)),
-    variant("MouthSmile", 5, 1, mouth_smile), variant("MouthOpen", 5, 2, mouth_open), variant("MouthFlat", 5, 3, mouth_flat),
-    variant("Freckles", 6, 1, freckles), variant("Blush", 7, 1, blush),
-]
-
-def fringe():
-    for dx in (-0.12, 0.0, 0.12):
-        sphere(0.09, (dx, FY + 0.06, HZ + 0.15 - abs(dx) * 0.3), M["hair"], "Head", (1.2, 0.6, 0.8))
-HAIR_STYLES = ["short", "pigtails", "spiky", "bob", "curly", "long", "bun"]
-def style(value, sides=lambda: None):
-    def build():
-        fringe(); sides()
-    return variant("Hair" + HAIR_STYLES[value - 1].capitalize(), 1, value, build)
-hairs = [
-    variant("HairCap", 9, 1, lambda: sphere(0.262, (0, 0.03, HZ + 0.05), M["hair"], "Head", (1.03, 1.0, 0.9))),
-    style(1),
-    style(2, lambda: [sphere(0.1, (s * 0.28, 0.05, HZ - 0.05), M["hair"], "Head", (0.8, 0.8, 1.2)) for s in (-1, 1)]),
-    style(3),
-    variant("HairSpikyTop", 10, 3, lambda: [sphere(0.075, (dx, 0.04 + dy, HZ + 0.27), M["hair"], "Head", (0.7, 0.7, 1.5))
-                                            for dx, dy in ((-0.12, 0.02), (0.0, -0.02), (0.12, 0.02), (0.0, 0.1))]),
-    style(4, lambda: [sphere(0.16, (s * 0.2, 0.04, HZ - 0.06), M["hair"], "Head", (0.8, 1.1, 1.3)) for s in (-1, 1)]),
-    # Kıvırcık: yanlarda ve arkada küçük bukleler, tepede ayrıca (şapkayla gizlenir).
-    # Bukleler yanlardan arkaya (+Y arkadır; yüz −Y'de).
-    style(5, lambda: [sphere(0.075, (0.27 * math.sin(t), 0.06 + 0.24 * math.cos(t), HZ - 0.03 + 0.04 * math.cos(2 * t)), M["hair"], "Head")
-                      for t in [math.radians(-110 + 220 * i / 6) for i in range(7)]]),
-    variant("HairCurlyTop", 10, 5, lambda: [sphere(0.07, (dx, dy, HZ + 0.25), M["hair"], "Head")
-                                            for dx, dy in ((-0.13, 0.05), (0.0, 0.0), (0.13, 0.05), (-0.07, 0.15), (0.07, 0.15))]),
-    # Uzun: arkada omuzlara inen saç, yanlarda iki tutam.
-    style(6, lambda: [sphere(0.2, (0, 0.13, HZ - 0.16), M["hair"], "Head", (1.25, 0.7, 1.45))]
-                     + [sphere(0.08, (s * 0.24, -0.02, HZ - 0.16), M["hair"], "Head", (0.8, 0.9, 1.9)) for s in (-1, 1)]),
-    style(7),
-    variant("HairBunTop", 10, 7, lambda: [sphere(0.11, (0, 0.06, HZ + 0.3), M["hair"], "Head"),
-                                          sphere(0.06, (0, 0.05, HZ + 0.22), M["hair"], "Head", (1.4, 1.4, 0.6))]),
-]
-def beanie():
-    knit = mat("Beanie", (0.86, 0.32, 0.32), 0.9)
-    sphere(0.275, (0, 0.03, HZ + 0.12), knit, "Head", (1.04, 1.02, 0.8))
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.258, minor_radius=0.035, location=(0, 0.03, HZ + 0.11), major_segments=32, minor_segments=10)
-    finish(bpy.context.active_object, mat("BeanieRim", (0.95, 0.90, 0.85), 0.9), "Head")
-    sphere(0.06, (0, 0.03, HZ + 0.35), mat("BeaniePom", (0.98, 0.95, 0.90), 0.9), "Head")
-def cap():
-    cloth = mat("Cap", (0.25, 0.45, 0.85), 0.7)
-    sphere(0.272, (0, 0.03, HZ + 0.07), cloth, "Head", (1.02, 1.02, 0.8))
-    sphere(0.16, (0, FY - 0.03, HZ + 0.11), cloth, "Head", (1.0, 1.1, 0.12))
-def headphones():
-    band = mat("HeadphoneBand", (0.16, 0.16, 0.18), 0.4)
-    # Bant kulaktan kulağa başın üstünden (XZ düzleminde: halkanın ekseni Y).
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.29, minor_radius=0.022, location=(0, 0.03, HZ + 0.02),
-                                     rotation=(math.radians(90), 0, 0), major_segments=32, minor_segments=8)
-    o = bpy.context.active_object; bpy.ops.object.transform_apply(rotation=True); finish(o, band, "Head")
-    for s in (-1, 1):
-        cyl(0.075, 0.05, (s * 0.28, 0.03, HZ - 0.02), mat("HeadphoneCup", (0.95, 0.50, 0.60), 0.5), rot=(0, math.radians(90), 0))
-        PARTS[-1].vertex_groups.new(name="Head").add(range(len(PARTS[-1].data.vertices)), 1.0, 'REPLACE')
-hats = [variant("HatBeanie", 2, 1, beanie), variant("HatCap", 2, 2, cap), variant("HatHeadphones", 2, 3, headphones)]
-def glasses_build():
-    for s in (-1, 1):
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.058, minor_radius=0.011, location=(s * 0.09, FY - 0.035, HZ),
-                                         rotation=(math.radians(90), 0, 0), major_segments=24, minor_segments=8)
-        o = bpy.context.active_object; bpy.ops.object.transform_apply(rotation=True); finish(o, M["frame"], "Head")
-    capsule(0.008, (-0.035, FY - 0.04, HZ + 0.01), (0.035, FY - 0.04, HZ + 0.01), M["frame"], "Head")
-glasses = variant("Glasses", 8, 1, glasses_build)
-
-bpy.ops.object.armature_add(location=(0, 0, 0)); arm = bpy.context.active_object; arm.name = "Villager"
-bpy.ops.object.mode_set(mode='EDIT'); eb = arm.data.edit_bones
-root = eb[0]; root.name = "Root"; root.head = (0, 0, 0); root.tail = (0, 0, 0.1)
-def bone(name, head, tail, parent, connect=False):
-    b = eb.new(name); b.head = head; b.tail = tail; b.parent = eb[parent]; b.use_connect = connect; return b
-bone("Hips", (0, 0, HIP), (0, 0, HIP + 0.2), "Root")
-bone("Head", (0, 0, HIP + 0.22), (0, 0, HZ + 0.28), "Hips")
-for s, side in ((-1, "L"), (1, "R")):
-    bone("UpperArm" + side, (s * J["shoulder"], 0, SH), (s * J["elbow"], 0, J["elbowZ"]), "Hips")
-    bone("ForeArm" + side, (s * J["elbow"], 0, J["elbowZ"]), (s * J["hand"], 0, J["handZ"]), "UpperArm" + side, True)
-    bone("Thigh" + side, (s * J["leg"], 0, HIP), (s * J["leg"], 0, J["knee"]), "Hips")
-    bone("Shin" + side, (s * J["leg"], 0, J["knee"]), (s * J["leg"], 0, J["ankle"]), "Thigh" + side, True)
-bpy.ops.object.mode_set(mode='OBJECT')
-meshes = [body, *faces, *hairs, *hats, glasses]
-for o in meshes:
-    o.parent = arm
-    mod = o.modifiers.new("Armature", "ARMATURE"); mod.object = arm
-
-# ---------------------------------------------------------------- animasyon
-pb = arm.pose.bones
-for b in pb: b.rotation_mode = 'XYZ'
-def key(frame, **poses):
-    """poses: kemik -> (konum, (rx, ry, rz) derece). Belirtilmeyen kemikler dinlenme pozunda."""
-    for b in pb:
-        b.location = (0, 0, 0); b.rotation_euler = (0, 0, 0)
-    for name, (loc, rot) in poses.items():
-        pb[name].location = loc; pb[name].rotation_euler = [math.radians(a) for a in rot]
-    for b in pb:
-        b.keyframe_insert("location", frame=frame); b.keyframe_insert("rotation_euler", frame=frame)
-Z = (0, 0, 0)
-def R(x=0, y=0, z=0): return (Z, (x, y, z))
-def up(dz): return ((0, dz, 0), Z)  # Root/Hips kemikleri +Z'yi gösterir: yerel y = yukarı
-
-# idle 1-24: nefes
-for f, b in ((1, 0), (12, 1), (24, 0)):
-    key(f, Hips=up(0.012 * b), ForeArmL=R(x=-8), ForeArmR=R(x=-8), Head=R(x=2 * b))
-# walk 31-54: bacak ve kol salınımı, arka bacakta diz kırılır
-for f, ph in ((31, 0), (37, 1), (43, 0), (49, -1), (54, 0)):
-    a = 28 * ph
-    key(f, Hips=up(0.02 * (1 - abs(ph))),
-        ThighL=R(x=-a), ThighR=R(x=a), ShinL=R(x=max(0, a) * 0.9), ShinR=R(x=max(0, -a) * 0.9),
-        UpperArmL=R(x=a * 0.8), UpperArmR=R(x=-a * 0.8), ForeArmL=R(x=-15), ForeArmR=R(x=-15))
-SIT = dict(Root=up(0.16), ThighL=R(x=-90), ThighR=R(x=-90), ShinL=R(x=90), ShinR=R(x=90))
-# sitType 61-84: eller klavyede tıklar
-for i, f in enumerate(range(61, 85, 3)):
-    t = 7 if i % 2 == 0 else -7
-    key(f, **SIT, UpperArmL=R(x=-70), UpperArmR=R(x=-70), ForeArmL=R(x=-20 + t), ForeArmR=R(x=-20 - t), Head=R(x=6))
-# sitDoze 91-138: eller kucakta, baş yavaşça öne düşer
-for f, n in ((91, 0), (103, 0.6), (115, 1), (127, 0.6), (138, 0)):
-    key(f, **SIT, UpperArmL=R(x=-20), UpperArmR=R(x=-20), ForeArmL=R(x=-55), ForeArmR=R(x=-55),
-        Head=R(x=22 * n), Hips=up(-0.01 * n))
-# wave 141-164: sağ kol yana-yukarı, ön kol sallanır
-for f, w in ((141, 0), (147, 1), (153, -1), (159, 1), (164, 0)):
-    # Kollar kısa: ön kol -35..+15 dışında el kafanın içine girer (ölçüldü); hafif zıplama okunurluğu artırır.
-    key(f, UpperArmR=R(z=-125), ForeArmR=R(z=-10 + 25 * w), Head=R(z=4 * w), ForeArmL=R(x=-8), Hips=up(0.015 * abs(w)))
-# ---- v5 aşama 2: canlı köylü klipleri (AvatarClip.frames ile aynı kareler)
-TYPE = dict(UpperArmL=R(x=-70), UpperArmR=R(x=-70), ForeArmL=R(x=-20), ForeArmR=R(x=-20), Head=R(x=6))
-LAP = dict(UpperArmL=R(x=-20), UpperArmR=R(x=-20), ForeArmL=R(x=-55), ForeArmR=R(x=-55))
-REST = dict(ForeArmL=R(x=-8), ForeArmR=R(x=-8))
-def merge(*ds):
-    out = {}
-    for d in ds: out.update(d)
-    return out
-# lookAround 171-218: baş sola ve sağa döner (kemik ekseni etrafında)
-for f, y in ((171, 0), (183, 35), (195, 0), (207, -35), (218, 0)):
-    key(f, **REST, Head=R(y=y), Hips=up(0.008 * abs(y) / 35))
-# sitSip 221-268: sağ el ağza (kahve), baş hafif geriye
-SIP = dict(UpperArmR=R(x=-60), ForeArmR=R(x=-115))
-key(221, **SIT, **TYPE)
-key(231, **merge(SIT, TYPE, SIP, dict(Head=R(x=-4))))
-key(250, **merge(SIT, TYPE, SIP, dict(Head=R(x=-10))))
-key(259, **merge(SIT, TYPE, SIP, dict(Head=R(x=-4))))
-key(268, **SIT, **TYPE)
-# sitThink 271-318: el çenede, baş yana eğik
-THINK = dict(UpperArmR=R(x=-50), ForeArmR=R(x=-125))
-key(271, **SIT, **TYPE)
-key(281, **merge(SIT, TYPE, THINK, dict(Head=R(x=4, z=8))))
-key(295, **merge(SIT, TYPE, THINK, dict(Head=R(x=6, z=-6))))
-key(308, **merge(SIT, TYPE, THINK, dict(Head=R(x=4, z=8))))
-key(318, **SIT, **TYPE)
-# sitStretch 321-356: iki kol yukarı gerinme
-UP = dict(UpperArmL=R(z=150), UpperArmR=R(z=-150), Head=R(x=-10))
-key(321, **SIT, **TYPE)
-key(333, **merge(SIT, UP))
-key(345, **merge(SIT, UP, dict(Head=R(x=-14, z=5))))
-key(356, **SIT, **TYPE)
-# stretch 361-396: ayakta gerinme
-key(361, **REST)
-key(373, **UP, Hips=up(0.025))
-key(385, **merge(UP, dict(Head=R(x=-12, z=6))), Hips=up(0.03))
-key(396, **REST)
-# waitTap 401-424: eller belde, sağ ayak yere vurur
-HIPS = dict(UpperArmL=R(z=30), UpperArmR=R(z=-30), ForeArmL=R(x=-70), ForeArmR=R(x=-70), Head=R(z=-4))
-for f, tap in ((401, 0), (404, 1), (407, 0), (410, 1), (413, 0), (416, 1), (419, 0), (422, 1), (424, 0)):
-    key(f, **HIPS, ThighR=R(x=-12 * tap), ShinR=R(x=10 * tap))
-# cheer 431-454: çömel, zıpla (kollar yukarı), in
-key(431, **REST)
-key(435, Root=up(-0.05), ThighL=R(x=-35), ThighR=R(x=-35), ShinL=R(x=60), ShinR=R(x=60), UpperArmL=R(x=20), UpperArmR=R(x=20))
-key(441, Root=up(0.18), UpperArmL=R(z=150), UpperArmR=R(z=-150), Head=R(x=-10))
-key(447, Root=up(-0.04), ThighL=R(x=-28), ThighR=R(x=-28), ShinL=R(x=50), ShinR=R(x=50), UpperArmL=R(z=120), UpperArmR=R(z=-120))
-key(454, **REST)
-# inspect 461-508: öne eğilip bakar (bacaklar dik kalsın diye uyluklar telafi eder), sağ el işaret
-LEAN = dict(Hips=((0, 0, 0), (20, 0, 0)), ThighL=R(x=-20), ThighR=R(x=-20), UpperArmR=R(x=-35))
-key(461, **REST)
-key(471, **LEAN, Head=R(x=15))
-key(485, **LEAN, Head=R(x=18, z=10))
-key(497, **LEAN, Head=R(x=15, z=-6))
-key(508, **REST)
-# drink 511-546: ayakta bardaktan içer
-key(511, **REST)
-key(520, **SIP, Head=R(x=-4), ForeArmL=R(x=-8))
-key(535, **SIP, Head=R(x=-12), ForeArmL=R(x=-8))
-key(546, **REST)
-# sitDown 551-562 ve standUp 571-582: ayakta ↔ oturur (kollar kucakta)
-key(551, **REST)
-key(556, Root=up(0.06), ThighL=R(x=-50), ThighR=R(x=-50), ShinL=R(x=55), ShinR=R(x=55), UpperArmL=R(x=-25), UpperArmR=R(x=-25))
-key(562, **SIT, **LAP)
-key(571, **SIT, **LAP)
-key(577, Root=up(0.06), ThighL=R(x=-50), ThighR=R(x=-50), ShinL=R(x=55), ShinR=R(x=55), UpperArmL=R(x=-25), UpperArmR=R(x=-25))
-key(582, **REST)
-# sofaSit 591-638: koltukta (tabureden 4 cm alçak) arkasına yaslanmış, baş yavaşça bakınır
-SOFA = dict(Root=up(0.12), ThighL=R(x=-90), ThighR=R(x=-90), ShinL=R(x=90), ShinR=R(x=90),
-            UpperArmL=R(x=-15, z=12), UpperArmR=R(x=-15, z=-12), ForeArmL=R(x=-45), ForeArmR=R(x=-45))
-for f, y in ((591, 0), (603, 12), (615, 0), (627, -12), (638, 0)):
-    key(f, **SOFA, Head=R(x=-4, y=y), Hips=((0, 0.006 * abs(y) / 12, 0), (-6, 0, 0)))
-# ---- ofis hayatı: masa başı (oturarak) ve eşya klipleri (AvatarClip.frames ile aynı kareler)
-# sitDraw 641-688: tablete çizer (sağ ön kol küçük daireler), arada kalemi kaldırıp bakar
-DRAW = dict(UpperArmL=R(x=-55), ForeArmL=R(x=-30), UpperArmR=R(x=-62), Head=R(x=14))
-for f, (a, b) in zip(range(641, 677, 4), ((0, 0), (8, 6), (0, 10), (-8, 6), (0, 0), (8, -6), (0, -10), (-8, -6), (0, 0))):
-    key(f, **merge(SIT, DRAW, dict(ForeArmR=R(x=-25 + a, z=b))))
-key(682, **merge(SIT, DRAW, dict(ForeArmR=R(x=-60), Head=R(x=2, z=6))))
-key(688, **merge(SIT, DRAW, dict(ForeArmR=R(x=-25))))
-# sitWrite 691-738: sol el kâğıdı tutar, sağ el satır satır yazar
-WRITE = dict(UpperArmL=R(x=-50, z=10), ForeArmL=R(x=-40), UpperArmR=R(x=-58), Head=R(x=16, z=-4))
-for i, f in enumerate(range(691, 735, 4)):
-    key(f, **merge(SIT, WRITE, dict(ForeArmR=R(x=-28, z=-12 + 6 * (i % 5)))))
-key(738, **merge(SIT, WRITE, dict(ForeArmR=R(x=-28, z=-12))))
-# sitRead 741-788: kâğıdı iki elle göz hizasına kaldırıp okur, baş satırları izler
-READ = dict(UpperArmL=R(x=-75, z=8), UpperArmR=R(x=-75, z=-8), ForeArmL=R(x=-80), ForeArmR=R(x=-80))
-key(741, **SIT, **TYPE)
-for f, y in ((751, 6), (763, -6), (775, 6)):
-    key(f, **merge(SIT, READ, dict(Head=R(x=8, y=y))))
-key(788, **SIT, **TYPE)
-# readBook 791-862 (döngü): ayakta kitabı göğüs hizasında tutar, okur, ortada sayfa çevirir
-BOOK = dict(UpperArmL=R(x=-55, z=10), UpperArmR=R(x=-55, z=-10), ForeArmL=R(x=-75), ForeArmR=R(x=-75))
-key(791, **merge(BOOK, dict(Head=R(x=18, y=4))))
-key(809, **merge(BOOK, dict(Head=R(x=18, y=-4))))
-key(822, **merge(BOOK, dict(Head=R(x=16), ForeArmR=R(x=-75, z=-35))))
-key(830, **merge(BOOK, dict(Head=R(x=16), ForeArmR=R(x=-75, z=20))))
-key(845, **merge(BOOK, dict(Head=R(x=18, y=4))))
-key(862, **merge(BOOK, dict(Head=R(x=18, y=4))))
-# playArcade 865-912 (döngü): eller öndeki kumandada, hızlı kol ve beden hareketi
-ARC = dict(UpperArmL=R(x=-62, z=8), UpperArmR=R(x=-62, z=-8), Head=R(x=4))
-for i, f in enumerate(range(865, 913, 4)):
-    j = (-1) ** i
-    key(f, **merge(ARC, dict(ForeArmL=R(x=-30 + 10 * j, z=8 * j), ForeArmR=R(x=-30 - 12 * j),
-                             Hips=((0, 0.008 * (i % 2), 0), (0, 4 * j, 0)))))
-key(912, **merge(ARC, dict(ForeArmL=R(x=-30), ForeArmR=R(x=-30))))
-# drawBoard 915-962 (döngü): sağ kol öne-yukarı, tahtada yana çizer; baş çizgiyi izler
-for f, s_ in ((915, -1), (927, 1), (939, -1), (951, 1), (962, -1)):
-    key(f, UpperArmR=R(x=-125, z=-20 * s_), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=-8, y=8 * s_))
-# stepBackLook 965-1012: tahtadan geri çekilir, el çenede bakar, geri gelir
-key(965, UpperArmR=R(x=-125), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=-8))
-key(977, Root=((0, 0, -0.18), Z), **THINK, Head=R(x=-6, z=8))
-key(1000, Root=((0, 0, -0.18), Z), **THINK, Head=R(x=-6, z=-6))
-key(1012, UpperArmR=R(x=-125), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=-8))
-# brewCoffee 1015-1062: makineye uzanıp düğmeye basar, bekler, bardağı alıp göğse getirir
-key(1015, **REST)
-key(1023, UpperArmR=R(x=-85), ForeArmR=R(x=-10), ForeArmL=R(x=-8), Head=R(x=8))
-key(1027, UpperArmR=R(x=-85), ForeArmR=R(x=-25), ForeArmL=R(x=-8), Head=R(x=8))
-key(1040, **merge(HIPS, dict(Head=R(z=-6))))
-key(1050, UpperArmR=R(x=-70), ForeArmR=R(x=-20), ForeArmL=R(x=-8), Head=R(x=10))
-key(1062, UpperArmR=R(x=-40), ForeArmR=R(x=-100), ForeArmL=R(x=-8), Head=R(x=-4))
-scn.frame_start, scn.frame_end = 1, 1062
-
-# Doğrulama: el ve kalça konumları (sayısal) + her klipten bir kare (Workbench)
-def tail(name, frame):
-    scn.frame_set(frame); bpy.context.view_layer.update()
-    return arm.matrix_world @ pb[name].tail
-print("CHECK wave hand", [round(v, 2) for v in tail("ForeArmR", 147)], "head top z", round(HZ + 0.25, 2))
-print("CHECK sit knee", [round(v, 2) for v in tail("ThighL", 70)],
-      "foot", [round(v, 2) for v in tail("ShinL", 70)], "hand", [round(v, 2) for v in tail("ForeArmL", 70)])
-scn.render.engine = 'BLENDER_WORKBENCH'; scn.render.resolution_x = 320; scn.render.resolution_y = 320
-scn.display.shading.color_type = 'MATERIAL'
-cd = bpy.data.cameras.new("Preview"); cd.type = 'ORTHO'; cd.ortho_scale = 1.9
-cam = bpy.data.objects.new("Preview", cd); scn.collection.objects.link(cam); scn.camera = cam
-cam.location = Vector((0, 0, 0.6)) + Vector((1, -1, 0.9)).normalized() * 6
-cam.rotation_euler = (Vector((0, 0, 0.6)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
-DEFAULT_SHOWN = {"HairCap", "HairShort", "EyesRound", "MouthSmile", "Blush"}
-for h in [*faces, *hairs, *hats, glasses]: h.hide_render = h.name not in DEFAULT_SHOWN
-for name, frame in (("idle", 12), ("walk", 37), ("sitType", 64), ("sitDoze", 115), ("wave", 147),
-                    ("lookAround", 183), ("sitSip", 250), ("sitThink", 295), ("sitStretch", 340), ("stretch", 380),
-                    ("waitTap", 404), ("cheer", 441), ("inspect", 485), ("drink", 535), ("sitDown", 556), ("sofaSit", 603),
-                    ("sitDraw", 653), ("sitWrite", 703), ("sitRead", 763), ("readBook", 826), ("playArcade", 877),
-                    ("drawBoard", 927), ("stepBackLook", 990), ("brewCoffee", 1025)):
-    scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"pose_{name}.png"); bpy.ops.render.render(write_still=True)
-# Ofis hayatı klipleri yandan (+X): kolların ileri-yukarı hareketi okunur.
-cam.location = Vector((5, 0, 0.6)); cam.rotation_euler = (Vector((0, 0, 0.6)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
-cd.ortho_scale = 1.6
-for name, frame in (("sitDraw", 653), ("sitWrite", 703), ("sitRead", 763), ("readBook", 826), ("playArcade", 877),
-                    ("drawBoard", 927), ("stepBackLook", 990), ("brewCoffee", 1025), ("brewCoffee2", 1062)):
-    scn.frame_set(frame); scn.render.filepath = os.path.join(PREVIEW, f"side_{name}.png"); bpy.ops.render.render(write_still=True)
-# Varyantlar önden (yüz −Y'ye bakar): saç modelleri, şapkalar, yüz kombinasyonları.
-cam.location = Vector((0, -5, 0.9)); cam.rotation_euler = (Vector((0, 0, 0.9)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
-cd.ortho_scale = 0.75
-scn.frame_set(1)
-ALLV = [*faces, *hairs, *hats, glasses]
-def show(names, file):
-    for h in ALLV: h.hide_render = h.name not in names
-    scn.render.filepath = os.path.join(PREVIEW, file); bpy.ops.render.render(write_still=True)
-base = {"EyesRound", "MouthSmile", "Blush"}
-for i, st in enumerate(HAIR_STYLES):
-    cap_name = "Hair" + st.capitalize()
-    top = {"spiky": "HairSpikyTop", "curly": "HairCurlyTop", "bun": "HairBunTop"}.get(st)
-    show(base | {"HairCap", cap_name} | ({top} if top else set()), f"variant_hair{i + 1}.png")
-for hat in ("HatBeanie", "HatCap", "HatHeadphones"):
-    show(base | {"HairBob", hat}, f"variant_{hat}.png")
-show({"EyesHappy", "BrowsThin", "MouthOpen", "Freckles", "Blush", "HairCap", "HairShort", "Glasses"}, "variant_face1.png")
-show({"EyesSleepy", "BrowsBold", "MouthFlat", "HairCap", "HairLong"}, "variant_face2.png")
-for h in [*faces, *hairs, *hats, glasses]: h.hide_render = False
-bpy.data.objects.remove(cam, do_unlink=True)
-scn.frame_set(1)
 
 # ---------------------------------------------------------------- eşyalar
 SMALL_PART_LOD = True
@@ -677,10 +320,6 @@ for name, build in PROPS.items():
 # ---------------------------------------------------------------- Metal çizici için JSON (spec v4 §4)
 # Blender (x, y, z) -> Y-yukarı (x, z, -y). Renkler sRGB 8 bit; alfa = emissive gücü.
 YUP = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
-BONES = ["Root", "Hips", "Head", "UpperArmL", "ForeArmL", "ThighL", "ShinL", "UpperArmR", "ForeArmR", "ThighR", "ShinR"]
-KEYS = {1: (0.30, 0.55, 0.95), 2: (0.99, 0.84, 0.72), 3: (0.35, 0.20, 0.10),  # tişört, ten, saç
-        6: (0.25, 0.30, 0.45), 7: (0.55, 0.32, 0.20)}                         # pantolon, ayakkabı
-
 def lin_to_srgb(c):
     return 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
 
@@ -694,7 +333,7 @@ def material_info(m):
 def b64(array):
     return base64.b64encode(np.ascontiguousarray(array).tobytes()).decode("ascii")
 
-def mesh_json(objs, villager=False):
+def mesh_json(objs):
     dg = bpy.context.evaluated_depsgraph_get()
     verts, index_of, indices = [], {}, []
     for obj in objs:
@@ -702,80 +341,35 @@ def mesh_json(objs, villager=False):
         me = ev.to_mesh()
         me.calc_loop_triangles()
         uv_layer = me.uv_layers.active
-        group_names = [g.name for g in obj.vertex_groups]
-        vgroup, vvalue = VARIANTS.get(obj.name, (0, 0))
         world = YUP @ obj.matrix_world
         normal_m = world.to_3x3().inverted().transposed()
         for tri in me.loop_triangles:
             mat = me.materials[tri.material_index] if me.materials else None
             color, emit = material_info(mat)
-            part = 0
-            if villager:
-                for code, key in KEYS.items():
-                    if all(abs(a - b) < 0.02 for a, b in zip(color, key)):
-                        part = code
             rgba = tuple(int(round(lin_to_srgb(c) * 255)) for c in color) + (int(round(min(emit / 4.0, 1.0) * 255)),)
             for corner, loop in zip(range(3), tri.loops):
                 vi = tri.vertices[corner]
                 p = world @ me.vertices[vi].co
                 n = (normal_m @ Vector(tri.split_normals[corner])).normalized()
                 uv = tuple(uv_layer.data[loop].uv) if uv_layer else (0.0, 0.0)
-                bone = 0
-                if villager:
-                    groups = me.vertices[vi].groups
-                    if groups:
-                        name = group_names[max(groups, key=lambda g: g.weight).group]
-                        bone = BONES.index(name)
                 key = (round(p.x, 5), round(p.y, 5), round(p.z, 5), round(n.x, 3), round(n.y, 3), round(n.z, 3),
-                       round(uv[0], 4), round(uv[1], 4), rgba, bone, part, vgroup, vvalue)
+                       round(uv[0], 4), round(uv[1], 4), rgba)
                 if key not in index_of:
                     index_of[key] = len(verts)
-                    verts.append((p, n, uv, rgba, bone, part, vgroup, vvalue))
+                    verts.append((p, n, uv, rgba))
                 indices.append(index_of[key])
         ev.to_mesh_clear()
-    count = len(verts)
-    out = {
-        "vertexCount": count,
+    return {
+        "vertexCount": len(verts),
         "positions": b64(np.array([v[0][:] for v in verts], dtype=np.float32).reshape(-1)),
         "normals": b64(np.array([v[1][:] for v in verts], dtype=np.float32).reshape(-1)),
         "uvs": b64(np.array([v[2] for v in verts], dtype=np.float32).reshape(-1)),
         "colors": b64(np.array([v[3] for v in verts], dtype=np.uint8).reshape(-1)),
         "indices": b64(np.array(indices, dtype=np.uint32)),
     }
-    if villager:
-        out["bones"] = b64(np.array([v[4] for v in verts], dtype=np.uint8))
-        out["parts"] = b64(np.array([v[5] for v in verts], dtype=np.uint8))
-        out["variantGroups"] = b64(np.array([v[6] for v in verts], dtype=np.uint8))
-        out["variantValues"] = b64(np.array([v[7] for v in verts], dtype=np.uint8))
-    return out
 
-# Köylü dinlenme pozunda; klipler kare kare skinning matrisi (Y-yukarı uzayda).
-arm.data.pose_position = 'REST'
-bpy.context.view_layer.update()
-villager_json = mesh_json(meshes, villager=True)
-arm.data.pose_position = 'POSE'
-CLIP_RANGES = {"idle": (1, 24), "walk": (31, 54), "sitType": (61, 84), "sitDoze": (91, 138), "wave": (141, 164),
-               "lookAround": (171, 218), "sitSip": (221, 268), "sitThink": (271, 318), "sitStretch": (321, 356),
-               "stretch": (361, 396), "waitTap": (401, 424), "cheer": (431, 454), "inspect": (461, 508),
-               "drink": (511, 546), "sitDown": (551, 562), "standUp": (571, 582), "sofaSit": (591, 638),
-               "sitDraw": (641, 688), "sitWrite": (691, 738), "sitRead": (741, 788), "readBook": (791, 862),
-               "playArcade": (865, 912), "drawBoard": (915, 962), "stepBackLook": (965, 1012), "brewCoffee": (1015, 1062)}
-yup_inv = YUP.inverted()
-clips = {}
-for clip, (first, last) in CLIP_RANGES.items():
-    mats = []
-    for f in range(first, last + 1):
-        scn.frame_set(f)
-        bpy.context.view_layer.update()
-        for name in BONES:
-            pb = arm.pose.bones[name]
-            skin = YUP @ arm.matrix_world @ pb.matrix @ pb.bone.matrix_local.inverted() @ arm.matrix_world.inverted() @ yup_inv
-            mats.extend(skin.col[c][r] for c in range(4) for r in range(4))
-    clips[clip] = {"frames": last - first + 1, "matrices": b64(np.array(mats, dtype=np.float32))}
-scn.frame_set(1)
-art = {"version": 1, "bones": BONES, "clips": clips, "villager": villager_json,
-       "props": {name: mesh_json([o]) for name, o in PROP_OBJS.items()}}
+art = {"version": 2, "props": {name: mesh_json([o]) for name, o in PROP_OBJS.items()}}
 with open(os.path.join(OUT, "office-art.json"), "w") as f:
     json.dump(art, f)
-print("JSON", os.path.getsize(os.path.join(OUT, "office-art.json")), "villager verts", villager_json["vertexCount"])
+print("JSON", os.path.getsize(os.path.join(OUT, "office-art.json")), "props", len(PROP_OBJS))
 print("DONE")
