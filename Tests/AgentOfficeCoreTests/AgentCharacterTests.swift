@@ -114,3 +114,36 @@ import Testing
         try? fm.removeItem(at: work)
     }
 }
+
+/// İndirilmiş paketin temel kataloğa birleşmesi: öğeler eklenir, meshler ve dokular paketin kimliğiyle ayrılır.
+@Suite struct PackMergeTests {
+    @Test func packItemsJoinTheCatalogAndFallBackWhenRemoved() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory.appendingPathComponent("merge-\(UUID().uuidString)")
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let mesh: [String: Any] = [
+            "vertexCount": 3, "positions": CharacterArtTests.b64([Float](repeating: 0, count: 9)),
+            "normals": CharacterArtTests.b64([Float](repeating: 0, count: 9)), "uvs": CharacterArtTests.b64([Float](repeating: 0, count: 6)),
+            "joints": CharacterArtTests.b64([UInt8](repeating: 0, count: 12)), "weights": CharacterArtTests.b64([UInt8](repeating: 0, count: 12)),
+            "indices": CharacterArtTests.b64([UInt32]([0, 1, 2])),
+        ]
+        let part: [String: Any] = ["mesh": "top/coat", "mode": "design", "texture": "tex/a_m.png", "detail": "tex/a_d.png", "tint": "top",
+                                   "colors": [[1, 0, 0], [0, 0, 1]]]
+        let pack: [String: Any] = ["meshes": ["top/coat": mesh],
+                                   "outfits": [["name": "coat.tweed", "parts": [part], "title": "Tweed Coat", "titles": ["tr": "Tüvit Kaban"]]]]
+        try JSONSerialization.data(withJSONObject: pack).write(to: dir.appendingPathComponent("pack.json"))
+        let base = try CharacterArt.decode(CharacterArtTests.pack(fallbacks: ["coat": "tee"]), directory: URL(fileURLWithPath: "/tmp"))
+        var art = base
+        try art.merge(packAt: dir, id: "wardrobe")
+        let i = try #require(art.outfits.firstIndex { $0.name == "coat.tweed" })
+        #expect(art.resolve("coat.tweed", in: art.outfits) == i)
+        let item = art.outfits[i]
+        #expect(item.isDesign && item.title(language: "tr") == "Tüvit Kaban" && item.title(language: "de") == "Tweed Coat")
+        #expect(item.parts[0].mesh == "wardrobe:top/coat" && art.meshes["wardrobe:top/coat"] != nil)
+        #expect(item.parts[0].texture == dir.appendingPathComponent("tex/a_m.png").path)
+        #expect(art.packs == ["wardrobe"])
+        // Paket yokken aynı kimlik temel karşılığa düşer.
+        #expect(base.outfits[base.resolve("coat.tweed", in: base.outfits)].name == "tee")
+        try? fm.removeItem(at: dir)
+    }
+}

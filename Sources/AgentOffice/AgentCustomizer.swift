@@ -499,7 +499,7 @@ struct LookSections: View {
     }
 
     static func title(_ entry: WardrobeCatalog.Entry, kind: Kind) -> LocalizedStringKey {
-        if let title = entry.title { return LocalizedStringKey(title) }
+        if let title = entry.title { return LocalizedStringKey(stringLiteral: title) }
         switch kind {
         case .top: if let t = AvatarLook.Top(rawValue: entry.id) { return name(t) }
         case .bottom: if let b = AvatarLook.Bottom(rawValue: entry.id) { return name(b) }

@@ -35,12 +35,16 @@ public struct CharacterArt: Sendable {
         public var parts: [Part]
         /// Üst kıyafette: elbise/tulum (alt giyilmez).
         public var onepiece: Bool?
-        /// Listede görünen ad (paket öğeleri; temel öğelerin adı uygulamada çevrilir).
+        /// Listede görünen ad (paket öğeleri; temel öğelerin adı uygulamada çevrilir) ve dillere göre çevirileri.
         public var title: String?
+        public var titles: [String: String]?
 
-        public init(name: String, parts: [Part], onepiece: Bool? = nil, title: String? = nil) {
-            self.name = name; self.parts = parts; self.onepiece = onepiece; self.title = title
+        public init(name: String, parts: [Part], onepiece: Bool? = nil, title: String? = nil, titles: [String: String]? = nil) {
+            self.name = name; self.parts = parts; self.onepiece = onepiece; self.title = title; self.titles = titles
         }
+
+        /// Dile göre ad (ör. "tr"), yoksa İngilizce ad.
+        public func title(language: String?) -> String? { language.flatMap { titles?[$0] } ?? title }
 
         /// Renkleri tasarımdan gelir (görünüşün palet renkleri değil, yalnız serbest renkler uygulanır).
         public var isDesign: Bool { parts.contains { $0.mode == .design } }
@@ -164,7 +168,7 @@ public struct CharacterArt: Sendable {
             return p
         }
         func items(_ list: [Item]?) -> [Item] {
-            (list ?? []).map { Item(name: $0.name, parts: $0.parts.map(local), onepiece: $0.onepiece, title: $0.title) }
+            (list ?? []).map { Item(name: $0.name, parts: $0.parts.map(local), onepiece: $0.onepiece, title: $0.title, titles: $0.titles) }
         }
         let added = items(raw.outfits) + items(raw.bottoms) + items(raw.shoes) + items(raw.hats)
         if let missing = added.flatMap(\.parts).first(where: { packMeshes[String($0.mesh.dropFirst(id.count + 1))] == nil }) {

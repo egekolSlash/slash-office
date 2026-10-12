@@ -30,6 +30,20 @@ enum OfficeSnapshot {
         guard let gpu = await OfficeGPU.shared(), let renderer = try? OfficeMetalRenderer(gpu: gpu) else {
             print("office snapshot: assets could not be loaded"); exit(1)
         }
+        // `--wardrobe`: köylülere kurulu paketlerden (varsa) sırayla kıyafet giydirir.
+        if arguments.contains("--wardrobe") {
+            let art = gpu.character.art
+            let tops = art.outfits.filter { $0.parts.first?.mesh.contains(":") == true }
+            let bottoms = art.bottoms.filter { $0.parts.first?.mesh.contains(":") == true }
+            let shoes = art.shoes.filter { $0.parts.first?.mesh.contains(":") == true }
+            for (k, session) in model.store.sessions.enumerated() where !tops.isEmpty {
+                var look = model.look(for: session.id)
+                look.top = tops[(k * 7) % tops.count].name
+                if !bottoms.isEmpty { look.bottom = bottoms[(k * 3) % bottoms.count].name }
+                if !shoes.isEmpty { look.shoes = shoes[(k * 5) % shoes.count].name }
+                model.avatarLooks[session.id] = look
+            }
+        }
         // `--size WxH`: görünüm boyutu (ör. mini ofis gibi küçük).
         let size: (width: Int, height: Int) = arguments.firstIndex(of: "--size").flatMap { i -> (Int, Int)? in
             let parts = arguments[i + 1].split(separator: "x").compactMap { Int($0) }

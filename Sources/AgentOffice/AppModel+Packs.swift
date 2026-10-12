@@ -26,7 +26,8 @@ struct WardrobeCatalog: Equatable {
                 let mesh = item.parts.first?.mesh ?? ""
                 let pack = mesh.contains(":") ? String(mesh[..<mesh.firstIndex(of: ":")!]) : nil
                 let colors = item.parts.first { $0.mode == .design }?.colors
-                return Entry(id: item.name, title: item.title, onepiece: item.onepiece == true, design: item.isDesign, colors: colors,
+                return Entry(id: item.name, title: item.title(language: Locale.current.language.languageCode?.identifier),
+                             onepiece: item.onepiece == true, design: item.isDesign, colors: colors,
                              pack: pack)
             }
         }
