@@ -44,9 +44,6 @@ struct SessionList: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             Text(verbatim: model.displayName(for: session.id)).font(.headline)
-                            if model.displayName(for: session.id) != session.title {
-                                Text(verbatim: session.title).font(.caption).foregroundStyle(.secondary)
-                            }
                             if session.unseenFinish { FinishedBadge(tooltip: false) }
                         }
                         // İpucu (`.help`) yok: satır içindeki ipucu tıklamayı yutar, satır seçilemezdi.

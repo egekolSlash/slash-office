@@ -48,7 +48,7 @@ struct AgentCustomizer: View {
                             ProjectIconView(icon: model.projectIcons[session.cwd], size: 20, isShell: model.kind(of: session.id) == .shell)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(verbatim: model.displayName(for: session.id)).lineLimit(1)
-                                Text(verbatim: model.character(for: session.id) == nil ? String(localized: "Random look") : session.title)
+                                Text(verbatim: model.character(for: session.id)?.label ?? String(localized: "Random look"))
                                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }
                         }

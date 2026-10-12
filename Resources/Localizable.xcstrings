@@ -3301,6 +3301,16 @@
         }
       }
     },
+    "The pack %@ could not be downloaded (server responded %lld).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ paketi indirilemedi (sunucu %2$lld yanıtını verdi)."
+          }
+        }
+      }
+    },
     "The pack %@ could not be downloaded: %@": {
       "localizations": {
         "tr": {
@@ -3317,6 +3327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ paketi doğrulanamadı (sağlama toplamı uyuşmuyor); kurulmadı."
+          }
+        }
+      }
+    },
+    "The pack %@ is not published yet; try again later.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ paketi henüz yayınlanmadı; daha sonra tekrar dene."
           }
         }
       }

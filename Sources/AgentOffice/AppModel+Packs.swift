@@ -66,7 +66,10 @@ extension AppModel {
             let (file, response) = try await URLSession.shared.download(from: url)
             defer { try? FileManager.default.removeItem(at: file) }
             if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                throw URLError(.badServerResponse)
+                errorMessage = http.statusCode == 404
+                    ? String(localized: "The pack \(info.title) is not published yet; try again later.")
+                    : String(localized: "The pack \(info.title) could not be downloaded (server responded \(http.statusCode)).")
+                return
             }
             try await Task.detached(priority: .userInitiated) { try PackStore.install(zip: file, info: info) }.value
             await reloadPacks()

@@ -655,10 +655,9 @@ extension AppModel {
         look(for: id).shirtColor.map { AvatarLook.shirtColors[$0 % AvatarLook.shirtColors.count] } ?? projectColor(for: id)
     }
 
-    /// Köylünün adı (karakterin ya da elle verilen), yoksa oturum başlığı: listede, panel başlığında ve bildirimde.
-    func displayName(for id: String) -> String {
-        character(for: id)?.name ?? look(for: id).displayName(title: store.session(id)?.title ?? "?")
-    }
+    /// Listede, panel başlığında ve bildirimde oturumun adı: her zaman projenin (oturumun) başlığı. Karakterin adı
+    /// yalnız ofiste köylünün üstündeki etikette ve özelleştirme penceresinde görünür.
+    func displayName(for id: String) -> String { store.session(id)?.title ?? "?" }
 
     func style(for roomKey: String) -> RoomStyle { rooms[roomKey]?.style ?? RoomStyle.default(for: roomKey) }
 
