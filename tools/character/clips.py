@@ -103,7 +103,7 @@ def sample(pack, name, t):
 # ---------------------------------------------------------------- temel pozlar
 # Sahne (avatar uzayı, metre): tabure üstü 0,46 (merkez z≈+0,08), masa üstü 0,565, klavye z≈+0,22; ağız ayakta y≈0,70,
 # otururken ≈0,86 (yüz önü z≈0,18). L = karakterin solu (+x), R = sağı (-x).
-STAND = {"UpperArm_L": (0, 0, -74), "UpperArm_R": (0, 0, 74), "ForeArm_L": (0, -12, 0), "ForeArm_R": (0, 12, 0)}
+STAND = {"UpperArm_L": (0, 0, -67), "UpperArm_R": (0, 0, 67), "ForeArm_L": (0, -12, 0), "ForeArm_R": (0, 12, 0)}
 SIT = merge(STAND, {"Thigh_L": (-86, 0, 0), "Thigh_R": (-86, 0, 0), "Shin_L": (80, 0, 0), "Shin_R": (80, 0, 0),
                     "Foot_L": (-8, 0, 0), "Foot_R": (-8, 0, 0), "Spine1": (3, 0, 0), "_off": (0, 0.16, 0.02)})
 LAP = {"_ikL": (0.08, 0.53, 0.13), "_ikR": (-0.08, 0.53, 0.13)}

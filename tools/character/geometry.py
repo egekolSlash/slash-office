@@ -5,13 +5,20 @@ import numpy as np
 
 
 class Mesh:
-    def __init__(self, positions=None, uvs=None, faces=None):
+    def __init__(self, positions=None, uvs=None, faces=None, region=None):
         self.p = np.zeros((0, 3)) if positions is None else np.asarray(positions, float)
         self.uv = np.zeros((0, 2)) if uvs is None else np.asarray(uvs, float)
         self.f = np.zeros((0, 3), int) if faces is None else np.asarray(faces, int)
+        # Köşe başına deri bölgesi (ör. "arm"); None: mesh'in genel bölgesi (build_character.add_mesh).
+        self.region = [None] * len(self.p) if region is None else list(region)
 
     def __add__(self, other):
-        return Mesh(np.r_[self.p, other.p], np.r_[self.uv, other.uv], np.r_[self.f, other.f + len(self.p)])
+        return Mesh(np.r_[self.p, other.p], np.r_[self.uv, other.uv], np.r_[self.f, other.f + len(self.p)],
+                    self.region + other.region)
+
+    def tagged(self, region):
+        """Bütün köşeleri `region` bölgesine bağlar (kol parçaları gövdeyle aynı mesh'te olsa da kola göre deri alır)."""
+        return Mesh(self.p, self.uv, self.f, [region] * len(self.p))
 
     def normals(self):
         n = np.zeros_like(self.p)
@@ -23,7 +30,7 @@ class Mesh:
         return n / np.where(length == 0, 1, length)
 
     def transformed(self, fn):
-        return Mesh(fn(self.p.copy()), self.uv.copy(), self.f.copy())
+        return Mesh(fn(self.p.copy()), self.uv.copy(), self.f.copy(), self.region)
 
     @property
     def triangles(self):

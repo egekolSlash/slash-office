@@ -71,14 +71,10 @@ def weights(p, region):
         return {"Hips": 1.0}
     if region == "foot":
         return {"Foot_" + side: 1.0}
-    if ax > 0.075 and y > 0.47 and region != "leg":
-        w = chain(ax, [0.030, 0.078, 0.203, 0.318], ["Shoulder_" + side, "UpperArm_" + side, "ForeArm_" + side, "Hand_" + side],
-                  0.03)
-        body = float(smooth(0.11, 0.07, ax))   # omuz derisi gövdeye karışır
-        if body > 0:
-            w = {k: v * (1 - body) for k, v in w.items()}
-            w["Spine3"] = w.get("Spine3", 0) + body
-        return w
+    if region == "arm":
+        # Kol, kol ağzı ve el: yalnız kol zinciri; kökü (gövdenin içinde kalan kapak) omuza yumuşar.
+        return chain(ax, [0.030, 0.078, 0.203, 0.318], ["Shoulder_" + side, "UpperArm_" + side, "ForeArm_" + side, "Hand_" + side],
+                     0.03)
     if y < 0.36 and (region == "leg" or ax > 0.02):
         w = chain(-y, [-0.35, -0.168, -0.055], ["Thigh_" + side, "Shin_" + side, "Foot_" + side], 0.035)
         hip = float(smooth(0.30, 0.37, y)) * (0.4 if region != "leg" else 0.25)
@@ -88,6 +84,7 @@ def weights(p, region):
         return w
     if y > 0.60:
         return {"Neck": 1.0}
+    # Gövde (ve gövde kabukları): yalnız omurga; kol kalkınca yanları kola çekilmez (koltuk altında perde olmasın).
     return chain(y, [0.0, 0.38, 0.45, 0.52], ["Hips", "Spine1", "Spine2", "Spine3"], 0.035)
 
 
@@ -102,8 +99,8 @@ def b64(fmt, values):
 def add_mesh(name, mesh, region, normals=None):
     n = mesh.normals() if normals is None else normals
     joints, wts = [], []
-    for p in mesh.p:
-        w = sorted(weights(p, region).items(), key=lambda kv: -kv[1])[:4]
+    for p, own in zip(mesh.p, mesh.region):
+        w = sorted(weights(p, own or region).items(), key=lambda kv: -kv[1])[:4]
         total = sum(v for _, v in w) or 1
         q = [int(round(255 * v / total)) for _, v in w]
         q[0] += 255 - sum(q)
@@ -197,8 +194,8 @@ def split_head(mesh):
 face = split_head(head_full)
 
 # ---------------------------------------------------------------- gövde (T-pozu)
-torso = G.lathe([(0.300, 0.050), (0.310, 0.092), (0.350, 0.106), (0.430, 0.112), (0.500, 0.106), (0.550, 0.092),
-                 (0.590, 0.068), (0.625, 0.030)], segments=16, center=(0, 0, -0.01), zscale=0.86, cap_bottom=True)
+TORSO = [(0.310, 0.092), (0.350, 0.108), (0.430, 0.110), (0.490, 0.098), (0.530, 0.088), (0.565, 0.080), (0.595, 0.062)]
+torso = G.lathe([(0.300, 0.050)] + TORSO + [(0.625, 0.030)], segments=16, center=(0, 0, -0.01), zscale=0.86, cap_bottom=True)
 arms = G.Mesh()
 legs = G.Mesh()
 hands = G.Mesh()
@@ -218,8 +215,8 @@ BODY = [
     part(add_mesh("body/eyes", face["eyes"][0], "head", face["eyes"][1]), "eye", tint="skin"),
     part(add_mesh("body/mouth", face["mouth"][0], "head", face["mouth"][1]), "mouth", tint="skin"),
     part(add_mesh("body/torso", torso, "torso"), "flat", tint="skin"),
-    part(add_mesh("body/arms", arms, "torso"), "flat", tint="skin"),
-    part(add_mesh("body/hands", hands, "torso"), "flat", tint="skin"),
+    part(add_mesh("body/arms", arms, "arm"), "flat", tint="skin"),
+    part(add_mesh("body/hands", hands, "arm"), "flat", tint="skin"),
     part(add_mesh("body/legs", legs, "leg"), "flat", tint="skin"),
     part(add_mesh("body/socks", socks, "foot"), "flat", color=[0.95, 0.95, 0.95]),
 ]
@@ -286,8 +283,7 @@ PATTERN_TEX = [save_png(T.pattern_texture(n), "pattern/%s.png" % n) for n in T.P
 
 
 def shell_torso(y0, y1, grow=0.010, segments=16):
-    prof = [(y, r + grow) for y, r in [(0.300, 0.092), (0.350, 0.106), (0.430, 0.112), (0.500, 0.106), (0.550, 0.092),
-                                       (0.590, 0.068), (0.618, 0.040)] if y0 - 1e-6 <= y <= y1 + 1e-6]
+    prof = [(y, r + grow) for y, r in [(0.300, 0.092)] + TORSO[1:] + [(0.618, 0.040)] if y0 - 1e-6 <= y <= y1 + 1e-6]
     return G.lathe(prof, segments, center=(0, 0, -0.01), zscale=0.86, u_repeat=4, v_scale=8)
 
 
@@ -297,7 +293,7 @@ def sleeves(x1, grow=0.008, puff=0.0):
     for x in (1, -1):
         m = m + G.tube((0.055 * x, 0.571, -0.021), (x1 * x, 0.571, -0.021), 0.034 + grow + 0.006 + puff * 0.5,
                        0.031 + grow + puff, 10, 3, cap0=True, cap1=False, u_repeat=2, v_scale=8)
-    return m
+    return m.tagged("arm")
 
 
 def skirt(y_top, y_bottom, r_top, r_bottom):

@@ -215,8 +215,8 @@ def styles(head):
     curls = G.Mesh()
     curly_line = L(0.95, 0.76, 0.66)
     golden = math.pi * (3 - math.sqrt(5))
-    for k in range(90):
-        y = 1 - 2 * (k + 0.5) / 90
+    for k in range(84):
+        y = 1 - 2 * (k + 0.5) / 84
         polar, ph = math.acos(y), (k * golden) % (2 * math.pi) - math.pi
         if polar > curly_line(ph) - 0.10:
             continue
