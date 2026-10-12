@@ -26,6 +26,9 @@ public enum AvatarClip: String, CaseIterable, Sendable {
     case lookAround, sitSip, sitThink, sitStretch, stretch, waitTap, cheer, inspect, drink, sitDown, standUp, sofaSit
     // Ofis hayatı: masa başı (oturarak) ve eşya klipleri (Blender 641–1062).
     case sitDraw, sitWrite, sitRead, readBook, playArcade, drawBoard, stepBackLook, brewCoffee
+    // Tepkiler (yalnız karakter paketinde var, klasik köylüde dinlenme pozu): izin beklerken
+    // başını kaşıma, soru gelince fark edip zıplama.
+    case scratchHead, notice
 
     public var frames: ClosedRange<Int> {
         switch self {
@@ -54,6 +57,8 @@ public enum AvatarClip: String, CaseIterable, Sendable {
         case .drawBoard: 915...962
         case .stepBackLook: 965...1012
         case .brewCoffee: 1015...1062
+        case .scratchHead: 1071...1118
+        case .notice: 1121...1138
         }
     }
 
@@ -71,6 +76,19 @@ public enum AvatarClip: String, CaseIterable, Sendable {
         case .sitType, .sitDoze, .sitSip, .sitThink, .sitStretch, .sofaSit, .sitDraw, .sitWrite, .sitRead: true
         default: false
         }
+    }
+
+    /// Klasik (Blender'da pişirilmiş 11 kemikli) köylü dosyasında olan klipler.
+    public var classic: Bool { self != .scratchHead && self != .notice }
+
+    /// İki klip arası geçiş süresi (sn): oturma/kalkma ve tepkiler kısa (klipler zaten uyumlu pozda başlar/biter),
+    /// yürümeye giriş/çıkış orta, oturarak yapılan hareketler arası daha uzun ve sakin.
+    public static func fade(from a: AvatarClip, to b: AvatarClip) -> Double {
+        if [a, b].contains(.sitDown) || [a, b].contains(.standUp) { return 0.12 }
+        if b == .notice || b == .cheer { return 0.12 }
+        if a == .walk || b == .walk { return 0.2 }
+        if a.seated && b.seated { return 0.35 }
+        return 0.25
     }
 
     /// Süre (sn): klipler 24 fps, son kare ilkine denk.

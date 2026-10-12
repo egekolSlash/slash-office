@@ -38,6 +38,8 @@ public struct AvatarSim: Sendable {
     struct Avatar: Sendable {
         var instance: AvatarInstance
         var behavior: AvatarBehavior
+        /// Yürüme hızı (m/sn): kalkışta artar, varışa yakın azalır.
+        var speed = 0.0
         var activity: AvatarActivity
         var unseenFinish: Bool
         var desk: OfficePlan.Desk
@@ -128,6 +130,12 @@ public struct AvatarSim: Sendable {
                 avatar.instance.look = look
                 avatar.instance.shirtColor = SIMD3(Float(shirt.red), Float(shirt.green), Float(shirt.blue))
                 avatar.instance.waving = activity == .waving
+                let reason: AvatarInstance.WaitReason? = switch info.state {
+                case .waiting(.permission): .permission
+                case .waiting(.question): .question
+                default: nil
+                }
+                avatar.instance.waitReason = reason
                 let finishedNow = info.unseenFinish && !(existing?.unseenFinish ?? true)
                 let moved = existing.map { $0.room.key != room.key || $0.room.corridorEdgeX != room.corridorEdgeX
                     || $0.room.z != room.z || $0.desk != desk } ?? false
@@ -139,6 +147,8 @@ public struct AvatarSim: Sendable {
                     avatar.activity = activity
                     avatar.behavior.setActivity(activity, finishedNow: finishedNow)
                 }
+                // Bekleme türü etkinlik değişmeden de değişebilir (izin → soru); soru yeni geldiyse köylü fark eder.
+                avatar.behavior.setWaitReason(reason)
                 avatars[desk.id] = avatar
                 if existing == nil {
                     // İlk karar hemen: canlıysa kapıdan yürür, değilse yerinde başlar.
@@ -222,10 +232,10 @@ public struct AvatarSim: Sendable {
             // Yürürken ya da başka bir hareketin ortasında değilse.
             guard avatar.path.isEmpty, avatar.action == nil, avatar.target != nil else {
                 // Yürürken ya da kalkarken: sevinç gibi önemli hareketler varınca oynar.
-                if clip == .cheer { avatar.pendingShot = clip; avatars[id] = avatar }
+                if clip == .cheer || clip == .notice { avatar.pendingShot = clip; avatars[id] = avatar }
                 return
             }
-            if clip.seated != avatar.seated && clip != .cheer { return }
+            if clip.seated != avatar.seated && clip != .cheer && clip != .notice { return }
             avatar.action = .oneShot(remaining: clip.duration, loop: avatar.target?.loop ?? .idle)
             avatar.instance.play(clip, skeleton: skeleton)
             avatars[id] = avatar
@@ -280,6 +290,7 @@ public struct AvatarSim: Sendable {
             avatar.point = target.seat ?? target.point
             avatar.seated = target.seat != nil
             avatar.instance.facing = Float(target.facing)
+            avatar.instance.facingGoal = nil
             avatar.instance.position = Self.position(avatar.point)
             avatar.instance.play(target.loop, skeleton: skeleton)
             // Yerinde başladı (yürümeden): kalma süresi şimdi başlar.
@@ -350,7 +361,9 @@ public struct AvatarSim: Sendable {
         guard var avatar = avatars[id], let target = avatar.target else { return }
         if target.leave { avatars[id] = nil; return }
         avatar.behavior.arrived()
-        avatar.instance.facing = Float(target.facing)
+        avatar.speed = 0
+        avatar.instance.clipRate = 1
+        avatar.instance.turn(to: Float(target.facing))
         if let seat = target.seat {
             avatar.action = .sitDown(remaining: AvatarClip.sitDown.duration, from: avatar.point, to: seat,
                                      loop: target.loop, oneShot: target.oneShot)
@@ -412,11 +425,18 @@ public struct AvatarSim: Sendable {
             return
         }
         guard !avatar.path.isEmpty else { avatars[id] = avatar; return }
-        var budget = AvatarRoute.speed * dt
+        // Kalkışta hızlanır, varışa yakın yavaşlar (durma mesafesi); yürüme klibi hızla orantılı oynar.
+        var remaining = 0.0
+        var from = avatar.point
+        for p in avatar.path { remaining += from.distance(to: p); from = p }
+        let accel = 5.0
+        avatar.speed = min(AvatarRoute.speed, avatar.speed + accel * dt, max(0.35, (2 * accel * remaining).squareRoot()))
+        avatar.instance.clipRate = avatar.instance.clip == .walk ? max(0.45, avatar.speed / AvatarRoute.speed) : 1
+        var budget = avatar.speed * dt
         while budget > 0, let next = avatar.path.first {
             let dx = next.x - avatar.point.x, dz = next.z - avatar.point.z
             let distance = hypot(dx, dz)
-            if distance > 0.001 { avatar.instance.facing = Float(atan2(dx, dz)) }
+            if distance > 0.001 { avatar.instance.turn(to: Float(atan2(dx, dz))) }
             if distance <= budget {
                 avatar.point = next
                 avatar.path.removeFirst()

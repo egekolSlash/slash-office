@@ -23,6 +23,11 @@ final class OfficeGPU: @unchecked Sendable {
     let villagerIndexCount: Int
     let ringVertices, ringIndices: MTLBuffer
     let ringIndexCount: Int
+    /// Karakter paketi yüklendiyse köylüler onunla çizilir (iskelet de onunki); yoksa klasik köylü.
+    let character: CharacterGPU?
+    /// Baş üstü efektleri ve baş kemiği + dinlenmedeki baş tepesi (efektlerin dayanağı).
+    let effects: OfficeEffects?
+    let head: (bone: Int, top: SIMD3<Float>)
 
     private static let loading = Task.detached(priority: .userInitiated) { () -> OfficeGPU? in
         let repoRoot = URL(fileURLWithPath: #filePath)
@@ -33,7 +38,13 @@ final class OfficeGPU: @unchecked Sendable {
         }
         do {
             let art = try OfficeArtFile.load(from: dir.appendingPathComponent("office-art.json"))
-            let gpu = try OfficeGPU(art: art)
+            var character: CharacterArt?
+            if let charDir = CharacterArt.find(bundleResources: Bundle.main.resourceURL, repoRoot: repoRoot) {
+                do { character = try CharacterArt.load(directory: charDir) } catch {
+                    DebugLog.write("character pack failed: \(error)")
+                }
+            }
+            let gpu = try OfficeGPU(art: art, character: character)
             // JSON çözümünün geçici bellekleri sisteme geri verilsin.
             malloc_zone_pressure_relief(nil, 0)
             DebugLog.write("office metal resources loaded from \(dir.path)")
@@ -49,13 +60,22 @@ final class OfficeGPU: @unchecked Sendable {
 
     enum Failure: Error { case noDevice, resource(String) }
 
-    init(art: OfficeArtFile) throws {
+    init(art: OfficeArtFile, character characterArt: CharacterArt? = nil) throws {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else { throw Failure.noDevice }
         self.device = device
         self.queue = queue
         self.art = art
-        skeleton = VillagerSkeleton(art: art)
         let library = try device.makeLibrary(source: OfficeShaders.source, options: nil)
+        if let characterArt, let character = try? CharacterGPU(art: characterArt, device: device, queue: queue, library: library) {
+            self.character = character
+            skeleton = characterArt.skeleton
+            head = (characterArt.bones.firstIndex(of: "Head") ?? 0, SIMD3(0, 1.05, -0.03))
+        } else {
+            character = nil
+            skeleton = VillagerSkeleton(art: art)
+            head = (art.bones.firstIndex(of: "Head") ?? 0, SIMD3(0, 1.10, 0))
+        }
+        effects = try? OfficeEffects(device: device, queue: queue, library: library)
         let vertex = Self.vertexDescriptor()
 
         func pipe(_ vs: String, _ fs: String?, color: Bool, blend: Bool = false, samples: Int = OfficeGPU.sampleCount) throws -> MTLRenderPipelineState {
@@ -280,6 +300,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     init(gpu: OfficeGPU) throws {
         self.gpu = gpu
         Self.checkLayouts()
+        CharacterGPU.checkLayout()
         villagerBuffers = Array(repeating: nil, count: Self.framesInFlight)
         boneBuffers = Array(repeating: nil, count: Self.framesInFlight)
         ringBuffers = Array(repeating: nil, count: Self.framesInFlight)
@@ -354,6 +375,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
                          light: SIMD4(Float(lighting.emissive), Float(lighting.stars), Float(lighting.interior), 0))
         let villagerCount = writeVillagers(avatars)
         let ringCount = writeRings(avatars, time: time)
+        let characterItems = villagerCount > 0 ? gpu.character?.items(for: avatars, boneCount: gpu.skeleton.boneCount, time: time) : nil
 
         if staticShadowDirty, let vb = worldVertices, let ib = worldIndices, let staticShadow {
             staticShadowDirty = false
@@ -366,6 +388,11 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         }
         if villagerCount > 0, let villagerShadow {
             shadowPass(cb, villagerShadow) { e in
+                if let character = gpu.character, let characterItems {
+                    bindVillagers(e, &u)
+                    character.encode(characterItems, on: e, shadow: true)
+                    return
+                }
                 e.setRenderPipelineState(gpu.villagerShadowPipe)
                 bindVillagers(e, &u)
                 e.drawIndexedPrimitives(type: .triangle, indexCount: gpu.villagerIndexCount, indexType: .uint32,
@@ -408,11 +435,30 @@ final class OfficeMetalRenderer: @unchecked Sendable {
             e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
             e.drawIndexedPrimitives(type: .triangle, indexCount: worldIndexCount, indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0)
         }
-        if villagerCount > 0 {
+        if villagerCount > 0, let character = gpu.character, let characterItems {
+            bindVillagers(e, &u)
+            character.encode(characterItems, on: e, shadow: false)
+        } else if villagerCount > 0 {
             e.setRenderPipelineState(gpu.villagerPipe)
             bindVillagers(e, &u)
             e.drawIndexedPrimitives(type: .triangle, indexCount: gpu.villagerIndexCount, indexType: .uint32,
                                     indexBuffer: gpu.villagerIndices, indexBufferOffset: 0, instanceCount: villagerCount)
+        }
+        if villagerCount > 0, let effects = gpu.effects {
+            var sprites = OfficeEffects.sprites(for: avatars, time: time, head: gpu.head) { gpu.skeleton.pose(of: $0) }
+            if sprites.count > 120 { sprites.removeLast(sprites.count - 120) }   // setVertexBytes sınırı (4 KB)
+            if !sprites.isEmpty {
+                var aspect = Float(viewSize.width / max(viewSize.height, 1))
+                e.setRenderPipelineState(effects.pipe)
+                e.setDepthStencilState(gpu.skyDepth)
+                e.setCullMode(.none)
+                e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+                e.setVertexBytes(&sprites, length: sprites.count * MemoryLayout<OfficeEffects.Sprite>.stride, index: 2)
+                e.setVertexBytes(&aspect, length: MemoryLayout<Float>.stride, index: 3)
+                e.setFragmentTexture(effects.atlas, index: 4)
+                e.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: sprites.count)
+                e.setDepthStencilState(gpu.depthWrite)
+            }
         }
         if ringCount > 0, let rings = ringBuffers[frame] {
             e.setRenderPipelineState(gpu.ringPipe)

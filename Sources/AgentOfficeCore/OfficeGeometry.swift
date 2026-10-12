@@ -39,7 +39,10 @@ public enum OfficeTextureLayer {
     public static let grass: UInt16 = 13
     public static let dirt: UInt16 = 14
     public static let path: UInt16 = 15
-    public static func shirt(_ p: AvatarLook.ShirtPattern) -> UInt16 { 16 + UInt16(AvatarLook.ShirtPattern.allCases.firstIndex(of: p)!) }
+    /// Klasik köylünün üç deseni (düz, çizgili, puantiyeli); yeni desenler klasik köylüde düz görünür.
+    public static func shirt(_ p: AvatarLook.ShirtPattern) -> UInt16 {
+        16 + UInt16(min(AvatarLook.ShirtPattern.allCases.firstIndex(of: p)!, 2))
+    }
     public static let count = 19
 }
 

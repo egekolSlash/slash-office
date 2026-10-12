@@ -49,6 +49,7 @@ enum OfficePatterns {
             case .plain: fill(ctx, s, (1, 1, 1))
             case .stripes: stripes(ctx, s, (1, 1, 1), (0.72, 0.72, 0.72), count: 8, vertical: false)
             case .dots: dots(ctx, s, base: (1, 1, 1), dot: (0.70, 0.70, 0.70), count: 6)
+            case .plaid, .check, .hearts: fill(ctx, s, (1, 1, 1))   // klasik köylüde yok (düz)
             }
             return
         }

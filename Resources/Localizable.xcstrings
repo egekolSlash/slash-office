@@ -251,12 +251,52 @@
         }
       }
     },
+    "Boots": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bot"
+          }
+        }
+      }
+    },
+    "Bottoms": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt"
+          }
+        }
+      }
+    },
+    "Bottoms color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt rengi"
+          }
+        }
+      }
+    },
     "Bun": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Topuz"
+          }
+        }
+      }
+    },
+    "Buzz cut": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısa kazıma"
           }
         }
       }
@@ -297,6 +337,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tekrar Kontrol Et"
+          }
+        }
+      }
+    },
+    "Checked": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kareli"
           }
         }
       }
@@ -561,12 +611,32 @@
         }
       }
     },
+    "Dot": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nokta"
+          }
+        }
+      }
+    },
     "Dozing at the desk or wandering around the room.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Masada uyuklar ya da odada dolaşır."
+          }
+        }
+      }
+    },
+    "Dress": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elbise"
           }
         }
       }
@@ -941,6 +1011,16 @@
         }
       }
     },
+    "Hearts": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalpli"
+          }
+        }
+      }
+    },
     "Hook helper not found: %@\nRun `swift build` first (`swift run AgentOffice` alone does not build it).": {
       "localizations": {
         "tr": {
@@ -1071,6 +1151,16 @@
         }
       }
     },
+    "Lashes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kirpikli"
+          }
+        }
+      }
+    },
     "Last Turn": {
       "localizations": {
         "tr": {
@@ -1127,6 +1217,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uzun"
+          }
+        }
+      }
+    },
+    "Long sleeves": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzun kollu"
           }
         }
       }
@@ -1531,12 +1631,42 @@
         }
       }
     },
+    "Overalls": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tulum"
+          }
+        }
+      }
+    },
+    "Overalls color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tulum rengi"
+          }
+        }
+      }
+    },
     "Pants": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Pantolon"
+          }
+        }
+      }
+    },
+    "Pattern": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desen"
           }
         }
       }
@@ -1566,7 +1696,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "At kuyruğu"
+            "value": "İki at kuyruğu"
           }
         }
       }
@@ -1577,6 +1707,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pembe puantiyeli"
+          }
+        }
+      }
+    },
+    "Plaid": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekose"
           }
         }
       }
@@ -1617,6 +1757,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puantiyeli"
+          }
+        }
+      }
+    },
+    "Ponytail": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "At kuyruğu"
           }
         }
       }
@@ -1991,6 +2141,16 @@
         }
       }
     },
+    "Shoe color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayakkabı rengi"
+          }
+        }
+      }
+    },
     "Shoes": {
       "localizations": {
         "tr": {
@@ -2017,6 +2177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kısayollar"
+          }
+        }
+      }
+    },
+    "Shorts": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şort"
           }
         }
       }
@@ -2051,6 +2221,16 @@
         }
       }
     },
+    "Side part": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yandan ayrık"
+          }
+        }
+      }
+    },
     "Skin tone": {
       "localizations": {
         "tr": {
@@ -2067,6 +2247,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Atla"
+          }
+        }
+      }
+    },
+    "Skirt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etek"
           }
         }
       }
@@ -2131,6 +2321,16 @@
         }
       }
     },
+    "Slippers": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terlik"
+          }
+        }
+      }
+    },
     "Smaller Text": {
       "localizations": {
         "tr": {
@@ -2147,6 +2347,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gülümseme"
+          }
+        }
+      }
+    },
+    "Sneakers": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spor ayakkabı"
           }
         }
       }
@@ -2281,12 +2491,42 @@
         }
       }
     },
+    "Sweater": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kazak"
+          }
+        }
+      }
+    },
     "System": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Sistem"
+          }
+        }
+      }
+    },
+    "T-shirt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tişört"
+          }
+        }
+      }
+    },
+    "Tank top": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atlet"
           }
         }
       }
@@ -2517,6 +2757,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todo"
+          }
+        }
+      }
+    },
+    "Top": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üst"
           }
         }
       }

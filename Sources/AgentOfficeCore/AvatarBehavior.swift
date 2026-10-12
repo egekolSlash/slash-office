@@ -44,6 +44,8 @@ public struct AvatarBehavior: Sendable {
     private var recent: [RoomSpot.Kind] = []
     /// Eşyada kalırken ara hareket: arcade'de sevinç, tahtada geri çekilip bakma (aralıklı), kahveden sonra içme (bir kez).
     private var extra: (clip: AvatarClip, interval: ClosedRange<Double>?, timer: Double)?
+    /// Beklerken: izin (baş kaşıma) ya da soru (gelince bir kez fark etme).
+    private var waitReason: AvatarInstance.WaitReason?
 
     public init(id: String) {
         rng = SeededRandom(seed: StableHash.mixed("behavior:" + id))
@@ -78,6 +80,13 @@ public struct AvatarBehavior: Sendable {
         atSpot = nil
         pendingDwell = nil
         extra = nil
+    }
+
+    /// Beklemenin türü değişti: soru yeni geldiyse köylü önce fark edip zıplar.
+    public mutating func setWaitReason(_ reason: AvatarInstance.WaitReason?) {
+        guard reason != waitReason else { return }
+        waitReason = reason
+        if reason == .question { queued = (.notice, 0.2) }
     }
 
     public mutating func setActivity(_ activity: AvatarActivity, finishedNow: Bool) {
@@ -134,7 +143,9 @@ public struct AvatarBehavior: Sendable {
             timer = random(8...20) + clip.duration
             return .oneShot(clip)
         case .waving:
-            let clip = pick([AvatarClip.waitTap, .lookAround])
+            // İzin beklerken çoğunlukla başını kaşır; soruda ayak vurur ya da etrafa bakar.
+            let clip = waitReason == .permission ? pick([AvatarClip.scratchHead, .scratchHead, .waitTap])
+                : pick([AvatarClip.waitTap, .lookAround])
             timer = clip.duration + AvatarClip.wave.duration * random(2...3)
             return .oneShot(clip)
         case .dozing:

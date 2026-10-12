@@ -15,22 +15,63 @@ public struct VillagerSkeleton: Sendable {
     private let clips: [AvatarClip: [[Joint]]]
 
     public init(art: OfficeArtFile) {
-        boneCount = art.bones.count
+        self.init(boneCount: art.bones.count, clips: art.clips)
+    }
+
+    /// Kemik ağacı (karakter iskeleti): ebeveyn indeksi (önce ebeveyn gelir, kökte -1) ve dinlenme
+    /// pozunun dünya matrisleri.
+    public struct Hierarchy: Sendable {
+        public var parents: [Int]
+        public var rest: [simd_float4x4]
+        public init(parents: [Int], rest: [simd_float4x4]) { self.parents = parents; self.rest = rest }
+    }
+
+    let hierarchy: Hierarchy?
+
+    /// Kemik sayısı ve klipler (ad → kare × kemik × 16 sütun sıralı matris); karakter paketi de bunu kullanır.
+    public init(boneCount: Int, clips raw: [String: ArtClip], hierarchy: Hierarchy? = nil) {
+        self.hierarchy = hierarchy
+        self.boneCount = boneCount
         var clips: [AvatarClip: [[Joint]]] = [:]
         for clip in AvatarClip.allCases {
-            guard let data = art.clips[clip.rawValue], data.frames > 0,
-                  data.matrices.count == data.frames * art.bones.count * 16 else { continue }
+            guard let data = raw[clip.rawValue], data.frames > 0,
+                  data.matrices.count == data.frames * boneCount * 16 else { continue }
             clips[clip] = (0..<data.frames).map { f in
-                (0..<art.bones.count).map { b in
-                    let o = (f * art.bones.count + b) * 16
-                    let m = data.matrices
-                    let basis = simd_float3x3(SIMD3(m[o], m[o + 1], m[o + 2]), SIMD3(m[o + 4], m[o + 5], m[o + 6]),
-                                              SIMD3(m[o + 8], m[o + 9], m[o + 10]))
-                    return Joint(rotation: simd_quatf(basis), translation: SIMD3(m[o + 12], m[o + 13], m[o + 14]))
+                let m = data.matrices
+                let skin: [simd_float4x4] = (0..<boneCount).map { b in
+                    let o = (f * boneCount + b) * 16
+                    return simd_float4x4(SIMD4(m[o], m[o + 1], m[o + 2], m[o + 3]), SIMD4(m[o + 4], m[o + 5], m[o + 6], m[o + 7]),
+                                         SIMD4(m[o + 8], m[o + 9], m[o + 10], m[o + 11]), SIMD4(m[o + 12], m[o + 13], m[o + 14], m[o + 15]))
+                }
+                guard let hierarchy else { return skin.map(Self.joint) }
+                // Ağaçlı iskelet: ebeveyne göre yerel dönüşüm (karışım bu uzayda kemik boyunu korur).
+                let world = zip(skin, hierarchy.rest).map { $0 * $1 }
+                return (0..<boneCount).map { b in
+                    let p = hierarchy.parents[b]
+                    return Self.joint(p >= 0 ? world[p].inverse * world[b] : world[b])
                 }
             }
         }
         self.clips = clips
+        restInverse = hierarchy?.rest.map(\.inverse) ?? []
+    }
+
+    private let restInverse: [simd_float4x4]
+
+    static func joint(_ m: simd_float4x4) -> Joint {
+        let basis = simd_float3x3(simd_make_float3(m.columns.0), simd_make_float3(m.columns.1), simd_make_float3(m.columns.2))
+        return Joint(rotation: simd_quatf(basis), translation: simd_make_float3(m.columns.3))
+    }
+
+    /// Eklemler → skinning matrisleri (ağaçlı iskelette ileri kinematik: dünya · dinlenme⁻¹).
+    func skinning(_ joints: [Joint]) -> [simd_float4x4] {
+        guard let hierarchy, joints.count == boneCount else { return joints.map(Self.matrix) }
+        var world = [simd_float4x4](repeating: matrix_identity_float4x4, count: boneCount)
+        for b in 0..<boneCount {
+            let p = hierarchy.parents[b]
+            world[b] = p >= 0 ? world[p] * Self.matrix(joints[b]) : Self.matrix(joints[b])
+        }
+        return (0..<boneCount).map { world[$0] * restInverse[$0] }
     }
 
     static let fps = 24.0
@@ -53,6 +94,9 @@ public struct VillagerSkeleton: Sendable {
         return Self.mix(frames[i], frames[i + 1], Float(p - Double(i)))
     }
 
+    /// Geçiş ağırlığı yumuşak başlar ve yumuşak biter (smoothstep).
+    static func ease(_ t: Double) -> Double { t * t * (3 - 2 * t) }
+
     static func mix(_ a: [Joint], _ b: [Joint], _ t: Float) -> [Joint] {
         zip(a, b).map { a, b in
             Joint(rotation: simd_slerp(a.rotation, b.rotation, t), translation: a.translation + (b.translation - a.translation) * t)
@@ -66,12 +110,12 @@ public struct VillagerSkeleton: Sendable {
     }
 
     public func matrices(clip: AvatarClip, time: Double) -> [simd_float4x4] {
-        joints(clip: clip, time: time).map(Self.matrix)
+        skinning(joints(clip: clip, time: time))
     }
 
     /// Köylünün o anki pozu: geçiş varsa öncekinden (ya da kesilen geçişin dondurulmuş pozundan) şimdikine.
     public func pose(of a: AvatarInstance) -> [simd_float4x4] {
-        poseJoints(of: a).map(Self.matrix)
+        skinning(poseJoints(of: a))
     }
 
     func poseJoints(of a: AvatarInstance) -> [Joint] {
@@ -85,7 +129,7 @@ public struct VillagerSkeleton: Sendable {
         } else {
             return current
         }
-        return Self.mix(from, current, Float(a.blend))
+        return Self.mix(from, current, Float(Self.ease(a.blend)))
     }
 }
 
@@ -109,6 +153,16 @@ public struct AvatarInstance: Sendable {
     /// Doğrusal değil, sRGB (editördeki renklerle aynı).
     public var shirtColor: SIMD3<Float> = SIMD3(0.5, 0.5, 0.5)
     public var waving = false
+    /// Şimdiki geçişin süresi (`AvatarClip.fade`).
+    public var fadeDuration = AvatarInstance.fade
+    /// Dönülecek yön (radyan): köylü bu yöne birkaç karede yumuşakça döner; nil: dönüş yok.
+    public var facingGoal: Float?
+    /// Klip oynatma hızı (yürüyüş hızlanırken/yavaşlarken ayak kaymasın).
+    public var clipRate = 1.0
+    /// Beklerken neyi beklediği (izin / soru): ifade, tepki ve efekt buna göre.
+    public var waitReason: WaitReason?
+
+    public enum WaitReason: Equatable, Sendable { case permission, question }
 
     public init(id: String, clip: AvatarClip, look: AvatarLook? = nil) {
         self.id = id
@@ -126,16 +180,36 @@ public struct AvatarInstance: Sendable {
             previousClip = clip
             previousTime = clipTime
         }
+        fadeDuration = AvatarClip.fade(from: clip, to: next)
         clip = next
         clipTime = 0
         blend = 0
+        clipRate = 1
+    }
+
+    /// Yeni yöne yumuşak dönüş başlat.
+    public mutating func turn(to angle: Float) { facingGoal = angle }
+
+    /// Dönüş: kalan açının her saniye ~%99'u (üstel), en fazla 12 rad/sn; en kısa yönden.
+    mutating func advanceTurn(dt: Double) {
+        guard let goal = facingGoal else { return }
+        let delta = remainderf(goal - facing, 2 * .pi)
+        if abs(delta) < 0.002 {
+            facing = goal
+            facingGoal = nil
+            return
+        }
+        let step = delta * Float(1 - exp(-dt * 14))
+        let maxStep = Float(12 * dt)
+        facing += min(max(step, -maxStep), maxStep)
     }
 
     public mutating func advance(dt: Double) {
-        clipTime += dt
+        clipTime += dt * clipRate
+        advanceTurn(dt: dt)
         guard blend < 1 else { return }
         previousTime += dt
-        blend = min(1, blend + dt / Self.fade)
+        blend = min(1, blend + dt / max(fadeDuration, 0.01))
         if blend >= 1 {
             frozen = nil
             previousClip = nil

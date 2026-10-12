@@ -28,7 +28,7 @@ struct AgentCustomizer: View {
                 AgentEditorForm(model: model, id: id)
                     .frame(minWidth: compact ? 250 : 360, maxWidth: .infinity)
                 Divider()
-                VillagerPreview(look: model.look(for: id), shirtColor: model.shirtColor(for: id))
+                VillagerPreview(look: model.look(for: id), shirtColor: model.shirtColor(for: id), id: id)
                     .frame(width: compact ? 170 : 260)
             } else {
                 ContentUnavailableView("No agents yet", systemImage: "person.2",
@@ -79,23 +79,20 @@ private struct AgentEditorForm: View {
                 Picker("Eyes", selection: binding(\.eyes)) {
                     ForEach(AvatarLook.Eyes.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
                 }
-                Picker("Eyebrows", selection: binding(\.brows)) {
-                    ForEach(AvatarLook.Brows.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
-                }
                 Picker("Mouth", selection: binding(\.mouth)) {
                     ForEach(AvatarLook.Mouth.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
                 }
                 Toggle("Blush", isOn: binding(\.blush))
-                Toggle("Freckles", isOn: binding(\.freckles))
                 LabeledContent("Skin tone") {
                     Swatches(colors: AvatarLook.skinTones, selected: look.skin) { i in update { $0.skin = i } }
                 }
             }
             Section("Clothes") {
-                Picker("Shirt pattern", selection: binding(\.shirtPattern)) {
-                    Text("Plain").tag(AvatarLook.ShirtPattern.plain)
-                    Text("Striped").tag(AvatarLook.ShirtPattern.stripes)
-                    Text("Polka dots").tag(AvatarLook.ShirtPattern.dots)
+                Picker("Top", selection: binding(\.top)) {
+                    ForEach(AvatarLook.Top.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
+                }
+                Picker("Pattern", selection: binding(\.shirtPattern)) {
+                    ForEach(AvatarLook.ShirtPattern.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
                 }
                 LabeledContent("Shirt color") {
                     HStack(spacing: 6) {
@@ -105,10 +102,18 @@ private struct AgentEditorForm: View {
                         Swatches(colors: AvatarLook.shirtColors, selected: look.shirtColor ?? -1) { i in update { $0.shirtColor = i } }
                     }
                 }
-                LabeledContent("Pants") {
+                Picker("Bottoms", selection: binding(\.bottom)) {
+                    ForEach(AvatarLook.Bottom.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
+                }
+                .disabled(look.top == .dress || look.top == .overalls)
+                LabeledContent(look.top == .overalls ? "Overalls color" : "Bottoms color") {
                     Swatches(colors: AvatarLook.pantsColors, selected: look.pantsColor) { i in update { $0.pantsColor = i } }
                 }
-                LabeledContent("Shoes") {
+                .disabled(look.top == .dress)
+                Picker("Shoes", selection: binding(\.shoes)) {
+                    ForEach(AvatarLook.Shoes.allCases, id: \.self) { Text(Self.name($0)).tag($0) }
+                }
+                LabeledContent("Shoe color") {
                     Swatches(colors: AvatarLook.shoeColors, selected: look.shoeColor) { i in update { $0.shoeColor = i } }
                 }
             }
@@ -148,6 +153,9 @@ private struct AgentEditorForm: View {
         case .curly: "Curly"
         case .long: "Long"
         case .bun: "Bun"
+        case .ponytail: "Ponytail"
+        case .buzz: "Buzz cut"
+        case .sidepart: "Side part"
         }
     }
 
@@ -156,6 +164,47 @@ private struct AgentEditorForm: View {
         case .round: "Round"
         case .happy: "Happy"
         case .sleepy: "Sleepy"
+        case .dot: "Dot"
+        case .lashes: "Lashes"
+        case .brows: "Eyebrows"
+        }
+    }
+
+    static func name(_ pattern: AvatarLook.ShirtPattern) -> LocalizedStringKey {
+        switch pattern {
+        case .plain: "Plain"
+        case .stripes: "Striped"
+        case .dots: "Polka dots"
+        case .plaid: "Plaid"
+        case .check: "Checked"
+        case .hearts: "Hearts"
+        }
+    }
+
+    static func name(_ top: AvatarLook.Top) -> LocalizedStringKey {
+        switch top {
+        case .tee: "T-shirt"
+        case .longsleeve: "Long sleeves"
+        case .tank: "Tank top"
+        case .sweater: "Sweater"
+        case .dress: "Dress"
+        case .overalls: "Overalls"
+        }
+    }
+
+    static func name(_ bottom: AvatarLook.Bottom) -> LocalizedStringKey {
+        switch bottom {
+        case .pants: "Pants"
+        case .shorts: "Shorts"
+        case .skirt: "Skirt"
+        }
+    }
+
+    static func name(_ shoes: AvatarLook.Shoes) -> LocalizedStringKey {
+        switch shoes {
+        case .sneakers: "Sneakers"
+        case .boots: "Boots"
+        case .slippers: "Slippers"
         }
     }
 

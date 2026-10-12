@@ -146,25 +146,93 @@ enum OfficeShaders {
         return lit / 9;
     }
 
-    fragment float4 shadeFS(VOut i [[stage_in]], constant Uniforms &u [[buffer(1)]],
-                            texture2d_array<float> patterns [[texture(0)]],
-                            depth2d<float> staticShadow [[texture(1)]], depth2d<float> villagerShadow [[texture(2)]],
-                            sampler patternSampler [[sampler(0)]], sampler shadowSampler [[sampler(1)]]) {
-        float3 albedo = i.color.rgb;
-        if (i.layer > 0) albedo *= patterns.sample(patternSampler, i.uv, i.layer).rgb;
-        float3 n = normalize(i.nrm);
-        float3 p = i.lpos.xyz / i.lpos.w;
+    /// Ortak aydınlatma (dünya, köylü ve karakterler): gölgeler, sarmalı Lambert, ortam, gece oda ışığı.
+    static float4 lit(float3 albedo, float3 nIn, float4 lpos, float emissive, float interior, constant Uniforms &u,
+                      depth2d<float> staticShadow, depth2d<float> villagerShadow, sampler shadowSampler) {
+        float3 n = normalize(nIn);
+        float3 p = lpos.xyz / lpos.w;
         float shade = shadowAt(staticShadow, shadowSampler, p, u.params.z, 0.0015);
         if (u.params.y > 0.5) shade = min(shade, shadowAt(villagerShadow, shadowSampler, p, u.params.w, 0.003));
         // Hafif sarmalı Lambert: gölgeli taraf tamamen kararmasın.
         float ndl = saturate((dot(n, -u.lightDir.xyz) + 0.15) / 1.15);
         float3 ambient = mix(u.ground.rgb, u.sky.rgb, n.y * 0.5 + 0.5);
         // Gece odaların içi sıcak sarı ışıkla aydınlanır (AC'deki gibi); yukarı bakan yüzler biraz daha fazla.
-        ambient += float3(1.0, 0.70, 0.40) * (0.55 + 0.25 * saturate(n.y)) * i.interior * u.light.z;
-        float3 c = albedo * (ambient + u.sun.rgb * ndl * shade) + albedo * i.color.a * 1.5 * u.light.x;
+        ambient += float3(1.0, 0.70, 0.40) * (0.55 + 0.25 * saturate(n.y)) * interior * u.light.z;
+        float3 c = albedo * (ambient + u.sun.rgb * ndl * shade) + albedo * emissive * 1.5 * u.light.x;
         // v3'teki (RealityKit) yumuşak tona yakın: biraz az doygun.
         c = mix(float3(dot(c, float3(0.2126, 0.7152, 0.0722))), c, 0.82);
         return float4(c, 1);
+    }
+
+    fragment float4 shadeFS(VOut i [[stage_in]], constant Uniforms &u [[buffer(1)]],
+                            texture2d_array<float> patterns [[texture(0)]],
+                            depth2d<float> staticShadow [[texture(1)]], depth2d<float> villagerShadow [[texture(2)]],
+                            sampler patternSampler [[sampler(0)]], sampler shadowSampler [[sampler(1)]]) {
+        float3 albedo = i.color.rgb;
+        if (i.layer > 0) albedo *= patterns.sample(patternSampler, i.uv, i.layer).rgb;
+        return lit(albedo, i.nrm, i.lpos, i.color.a, i.interior, u, staticShadow, villagerShadow, shadowSampler);
+    }
+
+    // MARK: Karakterler (modüler, dokulu, 4 kemik etkili skinning)
+
+    struct CharIn {
+        float3 pos [[attribute(0)]];
+        float3 nrm [[attribute(1)]];
+        float2 uv [[attribute(2)]];
+        uchar4 joints [[attribute(3)]];
+        float4 weights [[attribute(4)]];
+    };
+
+    struct CharDraw {
+        float4x4 model;
+        float4 tint;          // rgb (sRGB), w: mod (0 düz, 1 doku, 2 doku × ton, 3 çıkartma, 4 kesik)
+        uint boneBase;
+        uint pad0, pad1, pad2;
+    };
+
+    static float4x4 charSkin(CharIn v, constant CharDraw &d, constant float4x4 *bones) {
+        uint b = d.boneBase;
+        return d.model * (bones[b + v.joints.x] * v.weights.x + bones[b + v.joints.y] * v.weights.y
+                          + bones[b + v.joints.z] * v.weights.z + bones[b + v.joints.w] * v.weights.w);
+    }
+
+    vertex VOut charVS(CharIn v [[stage_in]], constant Uniforms &u [[buffer(1)]], constant CharDraw &d [[buffer(2)]],
+                     constant float4x4 *bones [[buffer(3)]]) {
+        float4x4 m = charSkin(v, d, bones);
+        float4 w = m * float4(v.pos, 1);
+        VOut o;
+        o.pos = u.viewProj * bent(w, u);
+        o.nrm = (m * float4(v.nrm, 0)).xyz;
+        o.uv = float2(v.uv.x, 1.0 - v.uv.y);   // dokular üstten başlar
+        o.color = float4(linear(d.tint.rgb), 0);
+        o.lpos = u.lightViewProj * w;
+        o.layer = ushort(d.tint.w);
+        o.interior = 1.0;
+        return o;
+    }
+
+    vertex float4 charShadowVS(CharIn v [[stage_in]], constant Uniforms &u [[buffer(1)]], constant CharDraw &d [[buffer(2)]],
+                             constant float4x4 *bones [[buffer(3)]]) {
+        return u.lightViewProj * (charSkin(v, d, bones) * float4(v.pos, 1));
+    }
+
+    fragment float4 charFS(VOut i [[stage_in]], constant Uniforms &u [[buffer(1)]], texture2d<float> tex [[texture(3)]],
+                         depth2d<float> staticShadow [[texture(1)]], depth2d<float> villagerShadow [[texture(2)]],
+                         sampler texSampler [[sampler(0)]], sampler shadowSampler [[sampler(1)]]) {
+        float3 tint = i.color.rgb;
+        float3 albedo = tint;
+        uint mode = i.layer;
+        if (mode > 0) {
+            float4 t = tex.sample(texSampler, i.uv);
+            if (mode == 1) albedo = t.rgb;
+            else if (mode == 2) albedo = t.rgb * tint;
+            else if (mode == 3) albedo = tint * (1.0 - t.a) + t.rgb;   // önceden çarpılmış alfa
+            else {
+                if (t.a < 0.5) discard_fragment();
+                albedo = t.rgb / max(t.a, 0.001);
+            }
+        }
+        return lit(albedo, i.nrm, i.lpos, 0, i.interior, u, staticShadow, villagerShadow, shadowSampler);
     }
 
     // MARK: Gökyüzü
@@ -199,6 +267,34 @@ enum OfficeShaders {
             }
         }
         return float4(c, 1);
+    }
+
+    // MARK: Baş üstü efektleri
+
+    struct EffectSprite { float4 center; float4 params; };   // center.w: boy (m); params: x ekranda kayma (m), y katman, z alfa
+    struct EffectOut { float4 pos [[position]]; float2 uv; float alpha; ushort layer [[flat]]; };
+
+    /// Kameraya dönük kare: boy, merkezin üstündeki `boy` metrelik dikey çizginin ekrandaki uzunluğundan.
+    vertex EffectOut effectVS(uint vid [[vertex_id]], uint iid [[instance_id]], constant Uniforms &u [[buffer(1)]],
+                              constant EffectSprite *sprites [[buffer(2)]], constant float &aspect [[buffer(3)]]) {
+        const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(1, 1), float2(-1, -1), float2(1, 1), float2(-1, 1) };
+        EffectSprite sp = sprites[iid];
+        float2 c = corners[vid];
+        float4 base = u.viewProj * bent(float4(sp.center.xyz, 1), u);
+        float4 top = u.viewProj * bent(float4(sp.center.xyz + float3(0, sp.center.w, 0), 1), u);
+        float h = length(top.xy / top.w - base.xy / base.w);
+        float2 ndc = base.xy / base.w + float2((c.x * 0.5 + sp.params.x / sp.center.w) * h / aspect, c.y * 0.5 * h);
+        EffectOut o;
+        o.pos = float4(ndc * base.w, base.z, base.w);
+        o.uv = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
+        o.alpha = sp.params.z;
+        o.layer = ushort(sp.params.y);
+        return o;
+    }
+
+    fragment float4 effectFS(EffectOut i [[stage_in]], texture2d_array<float> atlas [[texture(4)]],
+                             sampler s [[sampler(0)]]) {
+        return atlas.sample(s, i.uv, i.layer) * i.alpha;   // önceden çarpılmış alfa
     }
 
     // MARK: Bekleme halkası

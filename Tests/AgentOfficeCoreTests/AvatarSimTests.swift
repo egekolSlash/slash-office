@@ -52,15 +52,20 @@ import simd
         #expect(s.matrices(clip: .walk, time: 0.3) == [matrix_identity_float4x4, matrix_identity_float4x4])
     }
 
-    @Test func crossfadeBlendsLinearly() {
+    /// Geçiş yumuşak başlar/biter (smoothstep): ortada yarı yarıya, çeyrekte doğrusaldan az.
+    @Test func crossfadeEasesInAndOut() {
         var a = AvatarInstance(id: "a", clip: .idle)
         a.play(.walk, skeleton: Self.skeleton)
+        let fade = a.fadeDuration
+        #expect(fade == AvatarClip.fade(from: .idle, to: .walk))
         #expect(abs(x(Self.skeleton.pose(of: a)) - 0) < 1e-4)
-        a.advance(dt: AvatarInstance.fade / 2)
-        // idle t=fade/2 (0.125 s = 3 kare → döngüde 1) ile walk (10) yarı yarıya.
-        let idle = x(Self.skeleton.matrices(clip: .idle, time: AvatarInstance.fade / 2))
+        a.advance(dt: fade / 4)
+        let idleQ = x(Self.skeleton.matrices(clip: .idle, time: fade / 4))
+        #expect(abs(x(Self.skeleton.pose(of: a)) - (idleQ + (10 - idleQ) * 0.15625)) < 1e-3)
+        a.advance(dt: fade / 4)
+        let idle = x(Self.skeleton.matrices(clip: .idle, time: fade / 2))
         #expect(abs(x(Self.skeleton.pose(of: a)) - (idle + 10) / 2) < 1e-3)
-        a.advance(dt: AvatarInstance.fade)
+        a.advance(dt: fade)
         #expect(abs(x(Self.skeleton.pose(of: a)) - 10) < 1e-4)
         #expect(a.blend == 1)
     }
@@ -68,13 +73,13 @@ import simd
     @Test func crossfadeInterruptedMidway() {
         var a = AvatarInstance(id: "a", clip: .idle)
         a.play(.walk, skeleton: Self.skeleton)
-        a.advance(dt: AvatarInstance.fade * 0.4)
+        a.advance(dt: a.fadeDuration * 0.4)
         let before = x(Self.skeleton.pose(of: a))
         a.play(.wave, skeleton: Self.skeleton)
         #expect(abs(x(Self.skeleton.pose(of: a)) - before) < 1e-4, "geçiş kesilince sıçrama")
-        a.advance(dt: AvatarInstance.fade * 0.5)
+        a.advance(dt: a.fadeDuration * 0.5)
         #expect(abs(x(Self.skeleton.pose(of: a)) - (before + -4) / 2) < 1e-3)
-        a.advance(dt: AvatarInstance.fade)
+        a.advance(dt: a.fadeDuration)
         #expect(abs(x(Self.skeleton.pose(of: a)) - -4) < 1e-4)
     }
 
@@ -94,7 +99,7 @@ import simd
             villager: OfficeArtFile.emptyMesh, props: [:]))
         var a = AvatarInstance(id: "a", clip: .idle)
         a.play(.walk, skeleton: s)
-        a.advance(dt: AvatarInstance.fade / 2)
+        a.advance(dt: a.fadeDuration / 2)
         let m = s.pose(of: a)[0]
         #expect(abs(simd_length(SIMD3(m.columns.0.x, m.columns.0.y, m.columns.0.z)) - 1) < 1e-4)
         #expect(abs(m.columns.0.x - cos(Float.pi / 4)) < 1e-3)
@@ -157,9 +162,46 @@ import simd
         let start = s.instances[0].position
         s.tick(dt: 0.05)
         let moved = s.instances[0].position - start
-        let f = s.instances[0].facing
+        // Gidiş yönüne yumuşakça döner: hedef yön gidiş yönü, birkaç karede ona varır.
+        let f = s.instances[0].facingGoal ?? s.instances[0].facing
         #expect(simd_length(moved) > 0.01)
         #expect(abs(sin(f) - moved.x / simd_length(moved)) < 1e-3 && abs(cos(f) - moved.z / simd_length(moved)) < 1e-3)
+    }
+
+    @Test func turnsSmoothlyTheShortWay() {
+        var a = AvatarInstance(id: "a", clip: .idle)
+        a.facing = 3.0
+        a.turn(to: -3.0)    // en kısa yol: π'nin üzerinden ~0,28 rad
+        var previous = a.facing
+        for _ in 0..<60 {
+            a.advance(dt: 1.0 / 60)
+            #expect(abs(remainderf(a.facing - previous, 2 * .pi)) <= 12.0 / 60 + 1e-4)
+            previous = a.facing
+        }
+        #expect(a.facingGoal == nil && abs(remainderf(a.facing - -3.0, 2 * .pi)) < 1e-3)
+    }
+
+    @Test func fadeDependsOnTransition() {
+        #expect(AvatarClip.fade(from: .walk, to: .sitDown) < AvatarClip.fade(from: .idle, to: .walk))
+        #expect(AvatarClip.fade(from: .sitType, to: .sitSip) > AvatarClip.fade(from: .idle, to: .wave))
+        #expect(AvatarClip.fade(from: .wave, to: .notice) <= 0.15)
+    }
+
+    @Test func walkAcceleratesAndSlowsDownNearTheEnd() {
+        var s = sim()
+        s.sync(plan: plan(["a"]), desks: desks([("a", .working(tool: nil))]), looks: [:], projectColors: [:], live: true)
+        var speeds: [Float] = []
+        var last = s.instances[0].position
+        var rates: [Double] = []
+        run(&s, 8) { sim in
+            let p = sim.instances[0].position
+            if sim.instances[0].clip == .walk { speeds.append(simd_length(p - last) * 60); rates.append(sim.instances[0].clipRate) }
+            last = p
+        }
+        #expect(speeds.count > 30)
+        #expect(speeds[0] < 0.3 && (speeds.max() ?? 0) > 1.2)     // kalkış yavaş, sonra tam hız
+        #expect(speeds.suffix(3).allSatisfy { $0 < 1.0 })          // varışta yavaşlamış
+        #expect(rates.allSatisfy { $0 >= 0.45 && $0 <= 1 })
     }
 
     @Test func awayRemoves() {
@@ -279,14 +321,21 @@ import simd
         let bigger = plan(ids)
         s.sync(plan: bigger, desks: desks(ids.map { ($0, AgentState.idle) }), looks: [:], projectColors: [:], live: true)
         let nav = RoomNav(room: bigger.rooms[0])
+        // Konumlar Float32: engel sınırından geçen yollarda 5 mm tolerans.
+        func free(_ p: PlanPoint) -> Bool {
+            [(0.0, 0.0), (0.005, 0), (-0.005, 0), (0, 0.005), (0, -0.005)].contains { nav.isFree(PlanPoint(x: p.x + $0.0, z: p.z + $0.1)) }
+        }
         run(&s, 30) { sim in
             for a in sim.instances where ["a", "b"].contains(a.id) {
                 let pt = PlanPoint(x: Double(a.position.x), z: Double(a.position.z))
-                // Taburede ya da koltukta oturmak (mobilyanın içi) ve kapı eşiği serbest.
-                let seats = bigger.rooms[0].desks.map { bigger.rooms[0].seat(for: $0) }
-                    + bigger.rooms[0].spots.filter { $0.kind == .sofa }.map { PlanPoint(x: $0.x, z: $0.z) }
-                #expect(nav.isFree(pt) || seats.contains { $0.distance(to: pt) < 0.7 } || pt.distance(to: bigger.rooms[0].doorInside) < 0.5,
-                        "\(a.id) engelde: \(pt)")
+                // Taburede ya da koltukta oturmak (mobilyanın içi), eşya başında durmak (tahta, atari, kahve: eşyanın
+                // payının içinde) ve oradan çıkmak, kapı eşiği serbest.
+                let room = bigger.rooms[0]
+                let seats = room.desks.map { room.seat(for: $0) }
+                    + room.spots.filter { $0.kind == .sofa }.map { PlanPoint(x: $0.x, z: $0.z) }
+                let stands = room.spots.map { room.approach(to: $0).stand }
+                #expect(free(pt) || seats.contains { $0.distance(to: pt) < 0.7 } || stands.contains { $0.distance(to: pt) < 0.45 }
+                        || pt.distance(to: room.doorInside) < 0.5, "\(a.id) engelde: \(pt)")
             }
         }
     }
@@ -395,7 +444,7 @@ import simd
                 guard let a = sim.instances.first(where: { $0.id == id }), let spot = room.spots.first(where: { $0.kind == kind }) else { continue }
                 let target = room.approach(to: spot)
                 let at = target.seat ?? target.stand
-                if near(a.position, at, 0.05) {
+                if near(a.position, at, 0.05), a.facingGoal == nil {   // dönüş bittiyse eşyaya bakıyor
                     #expect(abs(remainder(Double(a.facing) - target.facing, 2 * .pi)) < 0.05, "\(kind)")
                     checked.insert(kind)
                 }

@@ -53,6 +53,7 @@ cp Resources/tr.lproj/InfoPlist.strings "$STAGE/Contents/Resources/tr.lproj/"
 [ -f "$STAGE/Contents/Resources/en.lproj/Localizable.strings" ] || cp Resources/en.lproj/Localizable.strings "$STAGE/Contents/Resources/en.lproj/"
 # Ofis v3 varlıkları (köylü + eşyalar, scripts/build-office-art.sh ile üretilir).
 cp -R Resources/OfficeArt "$STAGE/Contents/Resources/OfficeArt"
+cp -R Resources/Character "$STAGE/Contents/Resources/Character"
 for exe in AgentOffice agent-office-hook; do
     out="$STAGE/Contents/MacOS/$exe"
     rm -f "$out"

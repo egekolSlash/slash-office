@@ -43,7 +43,7 @@ import Testing
         let art = try OfficeArtFile.load(from: url)
         #expect(art.bones.count == 11)
         #expect(art.clips["walk"]?.frames == 24)
-        #expect(AvatarClip.allCases.count == 25)
+        #expect(AvatarClip.allCases.filter(\.classic).count == 25)
         #expect(AvatarClip.sofaSit.loops && !AvatarClip.cheer.loops && AvatarClip.sitSip.seated && !AvatarClip.drink.seated)
         #expect(abs(AvatarClip.standUp.duration - 11.0 / 24) < 1e-9)
         // Ofis hayatı: masa başı ve eşya klipleri.
@@ -51,7 +51,7 @@ import Testing
         #expect(AvatarClip.readBook.loops && AvatarClip.playArcade.loops && AvatarClip.drawBoard.loops)
         #expect(!AvatarClip.stepBackLook.loops && !AvatarClip.brewCoffee.loops && !AvatarClip.brewCoffee.seated)
         #expect(AvatarClip.sitDraw.frames.lowerBound == 641 && AvatarClip.brewCoffee.frames.upperBound == 1062)
-        for clip in AvatarClip.allCases {
+        for clip in AvatarClip.allCases where clip.classic {
             let data = try #require(art.clips[clip.rawValue])
             #expect(data.frames == clip.frames.count)
             #expect(data.matrices.count == data.frames * art.bones.count * 16)

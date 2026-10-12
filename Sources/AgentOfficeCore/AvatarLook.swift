@@ -1,10 +1,15 @@
 /// Köylünün görünüşü (spec §4; ofis hayatı §C1). Varsayılanı oturum kimliğinden türer; kullanıcı değiştirebilir.
 public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
     public typealias RGBA = (red: Double, green: Double, blue: Double)
-    public enum HairStyle: String, Codable, CaseIterable, Sendable { case short, pigtails, spiky, bob, curly, long, bun }
-    public enum ShirtPattern: String, Codable, CaseIterable, Sendable { case plain, stripes, dots }
+    // Yeni seçenekler sona eklenir (eski kayıtlar ve klasik köylünün varyant sırası değişmesin).
+    public enum HairStyle: String, Codable, CaseIterable, Sendable { case short, pigtails, spiky, bob, curly, long, bun, ponytail, buzz, sidepart }
+    public enum ShirtPattern: String, Codable, CaseIterable, Sendable { case plain, stripes, dots, plaid, check, hearts }
     public enum Hat: String, Codable, CaseIterable, Sendable { case none, beanie, cap, headphones }
-    public enum Eyes: String, Codable, CaseIterable, Sendable { case round, happy, sleepy }
+    public enum Eyes: String, Codable, CaseIterable, Sendable { case round, happy, sleepy, dot, lashes, brows }
+    /// Karakterin kıyafet türleri (karakter paketinin kataloğundaki adlar).
+    public enum Top: String, Codable, CaseIterable, Sendable { case tee, longsleeve, tank, sweater, dress, overalls }
+    public enum Bottom: String, Codable, CaseIterable, Sendable { case pants, shorts, skirt }
+    public enum Shoes: String, Codable, CaseIterable, Sendable { case sneakers, boots, slippers }
     public enum Brows: String, Codable, CaseIterable, Sendable { case none, thin, bold }
     public enum Mouth: String, Codable, CaseIterable, Sendable { case smile, open, flat }
 
@@ -26,19 +31,25 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
     public var freckles: Bool
     /// Yanak allığı (bugünkü köylülerde var).
     public var blush: Bool
+    public var top: Top
+    /// Elbise ve tulumda alt giyilmez.
+    public var bottom: Bottom
+    public var shoes: Shoes
 
     public init(hairStyle: HairStyle, hairColor: Int, skin: Int, shirtPattern: ShirtPattern, shirtColor: Int?, glasses: Bool,
                 name: String? = nil, hat: Hat = .none, pantsColor: Int = 0, shoeColor: Int = 0, eyes: Eyes = .round,
-                brows: Brows = .none, mouth: Mouth = .smile, freckles: Bool = false, blush: Bool = true) {
+                brows: Brows = .none, mouth: Mouth = .smile, freckles: Bool = false, blush: Bool = true,
+                top: Top = .tee, bottom: Bottom = .pants, shoes: Shoes = .sneakers) {
         self.hairStyle = hairStyle; self.hairColor = hairColor; self.skin = skin
         self.shirtPattern = shirtPattern; self.shirtColor = shirtColor; self.glasses = glasses
         self.name = name; self.hat = hat; self.pantsColor = pantsColor; self.shoeColor = shoeColor
         self.eyes = eyes; self.brows = brows; self.mouth = mouth; self.freckles = freckles; self.blush = blush
+        self.top = top; self.bottom = bottom; self.shoes = shoes
     }
 
     enum CodingKeys: String, CodingKey {
         case name, hairStyle, hairColor, skin, shirtPattern, shirtColor, glasses, hat, pantsColor, shoeColor
-        case eyes, brows, mouth, freckles, blush
+        case eyes, brows, mouth, freckles, blush, top, bottom, shoes
     }
 
     /// Eski kayıtlarda yeni alanlar yok: bugünkü görünüme karşılık gelen değerler.
@@ -58,7 +69,10 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                   brows: try c.decodeIfPresent(Brows.self, forKey: .brows) ?? .none,
                   mouth: try c.decodeIfPresent(Mouth.self, forKey: .mouth) ?? .smile,
                   freckles: try c.decodeIfPresent(Bool.self, forKey: .freckles) ?? false,
-                  blush: try c.decodeIfPresent(Bool.self, forKey: .blush) ?? true)
+                  blush: try c.decodeIfPresent(Bool.self, forKey: .blush) ?? true,
+                  top: try c.decodeIfPresent(Top.self, forKey: .top) ?? .tee,
+                  bottom: try c.decodeIfPresent(Bottom.self, forKey: .bottom) ?? .pants,
+                  shoes: try c.decodeIfPresent(Shoes.self, forKey: .shoes) ?? .sneakers)
     }
 
     /// Kartta ve listede gösterilen ad: köylünün adı, yoksa oturum başlığı.
@@ -94,10 +108,15 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
         let h = StableHash.mixed(sessionID)
         func pick(_ shift: UInt64, _ count: Int) -> Int { Int((h >> shift) % UInt64(count)) }
         let classic: [HairStyle] = [.short, .pigtails, .spiky, .bob]
+        // Desen ilk üçten (eski varsayılanlar aynı kalsın); kıyafet türleri kullanılmayan bitlerden.
+        let patterns: [ShirtPattern] = [.plain, .stripes, .dots]
+        let tops: [Top] = [.tee, .tee, .longsleeve, .sweater, .dress, .overalls]
         return AvatarLook(hairStyle: classic[pick(0, classic.count)],
                           hairColor: pick(8, hairColors.count), skin: pick(16, skinTones.count),
-                          shirtPattern: ShirtPattern.allCases[pick(24, ShirtPattern.allCases.count)],
-                          shirtColor: nil, glasses: pick(32, 4) == 0)
+                          shirtPattern: patterns[pick(24, patterns.count)],
+                          shirtColor: nil, glasses: pick(32, 4) == 0,
+                          top: tops[pick(40, tops.count)], bottom: Bottom.allCases[pick(46, Bottom.allCases.count)],
+                          shoes: Shoes.allCases[pick(52, Shoes.allCases.count)])
     }
 
     public static func random(using rng: inout some RandomNumberGenerator) -> AvatarLook {
@@ -114,7 +133,10 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                    brows: Brows.allCases.randomElement(using: &rng)!,
                    mouth: Mouth.allCases.randomElement(using: &rng)!,
                    freckles: Int.random(in: 0..<4, using: &rng) == 0,
-                   blush: Int.random(in: 0..<4, using: &rng) != 0)
+                   blush: Int.random(in: 0..<4, using: &rng) != 0,
+                   top: Top.allCases.randomElement(using: &rng)!,
+                   bottom: Bottom.allCases.randomElement(using: &rng)!,
+                   shoes: Shoes.allCases.randomElement(using: &rng)!)
     }
 
     /// Çizicinin varyant baytları (16): `VillagerVariant` grubu → seçili değer; 0 o gruptan hiçbir şey göstermez.

@@ -9,11 +9,13 @@ import SwiftUI
 struct VillagerPreview: NSViewRepresentable {
     var look: AvatarLook
     var shirtColor: AvatarLook.RGBA
+    /// Oturum kimliği (göz kırpma ve efektlerin evresi ofistekiyle aynı olsun).
+    var id = "preview"
 
     func makeNSView(context: Context) -> VillagerPreviewNSView { VillagerPreviewNSView() }
 
     func updateNSView(_ view: VillagerPreviewNSView, context: Context) {
-        view.update(look: look, shirt: SIMD3(Float(shirtColor.red), Float(shirtColor.green), Float(shirtColor.blue)))
+        view.update(look: look, shirt: SIMD3(Float(shirtColor.red), Float(shirtColor.green), Float(shirtColor.blue)), id: id)
     }
 
     static func dismantleNSView(_ view: VillagerPreviewNSView, coordinator: ()) { view.stop() }
@@ -58,9 +60,10 @@ final class VillagerPreviewNSView: NSView {
         }
     }
 
-    func update(look: AvatarLook, shirt: SIMD3<Float>) {
+    func update(look: AvatarLook, shirt: SIMD3<Float>, id: String = "preview") {
         instance.look = look
         instance.shirtColor = shirt
+        instance.id = id
     }
 
     func stop() {
