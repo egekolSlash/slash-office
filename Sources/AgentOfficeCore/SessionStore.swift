@@ -21,6 +21,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var turnTree: String?
     /// Claude'un oturuma verdiği son başlık (ai-title); yeniden açılışta "ne üzerinde çalışıyor" hemen görünsün.
     public var workTitle: String?
+    /// Oturumun karakteri: kimlik, `random` (elle rastgele seçildi) ya da nil (odasının kadrosundan otomatik).
+    public var characterID: String?
 
     public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date, kind: SessionKind = .claude) {
         self.id = id
@@ -44,6 +46,7 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         baseline = try container.decodeIfPresent(String.self, forKey: .baseline)
         turnTree = try container.decodeIfPresent(String.self, forKey: .turnTree)
         workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle)
+        characterID = try container.decodeIfPresent(String.self, forKey: .characterID)
     }
 }
 

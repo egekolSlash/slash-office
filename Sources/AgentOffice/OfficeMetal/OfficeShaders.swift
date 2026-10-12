@@ -122,9 +122,20 @@ enum OfficeShaders {
 
     struct CharDraw {
         float4x4 model;
-        float4 tint;          // rgb (sRGB), w: mod (0 düz, 1 doku, 2 doku × ton, 3 çıkartma, 4 kesik)
+        float4 tint;          // rgb (sRGB), w: mod (0 düz, 1 doku, 2 doku × ton, 3 çıkartma, 4 kesik, 5 tasarım)
+        float4 tint2;         // tasarımın ikinci rengi (sRGB)
         uint boneBase;
         uint pad0, pad1, pad2;
+    };
+
+    struct CharOut {
+        float4 pos [[position]];
+        float3 nrm;
+        float2 uv;
+        float4 color;
+        float3 color2;
+        float4 lpos;
+        ushort layer [[flat]];
     };
 
     static float4x4 charSkin(CharIn v, constant CharDraw &d, constant float4x4 *bones) {
@@ -133,18 +144,18 @@ enum OfficeShaders {
                           + bones[b + v.joints.z] * v.weights.z + bones[b + v.joints.w] * v.weights.w);
     }
 
-    vertex VOut charVS(CharIn v [[stage_in]], constant Uniforms &u [[buffer(1)]], constant CharDraw &d [[buffer(2)]],
+    vertex CharOut charVS(CharIn v [[stage_in]], constant Uniforms &u [[buffer(1)]], constant CharDraw &d [[buffer(2)]],
                      constant float4x4 *bones [[buffer(3)]]) {
         float4x4 m = charSkin(v, d, bones);
         float4 w = m * float4(v.pos, 1);
-        VOut o;
+        CharOut o;
         o.pos = u.viewProj * bent(w, u);
         o.nrm = (m * float4(v.nrm, 0)).xyz;
         o.uv = float2(v.uv.x, 1.0 - v.uv.y);   // dokular üstten başlar
         o.color = float4(linear(d.tint.rgb), 0);
+        o.color2 = linear(d.tint2.rgb);
         o.lpos = u.lightViewProj * w;
         o.layer = ushort(d.tint.w);
-        o.interior = 1.0;
         return o;
     }
 
@@ -153,7 +164,8 @@ enum OfficeShaders {
         return u.lightViewProj * (charSkin(v, d, bones) * float4(v.pos, 1));
     }
 
-    fragment float4 charFS(VOut i [[stage_in]], constant Uniforms &u [[buffer(1)]], texture2d<float> tex [[texture(3)]],
+    fragment float4 charFS(CharOut i [[stage_in]], constant Uniforms &u [[buffer(1)]], texture2d<float> tex [[texture(3)]],
+                         texture2d<float> detail [[texture(4)]],
                          depth2d<float> staticShadow [[texture(1)]], depth2d<float> villagerShadow [[texture(2)]],
                          sampler texSampler [[sampler(0)]], sampler shadowSampler [[sampler(1)]]) {
         float3 tint = i.color.rgb;
@@ -164,12 +176,18 @@ enum OfficeShaders {
             if (mode == 1) albedo = t.rgb;
             else if (mode == 2) albedo = t.rgb * tint;
             else if (mode == 3) albedo = tint * (1.0 - t.a) + t.rgb;   // önceden çarpılmış alfa
+            else if (mode == 5) {
+                // Tasarım: R ikinci renk maskesi, G gölge; ayrıntı dokusu (önceden çarpılmış) üstüne.
+                float3 base = mix(tint, i.color2, t.r) * t.g;
+                float4 d = detail.sample(texSampler, i.uv);
+                albedo = base * (1.0 - d.a) + d.rgb;
+            }
             else {
                 if (t.a < 0.5) discard_fragment();
                 albedo = t.rgb / max(t.a, 0.001);
             }
         }
-        return lit(albedo, i.nrm, i.lpos, 0, i.interior, u, staticShadow, villagerShadow, shadowSampler);
+        return lit(albedo, i.nrm, i.lpos, 0, 1.0, u, staticShadow, villagerShadow, shadowSampler);
     }
 
     // MARK: Gökyüzü

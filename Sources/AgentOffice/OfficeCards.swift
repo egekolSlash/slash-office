@@ -34,31 +34,25 @@ struct OfficeCards: View {
             let visibleDesks = plan.rooms.flatMap(\.desks).filter { desk in
                 desks[desk.id] != nil && shown(desk.z, OfficeOverlay.anchor(desk, viewport: viewport, viewSize: size).y)
             }
-            // Kartlar başın yanında, birbirinin üstüne binmeden (Core: tıklama testiyle aynı yerleşim).
+            // Bilgi kartı yok (yer kaplıyor, yerleşimi kayınca titriyordu): yalnız karakterin adı (· rolü) başın hemen
+            // üstünde; bekleyen / bitip görülmeyen köylüde balon onun üstünde.
             let standing = Set(desks.values.filter { if case .waiting = $0.state { true } else { false } }.map(\.id))
-            let bubbles = Set(desks.values.filter { info in
-                if case .waiting = info.state { return true }
-                return info.unseenFinish
-            }.map(\.id))
-            let focused = desks.values.filter(\.focused).map(\.id)
-            let frames = plan.cardFrames(visibleDesks, standing: standing, bubbles: bubbles, focused: focused,
-                                         viewport: viewport, viewSize: size, detail: detail, villagers: villagers)
-            let cardSize = OfficeOverlay.cardSize(detail)
+            let tagHeight = detail == .near ? 18.0 : 15.0
             ForEach(visibleDesks, id: \.id) { desk in
                 if let info = desks[desk.id] {
                     let anchor = plan.headAnchor(desk, standing: standing.contains(desk.id), viewport: viewport, viewSize: size,
                                                  villagers: villagers)
-                    if let frame = frames[desk.id] {
-                        DeskCard(info: info, near: detail == .near, size: cardSize)
-                            .scaleEffect(frame.scale)
-                            .position(x: frame.x, y: frame.y)
+                    let lift = info.name == nil || detail == .far ? 0 : tagHeight
+                    if let name = info.name, detail != .far {
+                        NameTag(name: name, focused: info.focused, near: detail == .near)
+                            .position(x: anchor.x, y: anchor.y - tagHeight / 2 - 2)
                     }
                     if case .waiting = info.state {
                         QuestionBubble(size: OfficeOverlay.bubbleSize(zoom: viewport.zoom))
-                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail))
+                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail) - lift)
                     } else if info.unseenFinish {
                         FinishedBubble(size: OfficeOverlay.bubbleSize(zoom: viewport.zoom))
-                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail))
+                            .position(x: anchor.x, y: anchor.y - OfficeOverlay.bubbleOffset(detail) - lift)
                     }
                 }
             }
@@ -101,39 +95,21 @@ private struct RoomSign: View {
     }
 }
 
-/// Masa kartı: köylünün başının yanında, sabit boyutta (yerleşim ve tıklama testi bu boyutu varsayar; uzun yazılar kısalır).
-private struct DeskCard: View {
-    let info: OfficeDeskInfo
+/// Köylünün adı (· rolü): küçük, başın üstünde ortalı.
+private struct NameTag: View {
+    let name: String
+    let focused: Bool
     let near: Bool
-    let size: (width: Double, height: Double)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-                if info.kind == .shell { Image(systemName: "apple.terminal").font(.system(size: 9)) }
-                // Ad verilmişse: "Ayşe · juice-merge" (ad kalın, proje soluk).
-                if let name = info.name {
-                    Text(verbatim: name).font(.system(size: near ? 12 : 10, weight: .semibold))
-                        + Text(verbatim: " · " + (info.worktree ?? info.title)).font(.system(size: near ? 11 : 9))
-                            .foregroundColor(.white.opacity(0.7))
-                } else {
-                    Text(info.worktree ?? info.title).font(.system(size: near ? 12 : 10, weight: .semibold))
-                }
-            }
-            // Yakın görünümde: ne üzerinde çalışıyor.
-            if near, let summary = info.summary {
-                Text(summary).font(.system(size: 10)).foregroundStyle(.white.opacity(0.85))
-            }
-            StatusBadge(state: info.state, kind: info.kind).font(.system(size: near ? 10 : 9))
-        }
-        .foregroundStyle(.white)
-        .lineLimit(1)
-        .truncationMode(.tail)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .frame(width: size.width, height: size.height, alignment: .leading)
-        .background(.black.opacity(info.focused ? 0.75 : 0.55), in: RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(info.focused ? Color.white.opacity(0.8) : .clear, lineWidth: 1))
+        Text(verbatim: name)
+            .font(.system(size: near ? 11 : 9, weight: .semibold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(.black.opacity(focused ? 0.7 : 0.45), in: Capsule())
+            .fixedSize()
     }
 }
 

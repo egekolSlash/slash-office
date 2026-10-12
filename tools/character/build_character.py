@@ -262,11 +262,11 @@ for p0, p1 in zip(arc, arc[1:]):
 cups = G.ellipsoid((0.262, 0.78, -0.05), (0.035, 0.065, 0.06), 10, 7) + G.ellipsoid((-0.262, 0.78, -0.05), (0.035, 0.065, 0.06), 10, 7)
 HATS = [
     {"name": "beanie", "parts": [part(add_mesh("hat/beanie", beanie, "head"),
-                                      "pattern", tint="top", texture=save_png(T.knit_texture(), "pattern/knit.png")),
-                                 part(add_mesh("hat/beanie-fold", fold, "head"), "flat", tint="top"),
+                                      "pattern", tint="hat", texture=save_png(T.knit_texture(), "pattern/knit.png")),
+                                 part(add_mesh("hat/beanie-fold", fold, "head"), "flat", tint="hat"),
                                  part(add_mesh("hat/beanie-pompom", pompom, "head"), "flat", color=[0.96, 0.96, 0.96])]},
-    {"name": "cap", "parts": [part(add_mesh("hat/cap", cap_crown, "head"), "flat", tint="top"),
-                              part(add_mesh("hat/cap-visor", visor, "head"), "flat", tint="top")]},
+    {"name": "cap", "parts": [part(add_mesh("hat/cap", cap_crown, "head"), "flat", tint="hat"),
+                              part(add_mesh("hat/cap-visor", visor, "head"), "flat", tint="hat")]},
     {"name": "headphones", "parts": [part(add_mesh("hat/headphones-band", phones_band, "head"), "flat", color=[0.22, 0.22, 0.25]),
                                      part(add_mesh("hat/headphones-cups", cups, "head"), "flat", color=[0.30, 0.30, 0.34])]},
 ]

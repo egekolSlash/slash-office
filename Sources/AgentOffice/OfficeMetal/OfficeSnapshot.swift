@@ -20,7 +20,7 @@ enum OfficeSnapshot {
         // `--custom`: özelleştirmenin sahneye yansıdığını görmek için bir köylüye ve odaya özel görünüm.
         if arguments.contains("--custom") {
             model.avatarLooks["demo-0"] = AvatarLook(hairStyle: .pigtails, hairColor: 5, skin: 2, shirtPattern: .dots, shirtColor: 3, glasses: true)
-            model.roomStyles["/demo/juice-merge"] = RoomStyle(wallpaper: 2, floor: 2, rug: .plain)
+            model.rooms["/demo/juice-merge"] = RoomRecord(style: RoomStyle(wallpaper: 2, floor: 2, rug: .plain))
         }
         // `--random-looks`: demo köylülerine sabit tohumlu rastgele görünüm (şapka, saç, yüz varyantlarını görmek için).
         if arguments.contains("--random-looks") {

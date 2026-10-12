@@ -26,7 +26,8 @@ public enum AvatarExpression {
                             seed: UInt64) -> Face {
         var face: Face
         switch clip {
-        case .cheer: face = Face(eye: happy, mouth: laugh)
+        case .cheer, .peace: face = Face(eye: happy, mouth: laugh)
+        case .bow: face = Face(eye: closed, mouth: restingMouth)
         case .sitDoze: face = Face(eye: sleepy, mouth: flat)
         case .sitStretch, .stretch: face = Face(eye: closed, mouth: open)
         case .sitSip, .drink, .brewCoffee: face = Face(eye: closed, mouth: flat)

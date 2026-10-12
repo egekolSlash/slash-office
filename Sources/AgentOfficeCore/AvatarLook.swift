@@ -6,10 +6,29 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
     public enum ShirtPattern: String, Codable, CaseIterable, Sendable { case plain, stripes, dots, plaid, check, hearts }
     public enum Hat: String, Codable, CaseIterable, Sendable { case none, beanie, cap, headphones }
     public enum Eyes: String, Codable, CaseIterable, Sendable { case round, happy, sleepy, dot, lashes, brows }
-    /// Karakterin kıyafet türleri (karakter paketinin kataloğundaki adlar).
+    /// Temel paketin kıyafet türleri. Görünüş kıyafeti kalıcı metin kimliğiyle tutar (`tee`, paketten `coat.tweed`):
+    /// paket kaldırılınca `CharacterArt` kalıba ya da temel karşılığa düşer.
     public enum Top: String, Codable, CaseIterable, Sendable { case tee, longsleeve, tank, sweater, dress, overalls }
     public enum Bottom: String, Codable, CaseIterable, Sendable { case pants, shorts, skirt }
     public enum Shoes: String, Codable, CaseIterable, Sendable { case sneakers, boots, slippers }
+
+    /// Serbest renk (sRGB, 0…1): paletin yerine.
+    public struct Color: Codable, Equatable, Hashable, Sendable {
+        public var r, g, b: Double
+        public init(_ r: Double, _ g: Double, _ b: Double) { self.r = r; self.g = g; self.b = b }
+        public init(_ c: RGBA) { self.init(c.red, c.green, c.blue) }
+        public var rgba: RGBA { (r, g, b) }
+    }
+
+    /// Parça başına serbest renkler; nil: palet seçimi (ya da tasarımın kendi rengi).
+    public struct Colors: Codable, Equatable, Hashable, Sendable {
+        public var hair, skin, top, topSecondary, bottom, shoes, hat: Color?
+        public init(hair: Color? = nil, skin: Color? = nil, top: Color? = nil, topSecondary: Color? = nil, bottom: Color? = nil,
+                    shoes: Color? = nil, hat: Color? = nil) {
+            self.hair = hair; self.skin = skin; self.top = top; self.topSecondary = topSecondary
+            self.bottom = bottom; self.shoes = shoes; self.hat = hat
+        }
+    }
     public enum Brows: String, Codable, CaseIterable, Sendable { case none, thin, bold }
     public enum Mouth: String, Codable, CaseIterable, Sendable { case smile, open, flat }
 
@@ -31,25 +50,27 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
     public var freckles: Bool
     /// Yanak allığı (bugünkü köylülerde var).
     public var blush: Bool
-    public var top: Top
-    /// Elbise ve tulumda alt giyilmez.
-    public var bottom: Bottom
-    public var shoes: Shoes
+    /// Kıyafet kimlikleri (katalog adı). Elbise ve tulumda alt giyilmez.
+    public var top: String
+    public var bottom: String
+    public var shoes: String
+    public var colors: Colors
 
     public init(hairStyle: HairStyle, hairColor: Int, skin: Int, shirtPattern: ShirtPattern, shirtColor: Int?, glasses: Bool,
                 name: String? = nil, hat: Hat = .none, pantsColor: Int = 0, shoeColor: Int = 0, eyes: Eyes = .round,
                 brows: Brows = .none, mouth: Mouth = .smile, freckles: Bool = false, blush: Bool = true,
-                top: Top = .tee, bottom: Bottom = .pants, shoes: Shoes = .sneakers) {
+                top: String = Top.tee.rawValue, bottom: String = Bottom.pants.rawValue, shoes: String = Shoes.sneakers.rawValue,
+                colors: Colors = Colors()) {
         self.hairStyle = hairStyle; self.hairColor = hairColor; self.skin = skin
         self.shirtPattern = shirtPattern; self.shirtColor = shirtColor; self.glasses = glasses
         self.name = name; self.hat = hat; self.pantsColor = pantsColor; self.shoeColor = shoeColor
         self.eyes = eyes; self.brows = brows; self.mouth = mouth; self.freckles = freckles; self.blush = blush
-        self.top = top; self.bottom = bottom; self.shoes = shoes
+        self.top = top; self.bottom = bottom; self.shoes = shoes; self.colors = colors
     }
 
     enum CodingKeys: String, CodingKey {
         case name, hairStyle, hairColor, skin, shirtPattern, shirtColor, glasses, hat, pantsColor, shoeColor
-        case eyes, brows, mouth, freckles, blush, top, bottom, shoes
+        case eyes, brows, mouth, freckles, blush, top, bottom, shoes, colors
     }
 
     /// Eski kayıtlarda yeni alanlar yok: bugünkü görünüme karşılık gelen değerler.
@@ -70,9 +91,10 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                   mouth: try c.decodeIfPresent(Mouth.self, forKey: .mouth) ?? .smile,
                   freckles: try c.decodeIfPresent(Bool.self, forKey: .freckles) ?? false,
                   blush: try c.decodeIfPresent(Bool.self, forKey: .blush) ?? true,
-                  top: try c.decodeIfPresent(Top.self, forKey: .top) ?? .tee,
-                  bottom: try c.decodeIfPresent(Bottom.self, forKey: .bottom) ?? .pants,
-                  shoes: try c.decodeIfPresent(Shoes.self, forKey: .shoes) ?? .sneakers)
+                  top: try c.decodeIfPresent(String.self, forKey: .top) ?? Top.tee.rawValue,
+                  bottom: try c.decodeIfPresent(String.self, forKey: .bottom) ?? Bottom.pants.rawValue,
+                  shoes: try c.decodeIfPresent(String.self, forKey: .shoes) ?? Shoes.sneakers.rawValue,
+                  colors: try c.decodeIfPresent(Colors.self, forKey: .colors) ?? Colors())
     }
 
     /// Kartta ve listede gösterilen ad: köylünün adı, yoksa oturum başlığı.
@@ -115,8 +137,8 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                           hairColor: pick(8, hairColors.count), skin: pick(16, skinTones.count),
                           shirtPattern: patterns[pick(24, patterns.count)],
                           shirtColor: nil, glasses: pick(32, 4) == 0,
-                          top: tops[pick(40, tops.count)], bottom: Bottom.allCases[pick(46, Bottom.allCases.count)],
-                          shoes: Shoes.allCases[pick(52, Shoes.allCases.count)])
+                          top: tops[pick(40, tops.count)].rawValue, bottom: Bottom.allCases[pick(46, Bottom.allCases.count)].rawValue,
+                          shoes: Shoes.allCases[pick(52, Shoes.allCases.count)].rawValue)
     }
 
     public static func random(using rng: inout some RandomNumberGenerator) -> AvatarLook {
@@ -134,8 +156,8 @@ public struct AvatarLook: Codable, Equatable, Hashable, Sendable {
                    mouth: Mouth.allCases.randomElement(using: &rng)!,
                    freckles: Int.random(in: 0..<4, using: &rng) == 0,
                    blush: Int.random(in: 0..<4, using: &rng) != 0,
-                   top: Top.allCases.randomElement(using: &rng)!,
-                   bottom: Bottom.allCases.randomElement(using: &rng)!,
-                   shoes: Shoes.allCases.randomElement(using: &rng)!)
+                   top: Top.allCases.randomElement(using: &rng)!.rawValue,
+                   bottom: Bottom.allCases.randomElement(using: &rng)!.rawValue,
+                   shoes: Shoes.allCases.randomElement(using: &rng)!.rawValue)
     }
 }

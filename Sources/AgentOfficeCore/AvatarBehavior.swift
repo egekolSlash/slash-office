@@ -47,8 +47,14 @@ public struct AvatarBehavior: Sendable {
     /// Beklerken: izin (baş kaşıma) ya da soru (gelince bir kez fark etme).
     private var waitReason: AvatarInstance.WaitReason?
 
-    public init(id: String) {
+    /// Kişilik: boşta hangi eşyaya ne sıklıkla gider; imza: iş bitince sevinç hareketi.
+    public var personality: Personality
+    public var celebration: AvatarClip
+
+    public init(id: String, personality: Personality = Personality(), celebration: AvatarClip = .cheer) {
         rng = SeededRandom(seed: StableHash.mixed("behavior:" + id))
+        self.personality = personality
+        self.celebration = celebration
     }
 
     private mutating func random(_ range: ClosedRange<Double>) -> Double {
@@ -57,6 +63,19 @@ public struct AvatarBehavior: Sendable {
 
     private mutating func pick<T>(_ items: [T]) -> T {
         items[Int(rng.next() * Double(items.count)) % items.count]
+    }
+
+    /// Kişiliğin ağırlıklarıyla eşya (hepsi 0 ise eşit).
+    private mutating func weightedPick(_ kinds: [RoomSpot.Kind]) -> RoomSpot.Kind {
+        let weights = kinds.map { max(0, personality.weight($0)) }
+        let total = weights.reduce(0, +)
+        guard total > 0 else { return pick(kinds) }
+        var r = rng.next() * Double(total)
+        for (kind, w) in zip(kinds, weights) {
+            r -= Double(w)
+            if r < 0 { return kind }
+        }
+        return kinds.last!
     }
 
     /// Köylü hedefine vardı (sim haber verir): noktadaki kalma süresi şimdi başlar.
@@ -107,9 +126,9 @@ public struct AvatarBehavior: Sendable {
             needGoal = false
             if pendingCheer, activity != .away {
                 pendingCheer = false
-                queued = (.cheer, 0.3)
+                queued = (celebration, 0.3)
                 // Süre köylü masanın yanına varınca başlar (yürüyüş uzun sürebilir; sevinç yarıda kalmasın).
-                pendingDwell = 0.3 + AvatarClip.cheer.duration + 0.2
+                pendingDwell = 0.3 + celebration.duration + 0.2
                 timer = .infinity
                 atDesk = false
                 return .goal(.stand(loop: .idle))
@@ -183,9 +202,12 @@ public struct AvatarBehavior: Sendable {
         extra = nil
         // Son iki eşya dışında; yoksa bir öncekinden başka; o da yoksa aynı eşya tekrar (az eşyalı oda). Boş
         // noktaya sadece hiç boş eşya yokken gidilir.
-        var choices = freeSpots.filter { !recent.contains($0) }
-        if choices.isEmpty { choices = freeSpots.filter { $0 != recent.last } }
-        if choices.isEmpty { choices = freeSpots }
+        // Kişilik: hiç sevmediği eşyaya (ağırlık 0) başka seçenek varken gitmez.
+        let liked = freeSpots.filter { personality.weight($0) > 0 }
+        let pool = liked.isEmpty ? freeSpots : liked
+        var choices = pool.filter { !recent.contains($0) }
+        if choices.isEmpty { choices = pool.filter { $0 != recent.last } }
+        if choices.isEmpty { choices = pool }
         guard !choices.isEmpty else {
             atSpot = nil
             let loop = pick([AvatarClip.lookAround, .stretch, .idle])
@@ -195,7 +217,7 @@ public struct AvatarBehavior: Sendable {
             if freePoints.isEmpty { return .goal(.stand(loop: .idle)) }
             return .goal(.point(pick(freePoints), loop: loop, dwell: dwell))
         }
-        let kind = pick(choices)
+        let kind = weightedPick(choices)
         atSpot = kind
         recent = Array((recent + [kind]).suffix(2))
         let goal: AvatarGoal

@@ -30,7 +30,8 @@ final class OfficeSharedScene: @unchecked Sendable {
         if sim == nil { sim = AvatarSim(skeleton: skeleton) }
         guard scene != lastScene else { return }
         lastScene = scene
-        sim?.sync(plan: scene.plan, desks: scene.desks, looks: scene.looks, projectColors: scene.projectColors, live: synced)
+        sim?.sync(plan: scene.plan, desks: scene.desks, looks: scene.looks, projectColors: scene.projectColors, live: synced,
+                  characters: scene.traits.mapValues { ($0.personality, $0.signature) })
         synced = true
     }
 

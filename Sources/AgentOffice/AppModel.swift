@@ -19,6 +19,13 @@ final class AppModel {
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
     /// Özelleştirme penceresinde seçilecek köylü ("Edit Appearance…" ile açılınca).
     var customizingAgent: String?
+    /// Özelleştirme penceresinde seçilecek oda ("Edit Room…" ile açılınca).
+    var customizingRoom: String?
+    /// Arayüzün kıyafet listesi (temel + kurulu paketler); ofis kaynakları yüklenince dolar.
+    var wardrobe = WardrobeCatalog()
+    /// Kurulu paketler (kimlik → sürüm) ve süren indirmeler.
+    var installedPacks: [String: String] = [:]
+    var packDownloads: Set<String> = []
 
     /// Agents > Permissions… ile açılan izin ekranı (ilk açılışta izinleri rehber ister).
     var showPermissions = false
@@ -41,7 +48,7 @@ final class AppModel {
     /// Proje klasörü → ikon (resim ya da proje türü sembolü); arka planda bir kez bulunur.
     private(set) var projectIcons: [String: LoadedProjectIcon] = [:]
     /// Proje klasörü → oda anahtarı (ana depo; worktree'ler aynı odada) ve worktree adı. Arka planda bir kez bulunur.
-    private(set) var roomIdentities: [String: RepoIdentity.Identity] = [:]
+    var roomIdentities: [String: RepoIdentity.Identity] = [:]
     @ObservationIgnored private var roomKeyLookups: Set<String> = []
     /// Masa yerleri: oturum kalkınca diğerleri yer değiştirmesin diye hatırlanır (spec §3).
     @ObservationIgnored private var deskSlots: [String: OfficePlan.DeskSlot] = [:]
@@ -49,9 +56,13 @@ final class AppModel {
     @ObservationIgnored private var roomOrder: [String] = []
     /// ⌘J ofis modunda: kamera bu masaya gider (OfficeView okuyup sıfırlar).
     var officeFocusRequest: String?
-    /// Kullanıcının değiştirdiği köylü görünüşleri ve oda stilleri (değiştirilmeyenler varsayılan).
+    /// Karaktersiz oturumların elle değiştirilmiş görünüşleri (eski kayıt ve demo); karakterler `characters`'ta.
     var avatarLooks: [String: AvatarLook] = [:]
-    var roomStyles: [String: RoomStyle] = [:]
+    /// Kalıcı karakterler (liste sırası kullanıcının) ve oda kayıtları (proje kökü → isim, stil, kadro).
+    var characters: [AgentCharacter] = []
+    var rooms: [String: RoomRecord] = [:]
+    /// Oturum → karakter (kadrodan atama sonucu; `refreshCast`).
+    var cast: [String: String] = [:]
     /// "Görünümü düzenle…" / "Odayı düzenle…" sayfaları.
     var editingAvatar: String?
     var editingRoom: String?
@@ -82,7 +93,7 @@ final class AppModel {
         Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("agent-office-hook").path
     }
 
-    @ObservationIgnored private var records: [String: SessionRecord] = [:]
+    @ObservationIgnored var records: [String: SessionRecord] = [:]
     /// Kullanıcının shell'indeki PATH (`.zshrc` dahil); npm/nvm/bun ile kurulan claude ve node için gerekli.
     @ObservationIgnored private lazy var launchPATH: String? = {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
@@ -133,13 +144,15 @@ final class AppModel {
             return
         }
         avatarLooks = StyleStore<AvatarLook>.load(from: avatarsURL)
-        roomStyles = StyleStore<RoomStyle>.load(from: roomStylesURL)
+        rooms = StyleStore<RoomRecord>.load(from: roomStylesURL)
+        characters = CharacterFile.load(from: charactersURL)
         // Önceki oturumlar durmuş olarak geri gelir; her claude süreci ayrı bellek tuttuğu için otomatik başlatılmaz.
         for record in SessionStore.load(from: recordsURL).sorted(by: { $0.createdAt < $1.createdAt }) {
             records[record.id] = record
             store.register(id: record.id, title: record.title, cwd: record.cwd, state: .exited)
             store.setWorkTitle(record.workTitle, for: record.id)
         }
+        migrateLooksIfNeeded()
         if let first = store.sessions.first?.id { layout.show(first) }
         // Durmuş görünen oturumlardan arka planda süren var mı.
         refreshAgents()
@@ -232,7 +245,7 @@ final class AppModel {
         }
     }
 
-    private func saveRecords() {
+    func saveRecords() {
         do {
             try SessionStore.save(Array(records.values), to: recordsURL)
         } catch {
@@ -628,7 +641,7 @@ extension AppModel {
 
     func roomKey(for cwd: String) -> String { roomIdentities[cwd]?.roomKey ?? cwd }
 
-    func look(for id: String) -> AvatarLook { avatarLooks[id] ?? AvatarLook.default(for: id) }
+    func look(for id: String) -> AvatarLook { character(for: id)?.look ?? avatarLooks[id] ?? AvatarLook.default(for: id) }
 
     /// Köylünün projesinin rengi (tişört rengi "proje rengi" iken).
     func projectColor(for id: String) -> AvatarLook.RGBA {
@@ -642,31 +655,33 @@ extension AppModel {
         look(for: id).shirtColor.map { AvatarLook.shirtColors[$0 % AvatarLook.shirtColors.count] } ?? projectColor(for: id)
     }
 
-    /// Köylünün adı (verildiyse), yoksa oturum başlığı: kartta, listede, panel başlığında ve bildirimde.
+    /// Köylünün adı (karakterin ya da elle verilen), yoksa oturum başlığı: listede, panel başlığında ve bildirimde.
     func displayName(for id: String) -> String {
-        look(for: id).displayName(title: store.session(id)?.title ?? "?")
+        character(for: id)?.name ?? look(for: id).displayName(title: store.session(id)?.title ?? "?")
     }
 
-    func style(for roomKey: String) -> RoomStyle { roomStyles[roomKey] ?? RoomStyle.default(for: roomKey) }
+    func style(for roomKey: String) -> RoomStyle { rooms[roomKey]?.style ?? RoomStyle.default(for: roomKey) }
 
     var avatarsURL: URL { supportDirectory.appendingPathComponent("avatars.json") }
     var roomStylesURL: URL { supportDirectory.appendingPathComponent("rooms.json") }
 
-    /// Varsayılandan farklıysa saklanır; `nil` ya da varsayılan görünüş kaydı siler.
+    /// Varsayılandan farklıysa saklanır; `nil` ya da varsayılan görünüş kaydı siler (karaktersiz oturum).
     func setLook(_ look: AvatarLook?, for id: String) {
         avatarLooks[id] = look == AvatarLook.default(for: id) ? nil : look
         do { try StyleStore.save(avatarLooks, to: avatarsURL) } catch { errorMessage = String(localized: "The appearance could not be saved: \(error.localizedDescription)") }
     }
 
     func setStyle(_ style: RoomStyle?, for roomKey: String) {
-        roomStyles[roomKey] = style == RoomStyle.default(for: roomKey) ? nil : style
-        do { try StyleStore.save(roomStyles, to: roomStylesURL) } catch { errorMessage = String(localized: "The room style could not be saved: \(error.localizedDescription)") }
+        var room = rooms[roomKey] ?? RoomRecord()
+        room.style = style == RoomStyle.default(for: roomKey) ? nil : style
+        setRoom(room, for: roomKey)
     }
 
     func worktree(for cwd: String) -> String? { roomIdentities[cwd]?.worktree }
 
     /// Ofisin kat planı; masa yerleri önceki plandan korunur.
     func officePlan() -> OfficePlan {
+        refreshCast()
         let members = store.sessions.map { OfficePlan.Member(id: $0.id, roomKey: roomKey(for: $0.cwd)) }
         deskSlots = OfficePlan.assignSlots(members, previous: deskSlots)
         roomOrder = OfficePlan.roomOrder(members, previous: roomOrder)

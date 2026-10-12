@@ -43,6 +43,9 @@ final class OfficeGPU: @unchecked Sendable {
                 }
             }
             let gpu = try OfficeGPU(art: art, character: character)
+            // İndirilmiş paketler (ek kıyafetler) temel kataloğa birleşir.
+            let packs = PackStore.installed()
+            if !packs.isEmpty { gpu.character.setPacks(packs.map { ($0.id, $0.directory) }) }
             // JSON çözümünün geçici bellekleri sisteme geri verilsin.
             malloc_zone_pressure_relief(nil, 0)
             DebugLog.write("office metal resources loaded from \(dir.path)")

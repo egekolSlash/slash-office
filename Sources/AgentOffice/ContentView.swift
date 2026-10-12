@@ -78,8 +78,12 @@ struct ContentView: View {
         .sheet(isPresented: $model.showOnboarding) {
             OnboardingView(model: model)
         }
-        .sheet(isPresented: Binding(get: { model.editingRoom != nil }, set: { if !$0 { model.editingRoom = nil } })) {
-            if let key = model.editingRoom { RoomEditorSheet(model: model, roomKey: key) }
+        // "Edit Room…": özelleştirme penceresi o oda seçili açılır.
+        .onChange(of: model.editingRoom) {
+            guard let key = model.editingRoom else { return }
+            model.customizingRoom = key
+            model.editingRoom = nil
+            openWindow(id: "agents")
         }
         .alert("Error", isPresented: .constant(model.errorMessage != nil)) {
             Button("OK") { model.errorMessage = nil }

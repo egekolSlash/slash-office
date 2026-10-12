@@ -1,8 +1,8 @@
 import AgentOfficeCore
 import SwiftUI
 
-/// "Odayı düzenle…": duvar kâğıdı, zemin ve halı (depo başına).
-struct RoomEditorSheet: View {
+/// Odanın stili (özelleştirme penceresinin oda sayfasında): duvar kâğıdı, zemin, halı, eşyalar ve dekor.
+struct RoomStyleSections: View {
     @Bindable var model: AppModel
     let roomKey: String
 
@@ -70,62 +70,56 @@ struct RoomEditorSheet: View {
         model.setStyle(next, for: roomKey)
     }
 
+    /// Odanın dekor yuvaları: ofiste açıksa oradaki oda, değilse tek odalı örnek plan.
+    private var decorSlots: [DecorSlot] {
+        if let room = model.officePlan().rooms.first(where: { $0.key == roomKey }) { return room.decorSlots }
+        let member = OfficePlan.Member(id: "preview", roomKey: roomKey)
+        return OfficePlan.make([member], slots: OfficePlan.assignSlots([member], previous: [:])).rooms.first?.decorSlots ?? []
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("\((roomKey as NSString).lastPathComponent) · Room").font(.title3.bold())
-            Form {
-                LabeledContent("Wallpaper") {
-                    HStack(spacing: 6) {
-                        ForEach(Array(Self.wallpapers.enumerated()), id: \.offset) { i, item in
-                            Swatch(color: item.color, selected: style.wallpaper == i, label: item.name) { update { $0.wallpaper = i } }
-                        }
-                    }
-                }
-                LabeledContent("Floor") {
-                    HStack(spacing: 6) {
-                        ForEach(Array(Self.floors.enumerated()), id: \.offset) { i, item in
-                            Swatch(color: item.color, selected: style.floor == i, label: item.name) { update { $0.floor = i } }
-                        }
-                    }
-                }
-                Picker("Rug", selection: Binding(get: { style.rug }, set: { v in update { $0.rug = v } })) {
-                    Text("Polka dots").tag(RoomStyle.RugPattern.dots)
-                    Text("Striped").tag(RoomStyle.RugPattern.stripes)
-                    Text("Plain").tag(RoomStyle.RugPattern.plain)
-                }
-                .pickerStyle(.segmented)
-                Section("Furniture") {
-                    // Kapalı eşya çizilmez; köylüler oraya gitmez.
-                    LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)]) {
-                        ForEach(RoomFurniture.allCases, id: \.self) { item in
-                            Toggle(Self.furnitureName(item), isOn: Binding(
-                                get: { style.furniture.contains(item) },
-                                set: { on in update { if on { $0.furniture.insert(item) } else { $0.furniture.remove(item) } } }))
-                        }
-                    }
-                }
-                if let room = model.officePlan().rooms.first(where: { $0.key == roomKey }) {
-                    Section("Decor") {
-                        ForEach(room.decorSlots, id: \.id) { slot in
-                            Picker(Self.slotName(slot.id), selection: decorBinding(slot)) {
-                                Text("Empty").tag(RoomDecor?.none)
-                                ForEach(RoomDecor.allCases.filter(slot.accepts), id: \.self) { item in
-                                    Text(Self.decorName(item)).tag(RoomDecor?.some(item))
-                                }
-                            }
-                        }
+        Section("Style") {
+            LabeledContent("Wallpaper") {
+                HStack(spacing: 6) {
+                    ForEach(Array(Self.wallpapers.enumerated()), id: \.offset) { i, item in
+                        Swatch(color: item.color, selected: style.wallpaper == i, label: item.name) { update { $0.wallpaper = i } }
                     }
                 }
             }
-            .formStyle(.grouped)
-            HStack {
-                Button("Reset to Default") { model.setStyle(nil, for: roomKey) }
-                Spacer()
-                Button("Done") { model.editingRoom = nil }.keyboardShortcut(.defaultAction)
+            LabeledContent("Floor") {
+                HStack(spacing: 6) {
+                    ForEach(Array(Self.floors.enumerated()), id: \.offset) { i, item in
+                        Swatch(color: item.color, selected: style.floor == i, label: item.name) { update { $0.floor = i } }
+                    }
+                }
+            }
+            Picker("Rug", selection: Binding(get: { style.rug }, set: { v in update { $0.rug = v } })) {
+                Text("Polka dots").tag(RoomStyle.RugPattern.dots)
+                Text("Striped").tag(RoomStyle.RugPattern.stripes)
+                Text("Plain").tag(RoomStyle.RugPattern.plain)
+            }
+            .pickerStyle(.segmented)
+        }
+        Section("Furniture") {
+            // Kapalı eşya çizilmez; köylüler oraya gitmez.
+            LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)]) {
+                ForEach(RoomFurniture.allCases, id: \.self) { item in
+                    Toggle(Self.furnitureName(item), isOn: Binding(
+                        get: { style.furniture.contains(item) },
+                        set: { on in update { if on { $0.furniture.insert(item) } else { $0.furniture.remove(item) } } }))
+                }
             }
         }
-        .padding(20)
-        .frame(width: 480)
+        Section("Decor") {
+            ForEach(decorSlots, id: \.id) { slot in
+                Picker(Self.slotName(slot.id), selection: decorBinding(slot)) {
+                    Text("Empty").tag(RoomDecor?.none)
+                    ForEach(RoomDecor.allCases.filter(slot.accepts), id: \.self) { item in
+                        Text(Self.decorName(item)).tag(RoomDecor?.some(item))
+                    }
+                }
+            }
+        }
     }
 }
 

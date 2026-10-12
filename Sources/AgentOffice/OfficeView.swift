@@ -51,7 +51,10 @@ struct OfficeView: View {
             projectColors: Dictionary(uniqueKeysWithValues: plan.rooms.map { room in
                 let c = ProjectPalette.colors[ProjectPalette.index(for: room.key)]
                 return (room.key, (red: c.red, green: c.green, blue: c.blue))
-            }))
+            }),
+            traits: desks.keys.reduce(into: [:]) { result, id in
+                if let c = model.character(for: id) { result[id] = .init(personality: c.personality, signature: c.signature) }
+            })
         let camera = camera
         return OfficeMetalRepresentable(
             gpu: gpu, camera: camera, scene: scene, interactive: interactive,
@@ -185,7 +188,7 @@ struct OfficeView: View {
                     id: desk.id, title: session.title, state: session.state, kind: model.kind(of: desk.id),
                     roomKey: room.key, worktree: model.worktree(for: session.cwd),
                     focused: model.layout.focused == desk.id, summary: session.workSummary, unseenFinish: session.unseenFinish,
-                    name: model.look(for: desk.id).name)
+                    name: model.overheadLabel(for: desk.id))
             }
         }
         return result

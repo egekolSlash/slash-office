@@ -8,11 +8,13 @@ public struct CharacterArt: Sendable {
     public enum Mode: String, Codable, Sendable {
         /// Düz ton (ten) ya da sabit renk. `albedo`: doku. `tinted`: gri doku × ton (saç). `pattern`: görünüşün deseni
         /// (ya da parçanın dokusu) × ton. `eye`/`mouth`: ifade dokusu alfasıyla tona karışan opak çıkartma. `decal`:
-        /// parçanın dokusuyla aynı (allık). `cutout`: doku, alfa < 0,5 atılır.
-        case flat, albedo, tinted, pattern, eye, mouth, decal, cutout
+        /// parçanın dokusuyla aynı (allık). `cutout`: doku, alfa < 0,5 atılır. `design`: tasarım kıyafeti — doku R ikinci
+        /// renk maskesi, G gölge; `detail` dokusu (sabit renkli ayrıntı) üstüne; renkler görünüşten ya da `colors`'tan.
+        case flat, albedo, tinted, pattern, eye, mouth, decal, cutout, design
     }
 
-    public enum Tint: String, Codable, Sendable { case skin, hair, top, bottom, shoes }
+    /// `hat`: şapkanın rengi (seçilmemişse üstün rengi).
+    public enum Tint: String, Codable, Sendable { case skin, hair, top, bottom, shoes, hat }
 
     public struct Part: Codable, Hashable, Sendable {
         public var mesh: String
@@ -23,6 +25,9 @@ public struct CharacterArt: Sendable {
         public var color: [Float]?
         /// Saçın tepe parçası (diken, topuz, bukle): şapka takılınca çizilmez.
         public var crown: Bool?
+        /// `design`: sabit renkli ayrıntı dokusu ve tasarımın kendi iki rengi (sRGB).
+        public var detail: String?
+        public var colors: [[Float]]?
     }
 
     public struct Item: Codable, Sendable {
@@ -30,6 +35,15 @@ public struct CharacterArt: Sendable {
         public var parts: [Part]
         /// Üst kıyafette: elbise/tulum (alt giyilmez).
         public var onepiece: Bool?
+        /// Listede görünen ad (paket öğeleri; temel öğelerin adı uygulamada çevrilir).
+        public var title: String?
+
+        public init(name: String, parts: [Part], onepiece: Bool? = nil, title: String? = nil) {
+            self.name = name; self.parts = parts; self.onepiece = onepiece; self.title = title
+        }
+
+        /// Renkleri tasarımdan gelir (görünüşün palet renkleri değil, yalnız serbest renkler uygulanır).
+        public var isDesign: Bool { parts.contains { $0.mode == .design } }
     }
 
     public struct Mesh: Sendable {
@@ -64,8 +78,13 @@ public struct CharacterArt: Sendable {
     public var outfits: [Item]
     public var bottoms: [Item]
     public var shoes: [Item]
+    /// Kalıp → temel paketteki karşılığı (paket kaldırılınca giyilen kıyafet buna düşer; ör. `coat` → `longsleeve`).
+    public var fallbacks: [String: String]
+    /// Kurulu paketler (kimlik → başlık), birleştirme sırasıyla.
+    public var packs: [String] = []
 
     public static let fileName = "character.json"
+    public static let packFileName = "pack.json"
 
     /// Uygulama paketindeki `Character` klasörü, yoksa depodaki `Resources/Character` (geliştirme).
     public static func find(bundleResources: URL?, repoRoot: URL, fileManager: FileManager = .default) -> URL? {
@@ -96,8 +115,25 @@ public struct CharacterArt: Sendable {
             guard matrices.count == clip.frames * boneCount * 16 else { throw F.Failure.badLength("clip \(name)") }
             clips[name] = ArtClip(frames: clip.frames, matrices: matrices)
         }
+        let meshes = try decodeMeshes(raw.meshes, boneCount: boneCount)
+        let art = CharacterArt(directory: directory, bones: raw.bones, parents: raw.parents, rest: rest, clips: clips,
+                               meshes: meshes, body: raw.body, blush: raw.blush, hairs: raw.hairs,
+                               hairNames: raw.hairNames, hats: raw.hats, glasses: raw.glasses,
+                               eyes: raw.eyes, mouths: raw.mouths, patterns: raw.patterns, patternNames: raw.patternNames,
+                               outfits: raw.outfits, bottoms: raw.bottoms, shoes: raw.shoes, fallbacks: raw.fallbacks ?? [:])
+        let referenced = art.body + art.blush + art.glasses + art.hairs.flatMap { $0 }
+            + (art.outfits + art.bottoms + art.shoes + art.hats).flatMap(\.parts)
+        if let missing = referenced.first(where: { meshes[$0.mesh] == nil }) { throw F.Failure.indexOutOfRange(missing.mesh) }
+        guard !art.hairs.isEmpty, art.hairNames.count == art.hairs.count, !art.eyes.isEmpty, !art.mouths.isEmpty,
+              !art.patterns.isEmpty, art.patternNames.count == art.patterns.count, !art.outfits.isEmpty, !art.bottoms.isEmpty,
+              !art.shoes.isEmpty else { throw F.Failure.badLength("catalog") }
+        return art
+    }
+
+    static func decodeMeshes(_ raw: [String: RawMesh], boneCount: Int) throws -> [String: Mesh] {
+        typealias F = OfficeArtFile
         var meshes: [String: Mesh] = [:]
-        for (name, m) in raw.meshes {
+        for (name, m) in raw {
             let mesh = Mesh(vertexCount: m.vertexCount, positions: try F.array(m.positions, name), normals: try F.array(m.normals, name),
                             uvs: try F.array(m.uvs, name), joints: try F.array(m.joints, name), weights: try F.array(m.weights, name),
                             indices: try F.array(m.indices, name))
@@ -111,21 +147,57 @@ public struct CharacterArt: Sendable {
             }
             meshes[name] = mesh
         }
-        let art = CharacterArt(directory: directory, bones: raw.bones, parents: raw.parents, rest: rest, clips: clips,
-                               meshes: meshes, body: raw.body, blush: raw.blush, hairs: raw.hairs,
-                               hairNames: raw.hairNames, hats: raw.hats, glasses: raw.glasses,
-                               eyes: raw.eyes, mouths: raw.mouths, patterns: raw.patterns, patternNames: raw.patternNames,
-                               outfits: raw.outfits, bottoms: raw.bottoms, shoes: raw.shoes)
-        let referenced = art.body + art.blush + art.glasses + art.hairs.flatMap { $0 }
-            + (art.outfits + art.bottoms + art.shoes + art.hats).flatMap(\.parts)
-        if let missing = referenced.first(where: { meshes[$0.mesh] == nil }) { throw F.Failure.indexOutOfRange(missing.mesh) }
-        guard !art.hairs.isEmpty, art.hairNames.count == art.hairs.count, !art.eyes.isEmpty, !art.mouths.isEmpty,
-              !art.patterns.isEmpty, art.patternNames.count == art.patterns.count, !art.outfits.isEmpty, !art.bottoms.isEmpty,
-              !art.shoes.isEmpty else { throw F.Failure.badLength("catalog") }
-        return art
+        return meshes
     }
 
-    /// Görünüşün kataloktaki karşılıkları (ad eşleşmezse ilk öğe).
+    /// İndirilebilir paket (`Packs/<kimlik>/pack.json` + `tex/`): ek kıyafet, alt, ayakkabı, şapka. Meshler aynı iskelete
+    /// göre; mesh adları ve dokular paketin kimliğiyle ayrılır (dokular mutlak yol olur). Aynı adlı öğe paketinkiyle
+    /// değişir.
+    public mutating func merge(packAt directory: URL, id: String) throws {
+        let raw = try JSONDecoder().decode(RawPack.self, from: Data(contentsOf: directory.appendingPathComponent(Self.packFileName)))
+        let packMeshes = try Self.decodeMeshes(raw.meshes, boneCount: bones.count)
+        func local(_ part: Part) -> Part {
+            var p = part
+            p.mesh = id + ":" + part.mesh
+            p.texture = part.texture.map { directory.appendingPathComponent($0).path }
+            p.detail = part.detail.map { directory.appendingPathComponent($0).path }
+            return p
+        }
+        func items(_ list: [Item]?) -> [Item] {
+            (list ?? []).map { Item(name: $0.name, parts: $0.parts.map(local), onepiece: $0.onepiece, title: $0.title) }
+        }
+        let added = items(raw.outfits) + items(raw.bottoms) + items(raw.shoes) + items(raw.hats)
+        if let missing = added.flatMap(\.parts).first(where: { packMeshes[String($0.mesh.dropFirst(id.count + 1))] == nil }) {
+            throw OfficeArtFile.Failure.indexOutOfRange(missing.mesh)
+        }
+        for (name, mesh) in packMeshes { meshes[id + ":" + name] = mesh }
+        func merged(_ base: [Item], _ extra: [Item]) -> [Item] {
+            let names = Set(extra.map(\.name))
+            return base.filter { !names.contains($0.name) } + extra
+        }
+        outfits = merged(outfits, items(raw.outfits))
+        bottoms = merged(bottoms, items(raw.bottoms))
+        shoes = merged(shoes, items(raw.shoes))
+        hats = merged(hats, items(raw.hats))
+        packs.append(id)
+    }
+
+    /// Kıyafet kimliği → katalog indeksi: tam ad; yoksa kalıp (`coat.tweed` → `coat`); yoksa temel karşılık
+    /// (`fallbacks`, zincirlenebilir); yoksa ilk öğe.
+    public func resolve(_ id: String, in items: [Item]) -> Int {
+        let names = items.map(\.name)
+        var name = id
+        var seen: Set<String> = []
+        while seen.insert(name).inserted {
+            if let i = names.firstIndex(of: name) { return i }
+            if let dot = name.firstIndex(of: ".") { name = String(name[..<dot]); continue }
+            guard let next = fallbacks[name] else { break }
+            name = next
+        }
+        return 0
+    }
+
+    /// Görünüşün kataloktaki karşılıkları (ad eşleşmezse kalıp / temel karşılık / ilk öğe).
     public struct Selection: Equatable, Sendable {
         public var hair, outfit, bottom, shoes, pattern, eyeStyle: Int
     }
@@ -140,8 +212,8 @@ public struct CharacterArt: Sendable {
         case .happy: 4
         case .brows: 5
         }
-        return Selection(hair: index(hairNames, look.hairStyle.rawValue), outfit: index(outfits.map(\.name), look.top.rawValue),
-                         bottom: index(bottoms.map(\.name), look.bottom.rawValue), shoes: index(shoes.map(\.name), look.shoes.rawValue),
+        return Selection(hair: index(hairNames, look.hairStyle.rawValue), outfit: resolve(look.top, in: outfits),
+                         bottom: resolve(look.bottom, in: bottoms), shoes: resolve(look.shoes, in: shoes),
                          pattern: index(patternNames, look.shirtPattern.rawValue), eyeStyle: Self.wrap(eyeStyle, eyes.count))
     }
 
@@ -195,6 +267,12 @@ public struct CharacterArt: Sendable {
         var outfits: [Item]
         var bottoms: [Item]
         var shoes: [Item]
+        var fallbacks: [String: String]?
+    }
+
+    struct RawPack: Decodable {
+        var meshes: [String: RawMesh]
+        var outfits, bottoms, shoes, hats: [Item]?
     }
 
     struct RawMesh: Decodable {

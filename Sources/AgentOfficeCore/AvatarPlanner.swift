@@ -28,6 +28,8 @@ public enum AvatarClip: String, CaseIterable, Sendable {
     case sitDraw, sitWrite, sitRead, readBook, playArcade, drawBoard, stepBackLook, brewCoffee
     // Tepkiler: izin beklerken başını kaşıma, soru gelince fark edip zıplama.
     case scratchHead, notice
+    // İmza sevinçleri: eğilerek selam, iki parmakla "peace".
+    case bow, peace
 
     public var frames: ClosedRange<Int> {
         switch self {
@@ -58,6 +60,8 @@ public enum AvatarClip: String, CaseIterable, Sendable {
         case .brewCoffee: 1015...1062
         case .scratchHead: 1071...1118
         case .notice: 1121...1138
+        case .bow: 1141...1176
+        case .peace: 1181...1210
         }
     }
 
@@ -81,7 +85,7 @@ public enum AvatarClip: String, CaseIterable, Sendable {
     /// yürümeye giriş/çıkış orta, oturarak yapılan hareketler arası daha uzun ve sakin.
     public static func fade(from a: AvatarClip, to b: AvatarClip) -> Double {
         if [a, b].contains(.sitDown) || [a, b].contains(.standUp) { return 0.12 }
-        if b == .notice || b == .cheer { return 0.12 }
+        if [.notice, .cheer, .bow, .peace].contains(b) { return 0.12 }
         if a == .walk || b == .walk { return 0.2 }
         if a.seated && b.seated { return 0.35 }
         return 0.25

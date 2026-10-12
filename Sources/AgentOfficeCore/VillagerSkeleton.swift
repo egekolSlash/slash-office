@@ -149,6 +149,8 @@ public struct AvatarInstance: Sendable {
     /// Doğrusal değil, sRGB (editördeki renklerle aynı).
     public var shirtColor: SIMD3<Float> = SIMD3(0.5, 0.5, 0.5)
     public var waving = false
+    /// Karakterin imzası: dinlenirken ağız (nil: görünüşün ağzı).
+    public var restingMouth: AvatarLook.Mouth?
     /// Şimdiki geçişin süresi (`AvatarClip.fade`).
     public var fadeDuration = AvatarInstance.fade
     /// Dönülecek yön (radyan): köylü bu yöne birkaç karede yumuşakça döner; nil: dönüş yok.

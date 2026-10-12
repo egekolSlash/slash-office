@@ -20,7 +20,7 @@ FPS = 24
 FRAMES = dict(idle=24, walk=24, sitType=24, sitDoze=48, wave=24, lookAround=48, sitSip=48, sitThink=48, sitStretch=36,
               stretch=36, waitTap=24, cheer=24, inspect=48, drink=36, sitDown=12, standUp=12, sofaSit=48, sitDraw=48,
               sitWrite=48, sitRead=48, readBook=72, playArcade=48, drawBoard=48, stepBackLook=48, brewCoffee=48,
-              scratchHead=48, notice=18)
+              scratchHead=48, notice=18, bow=36, peace=30)
 CLIPS = {}
 
 
@@ -235,6 +235,27 @@ def cheer(n):
     land = merge(crouch, up, {"_ikL": (0.31, 0.71, 0.08), "_ikR": (-0.31, 0.71, 0.08), "_off": (0, -0.025, 0)})
     hold = merge(STAND, up, {"_ikL": (0.31, 0.75, 0.08), "_ikR": (-0.31, 0.75, 0.08)})
     return [(0, STAND), (4, crouch), (9, air), (14, land), (18, hold), (n - 1, STAND)]
+
+
+@clip("bow")
+def bow(n):
+    """İmza: eller önde birleşik, belden eğilerek selam."""
+    hands = {"_ikL": (0.05, 0.40, 0.12), "_ikR": (-0.05, 0.40, 0.12), "_poleL": (0.8, -0.6, 0.2), "_poleR": (-0.8, -0.6, 0.2)}
+    ready = merge(STAND, hands)
+    down = merge(STAND, hands, {"Spine1": (24, 0, 0), "Spine2": (12, 0, 0), "Head": (14, 0, 0), "Thigh_L": (-6, 0, 0),
+                                "Thigh_R": (-6, 0, 0), "_ikL": (0.05, 0.36, 0.20), "_ikR": (-0.05, 0.36, 0.20)})
+    return [(0, STAND), (6, ready), (14, down), (22, down), (29, ready), (n - 1, STAND)]
+
+
+@clip("peace")
+def peace(n):
+    """İmza: başı yana eğik, sağ el yüzün yanında (iki parmak), sol el belde; küçük sekme."""
+    pose = merge(STAND, {"_ikR": (-0.17, 0.80, 0.15), "_poleR": (-1, -0.5, -0.2), "_ikL": (0.17, 0.40, -0.01),
+                         "_poleL": (1, 0.2, -1), "Head": (0, -8, -12), "Spine3": (0, -6, -4)})
+    hop = merge(pose, {"Shin_L": (14, 0, 0), "Shin_R": (14, 0, 0), "Thigh_L": (-7, 0, 0), "Thigh_R": (-7, 0, 0),
+                       "_off": (0, -0.02, 0)})
+    tilt = merge(pose, {"Head": (0, -6, -16)})
+    return [(0, STAND), (5, hop), (9, pose), (16, tilt), (23, pose), (n - 1, STAND)]
 
 
 @clip("inspect")

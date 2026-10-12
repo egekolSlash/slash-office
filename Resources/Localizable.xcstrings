@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ Copy": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Kopya"
+          }
+        }
+      }
+    },
     "%@ · Appearance": {
       "localizations": {
         "tr": {
@@ -17,6 +27,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ · Oda"
+          }
+        }
+      }
+    },
+    "%lld characters": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld karakter"
           }
         }
       }
@@ -77,6 +97,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "API sayfalamasını ekle"
+          }
+        }
+      }
+    },
+    "Add Character": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karakter Ekle"
           }
         }
       }
@@ -167,6 +197,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otomatik odak duraklatıldı"
+          }
+        }
+      }
+    },
+    "Automatic (room cast)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik (oda kadrosu)"
+          }
+        }
+      }
+    },
+    "Automatic picks the first free character of the room's cast; without a cast the session gets a random look.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik, odanın kadrosundaki ilk boş karakteri seçer; kadro yoksa oturum rastgele bir görünüm alır."
           }
         }
       }
@@ -321,6 +371,26 @@
         }
       }
     },
+    "Bow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eğilerek selam"
+          }
+        }
+      }
+    },
+    "Brisk": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempolu"
+          }
+        }
+      }
+    },
     "Bun": {
       "localizations": {
         "tr": {
@@ -381,12 +451,52 @@
         }
       }
     },
+    "Cast": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kadro"
+          }
+        }
+      }
+    },
+    "Celebration": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sevinç hareketi"
+          }
+        }
+      }
+    },
     "Changes": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Değişiklikler"
+          }
+        }
+      }
+    },
+    "Character": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karakter"
+          }
+        }
+      }
+    },
+    "Characters": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karakterler"
           }
         }
       }
@@ -411,12 +521,32 @@
         }
       }
     },
+    "Cheer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sevinç"
+          }
+        }
+      }
+    },
     "Choose Folder for Terminal…": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Terminal için klasör seç…"
+          }
+        }
+      }
+    },
+    "Choose Project": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje Seç"
           }
         }
       }
@@ -671,6 +801,46 @@
         }
       }
     },
+    "Delete": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sil"
+          }
+        }
+      }
+    },
+    "Delete Character": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karakteri Sil"
+          }
+        }
+      }
+    },
+    "Delete Room Settings": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oda Ayarlarını Sil"
+          }
+        }
+      }
+    },
+    "Design colors": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasarım renkleri"
+          }
+        }
+      }
+    },
     "Desks": {
       "localizations": {
         "tr": {
@@ -701,6 +871,36 @@
         }
       }
     },
+    "Download": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndir"
+          }
+        }
+      }
+    },
+    "Downloadable Packs": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilebilir Paketler"
+          }
+        }
+      }
+    },
+    "Downloads": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirmeler"
+          }
+        }
+      }
+    },
     "Dozing at the desk or wandering around the room.": {
       "localizations": {
         "tr": {
@@ -717,6 +917,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elbise"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çoğalt"
           }
         }
       }
@@ -1111,6 +1321,16 @@
         }
       }
     },
+    "Hat color": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şapka rengi"
+          }
+        }
+      }
+    },
     "Headphones": {
       "localizations": {
         "tr": {
@@ -1351,6 +1571,26 @@
         }
       }
     },
+    "Loves it": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bayılır"
+          }
+        }
+      }
+    },
+    "Match the top": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üstle aynı"
+          }
+        }
+      }
+    },
     "Meet the office": {
       "localizations": {
         "tr": {
@@ -1431,12 +1671,32 @@
         }
       }
     },
+    "Never": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiç"
+          }
+        }
+      }
+    },
     "New": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Yeni"
+          }
+        }
+      }
+    },
+    "New Character": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Karakter"
           }
         }
       }
@@ -1477,6 +1737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeni oda"
+          }
+        }
+      }
+    },
+    "New Room…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Oda…"
           }
         }
       }
@@ -1551,6 +1821,16 @@
         }
       }
     },
+    "No packs are available for this version.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sürüm için paket yok."
+          }
+        }
+      }
+    },
     "No projects yet": {
       "localizations": {
         "tr": {
@@ -1611,12 +1891,32 @@
         }
       }
     },
+    "Normal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        }
+      }
+    },
     "Not a Git repository": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Git deposu değil"
+          }
+        }
+      }
+    },
+    "Nothing selected": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili bir şey yok"
           }
         }
       }
@@ -1677,6 +1977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ofis görünümü"
+          }
+        }
+      }
+    },
+    "Often": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sık"
           }
         }
       }
@@ -1751,6 +2061,16 @@
         }
       }
     },
+    "Original": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orijinal"
+          }
+        }
+      }
+    },
     "Other Folder…": {
       "localizations": {
         "tr": {
@@ -1781,6 +2101,26 @@
         }
       }
     },
+    "Packs": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paketler"
+          }
+        }
+      }
+    },
+    "Packs add outfits and stay on this Mac only. Removing a pack keeps your characters; their clothes fall back to the closest built-in item.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paketler kıyafet ekler ve yalnız bu Mac'te kalır. Paketi kaldırmak karakterlerini silmez; kıyafetleri en yakın yerleşik parçaya döner."
+          }
+        }
+      }
+    },
     "Pants": {
       "localizations": {
         "tr": {
@@ -1801,6 +2141,16 @@
         }
       }
     },
+    "Peace sign": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barış işareti"
+          }
+        }
+      }
+    },
     "Permissions": {
       "localizations": {
         "tr": {
@@ -1817,6 +2167,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "İzinler…"
+          }
+        }
+      }
+    },
+    "Personality": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kişilik"
+          }
+        }
+      }
+    },
+    "Pick a session, a character or a room on the left.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soldan bir oturum, karakter ya da oda seç."
           }
         }
       }
@@ -1961,6 +2331,16 @@
         }
       }
     },
+    "Project": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje"
+          }
+        }
+      }
+    },
     "Project color": {
       "localizations": {
         "tr": {
@@ -2001,12 +2381,32 @@
         }
       }
     },
+    "Random look": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rastgele görünüm"
+          }
+        }
+      }
+    },
     "Randomize": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Rastgele"
+          }
+        }
+      }
+    },
+    "Randomize Look": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görünüşü Rastgele Yap"
           }
         }
       }
@@ -2051,6 +2451,16 @@
         }
       }
     },
+    "Reset Style": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stili Sıfırla"
+          }
+        }
+      }
+    },
     "Reset to Default": {
       "localizations": {
         "tr": {
@@ -2087,6 +2497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Slash Office yeniden başlatılsın mı?"
+          }
+        }
+      }
+    },
+    "Resting face": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinlenirken yüz"
           }
         }
       }
@@ -2151,12 +2571,32 @@
         }
       }
     },
+    "Role": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rol"
+          }
+        }
+      }
+    },
     "Room unlock rules": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Oda açılma kuralları"
+          }
+        }
+      }
+    },
+    "Rooms": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odalar"
           }
         }
       }
@@ -2197,6 +2637,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Arka planda açık"
+          }
+        }
+      }
+    },
+    "Same as the look": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görünüşteki gibi"
+          }
+        }
+      }
+    },
+    "Save as Character": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karakter Olarak Kaydet"
           }
         }
       }
@@ -2277,6 +2737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oturumlar"
+          }
+        }
+      }
+    },
+    "Sessions in this project take the first free character in this order. Without enough characters they get a random look.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu projedeki oturumlar bu sıradaki ilk boş karakteri alır. Yeterli karakter yoksa rastgele bir görünüm alırlar."
           }
         }
       }
@@ -2391,6 +2861,16 @@
         }
       }
     },
+    "Signature": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İmza"
+          }
+        }
+      }
+    },
     "Skin tone": {
       "localizations": {
         "tr": {
@@ -2491,6 +2971,16 @@
         }
       }
     },
+    "Slow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yavaş"
+          }
+        }
+      }
+    },
     "Smaller Text": {
       "localizations": {
         "tr": {
@@ -2527,6 +3017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Koltuk"
+          }
+        }
+      }
+    },
+    "Sometimes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bazen"
           }
         }
       }
@@ -2751,6 +3251,16 @@
         }
       }
     },
+    "The characters could not be saved: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karakterler kaydedilemedi: %@"
+          }
+        }
+      }
+    },
     "The hook server could not be started: %@": {
       "localizations": {
         "tr": {
@@ -2787,6 +3297,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ofis boş"
+          }
+        }
+      }
+    },
+    "The pack %@ could not be downloaded: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ paketi indirilemedi: %2$@"
+          }
+        }
+      }
+    },
+    "The pack %@ could not be verified (checksum mismatch); it was not installed.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ paketi doğrulanamadı (sağlama toplamı uyuşmuyor); kurulmadı."
+          }
+        }
+      }
+    },
+    "The pack could not be removed: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paket kaldırılamadı: %@"
+          }
+        }
+      }
+    },
+    "The room could not be saved: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oda kaydedilemedi: %@"
           }
         }
       }
@@ -2961,6 +3511,16 @@
         }
       }
     },
+    "Update": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelle"
+          }
+        }
+      }
+    },
     "Vending machine": {
       "localizations": {
         "tr": {
@@ -2997,6 +3557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "İzin bekliyor"
+          }
+        }
+      }
+    },
+    "Walking pace": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yürüyüş hızı"
           }
         }
       }
@@ -3067,6 +3637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ne açmak istersin?"
+          }
+        }
+      }
+    },
+    "When idle, the villager walks to the things it likes more often.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boştayken köylü sevdiği şeylere daha sık gider."
           }
         }
       }
@@ -3177,6 +3757,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "`claude` bulunamadı. Aranan dizinler: %@"
+          }
+        }
+      }
+    },
+    "e.g. frontend, tests": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ör. frontend, testler"
           }
         }
       }

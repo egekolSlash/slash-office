@@ -53,7 +53,12 @@ public struct AvatarSim: Sendable {
         var pendingShot: AvatarClip?
         var seated = false
         var spot: RoomSpot.Kind?
+        /// Kişiliğin yürüyüş hızı ölçeği.
+        var pace = 1.0
     }
+
+    /// Yürürken ya da kalkarken gelirse kaybolmayıp varınca oynanan hareketler (sevinç, fark etme).
+    static let important: Set<AvatarClip> = [.cheer, .notice, .bow, .peace]
 
     public let skeleton: VillagerSkeleton
     private var avatars: [String: Avatar] = [:]
@@ -105,8 +110,10 @@ public struct AvatarSim: Sendable {
 
     // MARK: - Durum
 
+    /// `characters`: oturum → karakterin kişiliği ve imzası (karaktersiz oturum varsayılanları alır).
     public mutating func sync(plan: OfficePlan, desks: [String: AvatarDeskState], looks: [String: AvatarLook],
-                              projectColors: [String: AvatarLook.RGBA], live: Bool) {
+                              projectColors: [String: AvatarLook.RGBA], live: Bool,
+                              characters: [String: (personality: Personality, signature: Signature)] = [:]) {
         var seen = Set<String>()
         navs = Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, RoomNav(room: $0)) })
         points = navs.mapValues(\.freePoints)
@@ -122,12 +129,17 @@ public struct AvatarSim: Sendable {
                 seen.insert(desk.id)
                 let look = looks[desk.id] ?? AvatarLook.default(for: desk.id)
                 let shirt = look.shirtColor.map { AvatarLook.shirtColors[$0 % AvatarLook.shirtColors.count] } ?? projectColor
+                let traits = characters[desk.id]
                 var avatar = existing ?? Avatar(instance: AvatarInstance(id: desk.id, clip: .idle, look: look),
                                                 behavior: AvatarBehavior(id: desk.id), activity: activity,
                                                 unseenFinish: info.unseenFinish, desk: desk, room: room,
                                                 point: room.doorOutside)
                 if existing == nil { avatar.instance.position = Self.position(room.doorOutside) }
                 avatar.instance.look = look
+                avatar.behavior.personality = traits?.personality ?? Personality()
+                avatar.behavior.celebration = traits?.signature.celebration.clip ?? .cheer
+                avatar.instance.restingMouth = traits?.signature.restingMouth
+                avatar.pace = (traits?.personality ?? Personality()).pace.scale
                 avatar.instance.shirtColor = SIMD3(Float(shirt.red), Float(shirt.green), Float(shirt.blue))
                 avatar.instance.waving = activity == .waving
                 let reason: AvatarInstance.WaitReason? = switch info.state {
@@ -232,10 +244,10 @@ public struct AvatarSim: Sendable {
             // Yürürken ya da başka bir hareketin ortasında değilse.
             guard avatar.path.isEmpty, avatar.action == nil, avatar.target != nil else {
                 // Yürürken ya da kalkarken: sevinç gibi önemli hareketler varınca oynar.
-                if clip == .cheer || clip == .notice { avatar.pendingShot = clip; avatars[id] = avatar }
+                if Self.important.contains(clip) { avatar.pendingShot = clip; avatars[id] = avatar }
                 return
             }
-            if clip.seated != avatar.seated && clip != .cheer && clip != .notice { return }
+            if clip.seated != avatar.seated && !Self.important.contains(clip) { return }
             avatar.action = .oneShot(remaining: clip.duration, loop: avatar.target?.loop ?? .idle)
             avatar.instance.play(clip, skeleton: skeleton)
             avatars[id] = avatar
@@ -430,7 +442,8 @@ public struct AvatarSim: Sendable {
         var from = avatar.point
         for p in avatar.path { remaining += from.distance(to: p); from = p }
         let accel = 5.0
-        avatar.speed = min(AvatarRoute.speed, avatar.speed + accel * dt, max(0.35, (2 * accel * remaining).squareRoot()))
+        let top = AvatarRoute.speed * avatar.pace
+        avatar.speed = min(top, avatar.speed + accel * dt, max(0.35, (2 * accel * remaining).squareRoot()))
         avatar.instance.clipRate = avatar.instance.clip == .walk ? max(0.45, avatar.speed / AvatarRoute.speed) : 1
         var budget = avatar.speed * dt
         while budget > 0, let next = avatar.path.first {

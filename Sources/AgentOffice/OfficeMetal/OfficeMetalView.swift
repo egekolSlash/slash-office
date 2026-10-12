@@ -339,9 +339,17 @@ struct OfficeSceneInput: Equatable, Sendable {
     var styles: [String: RoomStyle]
     var terminals: Set<String>
     var projectColors: [String: AvatarLook.RGBA]
+    /// Oturum → karakterin kişiliği ve imzası (karaktersizler yok).
+    var traits: [String: Traits] = [:]
+
+    struct Traits: Equatable, Sendable {
+        var personality: Personality
+        var signature: Signature
+    }
 
     static func == (a: Self, b: Self) -> Bool {
         a.plan == b.plan && a.desks == b.desks && a.looks == b.looks && a.styles == b.styles && a.terminals == b.terminals
+            && a.traits == b.traits
             && a.projectColors.count == b.projectColors.count
             && a.projectColors.allSatisfy { key, c in b.projectColors[key].map { $0 == c } ?? false }
     }

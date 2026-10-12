@@ -9,7 +9,7 @@ import Testing
 
     /// 2 kemik, 1 üçgenlik mesh ve 1 karelik `idle`.
     static func pack(joints: [UInt8] = [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], index: UInt32 = 2, frames: Int = 1,
-                     parents: [Int] = [-1, 0]) -> Data {
+                     parents: [Int] = [-1, 0], fallbacks: [String: String] = [:]) -> Data {
         let mesh: [String: Any] = [
             "vertexCount": 3, "positions": b64([Float](repeating: 0, count: 9)), "normals": b64([Float](repeating: 0, count: 9)),
             "uvs": b64([Float](repeating: 0, count: 6)), "joints": b64(joints), "weights": b64([UInt8](repeating: 0, count: 12)),
@@ -28,6 +28,7 @@ import Testing
             "patterns": ["p0", "p1"], "patternNames": ["plain", "stripes"],
             "outfits": [["name": "tee", "parts": [part("pattern", "top")]], ["name": "dress", "parts": [part("pattern", "top")], "onepiece": true]],
             "bottoms": [["name": "pants", "parts": [part("flat", "bottom")]]], "shoes": [["name": "sneakers", "parts": [part("flat", "shoes")]]],
+            "fallbacks": fallbacks,
         ]
         return try! JSONSerialization.data(withJSONObject: json)
     }
@@ -36,13 +37,13 @@ import Testing
         let art = try CharacterArt.decode(Self.pack(), directory: URL(fileURLWithPath: "/tmp"))
         #expect(art.bones == ["Root", "Head"] && art.skeleton.boneCount == 2)
         var look = AvatarLook.default(for: "x")
-        look.hairStyle = .bob; look.top = .tee; look.shirtPattern = .stripes; look.eyes = .round
+        look.hairStyle = .bob; look.top = "tee"; look.shirtPattern = .stripes; look.eyes = .round
         look.hat = .none; look.glasses = false
         let s = art.selection(for: look)
         #expect(s.hair == 1 && s.outfit == 0 && s.pattern == 1 && s.eyeStyle == 1)
         // Tişört: gövde + yanak + saç (taban + tepe) + üst + alt + ayakkabı; elbise: alt yok.
         #expect(art.parts(for: look).count == 3 + 1 + 2 + 1 + 1 + 1)
-        look.top = .dress
+        look.top = "dress"
         #expect(art.parts(for: look).count == 3 + 1 + 2 + 1 + 1)
         // Şapka (katalogda varsa) saçın tepesini gizler; şapka ve gözlük birer parça ekler.
         look.hat = .cap; look.glasses = true
@@ -91,9 +92,9 @@ import Testing
         // Önceki sürümün kaydı: yeni alanlar yok → varsayılanlar.
         let json = #"{"hairStyle":"bob","hairColor":1,"skin":2,"shirtPattern":"dots","glasses":false}"#
         let look = try JSONDecoder().decode(AvatarLook.self, from: Data(json.utf8))
-        #expect(look.top == .tee && look.bottom == .pants && look.shoes == .sneakers && look.hairStyle == .bob)
+        #expect(look.top == "tee" && look.bottom == "pants" && look.shoes == "sneakers" && look.hairStyle == .bob)
         var custom = look
-        custom.top = .overalls; custom.shoes = .boots; custom.hairStyle = .ponytail; custom.shirtPattern = .plaid
+        custom.top = "overalls"; custom.shoes = "boots"; custom.hairStyle = .ponytail; custom.shirtPattern = .plaid
         #expect(try JSONDecoder().decode(AvatarLook.self, from: JSONEncoder().encode(custom)) == custom)
         // Varsayılan görünüşün eski alanları değişmedi (desen ilk üçten), kıyafet türleri çeşitli.
         let looks = (0..<200).map { AvatarLook.default(for: "session-\($0)") }
