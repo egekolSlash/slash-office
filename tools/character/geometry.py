@@ -162,3 +162,36 @@ def patch_on(surface, center, radii, phi, theta, cols=16, rows=8, lift=0.003, sh
             pos.append(p + n * lift)
             uv.append((j / cols, i / rows))
     return Mesh(pos, uv, grid_faces(rows, cols, wrap=False))
+
+
+def torus(center, normal, radius, tube_radius, segments=20, sides=6):
+    """Halka: `normal` ekseni etrafında."""
+    c, n = np.asarray(center, float), np.asarray(normal, float)
+    n = n / np.linalg.norm(n)
+    ref = np.array([0, 1.0, 0]) if abs(n[1]) < 0.9 else np.array([1.0, 0, 0])
+    u = np.cross(n, ref); u /= np.linalg.norm(u)
+    v = np.cross(n, u)
+    pos, uv = [], []
+    for i in range(segments + 1):
+        a = 2 * math.pi * i / segments
+        ring = u * math.cos(a) + v * math.sin(a)
+        for j in range(sides + 1):
+            b = 2 * math.pi * j / sides
+            pos.append(c + ring * (radius + tube_radius * math.cos(b)) + n * tube_radius * math.sin(b))
+            uv.append((i / segments, j / sides))
+    faces = []
+    stride = sides + 1
+    for i in range(segments):
+        for j in range(sides):
+            a = i * stride + j
+            b, c2, d = a + 1, a + stride, a + stride + 1
+            faces += [(a, b, c2), (b, d, c2)]
+    m = Mesh(pos, uv, faces)
+    # Dışa bakmıyorsa çevir (yön, u/v sırasına bağlı).
+    a, b, c3 = m.p[m.f[:, 0]], m.p[m.f[:, 1]], m.p[m.f[:, 2]]
+    centers = (a + b + c3) / 3
+    rings = c + ((centers - c) - np.outer((centers - c) @ n, n))
+    rings = c + (rings - c) / np.linalg.norm(rings - c, axis=1, keepdims=True) * radius
+    if (np.einsum('ij,ij->i', np.cross(b - a, c3 - a), centers - rings) < 0).mean() > 0.5:
+        m.f = m.f[:, [0, 2, 1]]
+    return m

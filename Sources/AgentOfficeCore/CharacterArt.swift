@@ -21,6 +21,8 @@ public struct CharacterArt: Sendable {
         public var tint: Tint?
         /// Tonsuz düz parçanın sabit rengi (sRGB).
         public var color: [Float]?
+        /// Saçın tepe parçası (diken, topuz, bukle): şapka takılınca çizilmez.
+        public var crown: Bool?
     }
 
     public struct Item: Codable, Sendable {
@@ -52,6 +54,8 @@ public struct CharacterArt: Sendable {
     public var blush: [Part]
     public var hairs: [[Part]]
     public var hairNames: [String]
+    public var hats: [Item]
+    public var glasses: [Part]
     /// Göz stili → ifade dokuları (`eyeExpressions` sırası); ağız → ifade dokuları (paket içi göreli yol).
     public var eyes: [[String]]
     public var mouths: [[String]]
@@ -108,10 +112,12 @@ public struct CharacterArt: Sendable {
             meshes[name] = mesh
         }
         let art = CharacterArt(directory: directory, bones: raw.bones, parents: raw.parents, rest: rest, clips: clips,
-                               meshes: meshes, body: raw.body, blush: raw.blush, hairs: raw.hairs, hairNames: raw.hairNames,
+                               meshes: meshes, body: raw.body, blush: raw.blush, hairs: raw.hairs,
+                               hairNames: raw.hairNames, hats: raw.hats, glasses: raw.glasses,
                                eyes: raw.eyes, mouths: raw.mouths, patterns: raw.patterns, patternNames: raw.patternNames,
                                outfits: raw.outfits, bottoms: raw.bottoms, shoes: raw.shoes)
-        let referenced = art.body + art.blush + art.hairs.flatMap { $0 } + (art.outfits + art.bottoms + art.shoes).flatMap(\.parts)
+        let referenced = art.body + art.blush + art.glasses + art.hairs.flatMap { $0 }
+            + (art.outfits + art.bottoms + art.shoes + art.hats).flatMap(\.parts)
         if let missing = referenced.first(where: { meshes[$0.mesh] == nil }) { throw F.Failure.indexOutOfRange(missing.mesh) }
         guard !art.hairs.isEmpty, art.hairNames.count == art.hairs.count, !art.eyes.isEmpty, !art.mouths.isEmpty,
               !art.patterns.isEmpty, art.patternNames.count == art.patterns.count, !art.outfits.isEmpty, !art.bottoms.isEmpty,
@@ -139,13 +145,18 @@ public struct CharacterArt: Sendable {
                          pattern: index(patternNames, look.shirtPattern.rawValue), eyeStyle: Self.wrap(eyeStyle, eyes.count))
     }
 
-    /// Bir görünüşün çizilecek parçaları: gövde + yanaklar + saç + üst + (elbise/tulum değilse) alt + ayakkabı.
+    /// Bir görünüşün çizilecek parçaları: gövde + yanaklar + saç (şapka varsa tepe parçası olmadan) + üst +
+    /// (elbise/tulum değilse) alt + ayakkabı + (varsa) gözlük.
     public func parts(for look: AvatarLook) -> [Part] {
         let s = selection(for: look)
         let outfit = outfits[s.outfit]
-        var parts = body + blush + hairs[s.hair] + outfit.parts
+        let hat = look.hat == .none ? nil : hats.first { $0.name == look.hat.rawValue }
+        var parts = body + blush + hairs[s.hair].filter { hat == nil || $0.crown != true } + outfit.parts
         if outfit.onepiece != true { parts += bottoms[s.bottom].parts }
-        return parts + shoes[s.shoes].parts
+        parts += shoes[s.shoes].parts
+        if let hat { parts += hat.parts }
+        if look.glasses { parts += glasses }
+        return parts
     }
 
     public func eyeTexture(style: Int, expression: Int) -> String {
@@ -175,6 +186,8 @@ public struct CharacterArt: Sendable {
         var blush: [Part]
         var hairs: [[Part]]
         var hairNames: [String]
+        var hats: [Item]
+        var glasses: [Part]
         var eyes: [[String]]
         var mouths: [[String]]
         var patterns: [String]

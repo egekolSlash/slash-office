@@ -201,3 +201,15 @@ def shoe_texture():
     c.rgba[..., :3] = g[..., None]
     c.rgba[..., 3] = 1
     return c.rgba
+
+
+def knit_texture():
+    """Bere örgüsü: dikey sıra sıra V'ler."""
+    c = Canvas(128, 128)
+    u, v = c.x, c.y
+    col = (u * 16) % 1
+    row = (v * 12 + np.abs(col - 0.5) * 1.2) % 1
+    g = 0.80 + 0.20 * np.clip(np.sin(row * math.pi), 0, 1) - 0.10 * (np.abs(col - 0.5) > 0.44)
+    c.rgba[..., :3] = g[..., None]
+    c.rgba[..., 3] = 1
+    return c.rgba

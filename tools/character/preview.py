@@ -65,10 +65,15 @@ def material(part, eye_tex, mouth_tex, pattern_tex=None):
     return mat
 
 
-def parts_for(look):
+def parts_for(look, hat=-1, glasses=False):
     hair, outfit, bottom, shoes, eye_set, eye, mouth, pattern = (list(look) + [0])[:8]
     o = pack.data["outfits"][outfit]
-    parts = list(pack.data["body"]) + pack.data.get("blush", []) + pack.data["hairs"][hair] + o["parts"] + pack.data["shoes"][shoes]["parts"]
+    hairs = pack.data["hairsUnderHat"] if hat >= 0 else pack.data["hairs"]
+    parts = list(pack.data["body"]) + pack.data.get("blush", []) + hairs[hair] + o["parts"] + pack.data["shoes"][shoes]["parts"]
+    if hat >= 0:
+        parts += pack.data["hats"][hat]["parts"]
+    if glasses:
+        parts += pack.data["glasses"]
     if not o["onepiece"]:
         parts += pack.data["bottoms"][bottom]["parts"]
     return parts, pack.data["eyes"][eye_set][eye], pack.data["mouths"][0][mouth], pack.data["patterns"][pattern]
@@ -114,7 +119,7 @@ for i, shot in enumerate(SHOTS):
         # Avatar uzayı (uygulama z -> Blender -y): tabure merkez z=+0,08 (üst 0,46), masa merkez z=+0,40 (üst 0,565).
         bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.46, location=(0, -0.08, 0.23))
         bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -0.45, 0.55)); bpy.context.object.scale = (0.9, 0.40, 0.03)
-    parts, eye_tex, mouth_tex, pattern_tex = parts_for(look)
+    parts, eye_tex, mouth_tex, pattern_tex = parts_for(look, int(opts.get("hat", "-1")), opts.get("glasses") == "1")
     mats = clips.sample(pack, opts.get("clip", "rest"), float(opts.get("t", "0")))
     for part in parts:
         m = pack.mesh(part["mesh"])

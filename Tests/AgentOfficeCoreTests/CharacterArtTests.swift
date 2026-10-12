@@ -17,11 +17,13 @@ import Testing
         ]
         let identity: [Float] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
         func part(_ mode: String, _ tint: String? = nil) -> [String: Any] { tint.map { ["mesh": "m", "mode": mode, "tint": $0] } ?? ["mesh": "m", "mode": mode] }
+        let crownPart: [String: Any] = ["mesh": "m", "mode": "tinted", "tint": "hair", "crown": true]
         let json: [String: Any] = [
             "bones": ["Root", "Head"], "parents": parents, "rest": b64(identity + identity),
             "clips": ["idle": ["frames": frames, "matrices": b64(identity + identity)]],
             "meshes": ["m": mesh], "body": [part("flat", "skin"), part("eye", "skin"), part("mouth", "skin")],
-            "blush": [part("decal", "skin")], "hairs": [[part("tinted", "hair")], [part("tinted", "hair")]],
+            "blush": [part("decal", "skin")], "hairs": [[part("tinted", "hair")], [part("tinted", "hair"), crownPart]],
+            "hats": [["name": "cap", "parts": [part("flat", "top")]]], "glasses": [part("flat")],
             "hairNames": ["short", "bob"], "eyes": [["e0", "e1"], ["f0", "f1"]], "mouths": [["m0", "m1"]],
             "patterns": ["p0", "p1"], "patternNames": ["plain", "stripes"],
             "outfits": [["name": "tee", "parts": [part("pattern", "top")]], ["name": "dress", "parts": [part("pattern", "top")], "onepiece": true]],
@@ -35,12 +37,18 @@ import Testing
         #expect(art.bones == ["Root", "Head"] && art.skeleton.boneCount == 2)
         var look = AvatarLook.default(for: "x")
         look.hairStyle = .bob; look.top = .tee; look.shirtPattern = .stripes; look.eyes = .round
+        look.hat = .none; look.glasses = false
         let s = art.selection(for: look)
         #expect(s.hair == 1 && s.outfit == 0 && s.pattern == 1 && s.eyeStyle == 1)
-        // Tişört: gövde + yanak + saç + üst + alt + ayakkabı; elbise: alt yok.
-        #expect(art.parts(for: look).count == 3 + 1 + 1 + 1 + 1 + 1)
+        // Tişört: gövde + yanak + saç (taban + tepe) + üst + alt + ayakkabı; elbise: alt yok.
+        #expect(art.parts(for: look).count == 3 + 1 + 2 + 1 + 1 + 1)
         look.top = .dress
-        #expect(art.parts(for: look).count == 3 + 1 + 1 + 1 + 1)
+        #expect(art.parts(for: look).count == 3 + 1 + 2 + 1 + 1)
+        // Şapka (katalogda varsa) saçın tepesini gizler; şapka ve gözlük birer parça ekler.
+        look.hat = .cap; look.glasses = true
+        #expect(art.parts(for: look).count == 3 + 1 + 1 + 1 + 1 + 1 + 1)
+        look.hat = .beanie   // katalogda yok: eklenmez, tepe gizlenmez
+        #expect(art.parts(for: look).count == 3 + 1 + 2 + 1 + 1 + 1)
         // Katalogda olmayan ad → ilk öğe.
         look.hairStyle = .spiky
         #expect(art.selection(for: look).hair == 0)
@@ -67,6 +75,8 @@ import Testing
         #expect(Set(AvatarLook.Shoes.allCases.map(\.rawValue)).isSubset(of: art.shoes.map(\.name)))
         #expect(Set(AvatarLook.ShirtPattern.allCases.map(\.rawValue)).isSubset(of: art.patternNames))
         #expect(art.eyes.count == AvatarLook.Eyes.allCases.count)
+        #expect(Set(AvatarLook.Hat.allCases.filter { $0 != .none }.map(\.rawValue)).isSubset(of: art.hats.map(\.name)))
+        #expect(!art.glasses.isEmpty)
         // Hafif: bir karakter (en ağır seçimlerle) 8 bin üçgenin altında.
         let tris = { (parts: [CharacterArt.Part]) in parts.reduce(0) { $0 + (art.meshes[$1.mesh]?.indices.count ?? 0) / 3 } }
         let heaviest = art.body + art.blush + art.hairs.max { tris($0) < tris($1) }! + art.outfits.flatMap(\.parts).prefix(2)
