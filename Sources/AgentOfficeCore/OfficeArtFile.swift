@@ -14,9 +14,18 @@ public struct OfficeArtFile: Sendable {
         case indexOutOfRange(String)
     }
 
+    /// Yanında `furniture.json` (dekor eşyaları, tools/furniture) varsa eşyaları ona eklenir.
     public static func load(from url: URL) throws -> OfficeArtFile {
-        try decode(Data(contentsOf: url))
+        var art = try decode(Data(contentsOf: url))
+        let furniture = url.deletingLastPathComponent().appendingPathComponent("furniture.json")
+        if let data = try? Data(contentsOf: furniture) {
+            let raw = try JSONDecoder().decode(RawProps.self, from: data)
+            for (name, mesh) in raw.props { art.props[name] = try ArtMesh(mesh, name: name, skinned: false) }
+        }
+        return art
     }
+
+    struct RawProps: Decodable { var props: [String: RawMesh] }
 
     public static func decode(_ data: Data) throws -> OfficeArtFile {
         let raw = try JSONDecoder().decode(Raw.self, from: data)

@@ -29,7 +29,40 @@ struct RoomEditorSheet: View {
         }
     }
 
+    static func decorName(_ item: RoomDecor) -> LocalizedStringKey {
+        switch item {
+        case .printer: "Printer"
+        case .fileCabinet: "File cabinet"
+        case .serverRack: "Server rack"
+        case .miniFridge: "Mini fridge"
+        case .vendingMachine: "Vending machine"
+        case .beanbag: "Beanbag"
+        case .floorLamp: "Floor lamp"
+        case .bigPlant: "Big plant"
+        case .cactus: "Cactus"
+        case .trashBin: "Trash bin"
+        case .wallClock: "Wall clock"
+        case .corkboard: "Corkboard"
+        case .picture: "Picture"
+        }
+    }
+
+    static func slotName(_ id: String) -> LocalizedStringKey {
+        switch id {
+        case "side": "By the window"
+        case "lounge": "Lounge corner"
+        case "sofaWall": "Above the sofa"
+        default: "Back wall"
+        }
+    }
+
     private var style: RoomStyle { model.style(for: roomKey) }
+
+    /// Seçili eşya (kayıt yoksa odanın varsayılanı); boş: nil.
+    private func decorBinding(_ slot: DecorSlot) -> Binding<RoomDecor?> {
+        Binding(get: { style.decor[slot.id] ?? OfficePlan.Room.defaultDecor(slot: slot, roomKey: roomKey) },
+                set: { value in update { $0.decor[slot.id] = .some(value) } })
+    }
 
     private func update(_ change: (inout RoomStyle) -> Void) {
         var next = style
@@ -68,6 +101,18 @@ struct RoomEditorSheet: View {
                             Toggle(Self.furnitureName(item), isOn: Binding(
                                 get: { style.furniture.contains(item) },
                                 set: { on in update { if on { $0.furniture.insert(item) } else { $0.furniture.remove(item) } } }))
+                        }
+                    }
+                }
+                if let room = model.officePlan().rooms.first(where: { $0.key == roomKey }) {
+                    Section("Decor") {
+                        ForEach(room.decorSlots, id: \.id) { slot in
+                            Picker(Self.slotName(slot.id), selection: decorBinding(slot)) {
+                                Text("Empty").tag(RoomDecor?.none)
+                                ForEach(RoomDecor.allCases.filter(slot.accepts), id: \.self) { item in
+                                    Text(Self.decorName(item)).tag(RoomDecor?.some(item))
+                                }
+                            }
                         }
                     }
                 }

@@ -69,8 +69,10 @@ import Testing
     /// Bütün eşyalar kapalıyken de masalara ve kapıya yol var; kapalı eşya engel ve ilgi noktası değildir.
     @Test(arguments: DeskOrientation.allCases)
     func furnitureOffIsNotAnObstacleOrSpot(orientation: DeskOrientation) {
-        for room in rooms(4, furniture: [], orientation: orientation) {
+        for var room in rooms(4, furniture: [], orientation: orientation) {
             #expect(room.spots.isEmpty)
+            let none: RoomDecor? = nil
+            room.decorChoices = Dictionary(uniqueKeysWithValues: room.decorSlots.map { ($0.id, none) })   // dekor da yok
             let nav = RoomNav(room: room)
             #expect(nav.obstacles.count == room.desks.count * 2)
             for desk in room.desks { #expect(nav.path(from: room.doorInside, to: room.seat(for: desk))?.last == room.seat(for: desk)) }

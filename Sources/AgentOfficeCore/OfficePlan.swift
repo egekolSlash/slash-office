@@ -79,6 +79,8 @@ public struct OfficePlan: Equatable, Sendable {
         public var desks: [Desk]
         /// Odadaki eşyalar (oda stilinden, `OfficePlan.applying(furniture:)`).
         public var furniture: Set<RoomFurniture> = RoomFurniture.all
+        /// Dekor seçimleri: yuva → eşya ya da nil (boş); kaydı olmayan yuva varsayılanını alır (`applying(decor:)`).
+        public var decorChoices: [String: RoomDecor?] = [:]
         /// Masaların yönü (ayarlardan, `OfficePlan.applying(deskOrientation:)`).
         public var deskOrientation: DeskOrientation = .horizontal
 

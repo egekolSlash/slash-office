@@ -672,6 +672,7 @@ extension AppModel {
         roomOrder = OfficePlan.roomOrder(members, previous: roomOrder)
         let plan = OfficePlan.make(members, slots: deskSlots, order: roomOrder)
         return plan.applying(furniture: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, style(for: $0.key).furniture) }))
+            .applying(decor: Dictionary(uniqueKeysWithValues: plan.rooms.map { ($0.key, style(for: $0.key).decor) }))
             .applying(deskOrientation: Self.deskOrientation)
     }
 

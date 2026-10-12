@@ -54,6 +54,18 @@ public struct RoomNav: Sendable {
                                           soft: false))
             }
         }
+        for (slot, decor) in room.decor where decor.mount == .floor {
+            let p = slot.placement(of: decor)
+            let f = decor.footprint
+            if f.round {
+                obstacles.append(Obstacle(x: p.x, z: p.z, shape: .circle(radius: f.along + b), soft: false))
+            } else {
+                let alongX = abs(sin(p.facing)) > 0.5
+                obstacles.append(Obstacle(x: p.x, z: p.z,
+                                          shape: .rect(halfX: (alongX ? f.along : f.across) + b, halfZ: (alongX ? f.across : f.along) + b),
+                                          soft: false))
+            }
+        }
         self.obstacles = obstacles
         nx = max(1, Int(room.width / Self.cell))
         nz = max(1, Int(room.depth / Self.cell))

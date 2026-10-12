@@ -299,6 +299,12 @@ public enum OfficeWorldBuilder {
             guard let name = props[spot.kind], let prop = art.props[name] else { continue }
             mesh.append(prop, at: SIMD3(Float(spot.x), 0, Float(spot.z)), yaw: Float(spot.facing - .pi / 2))
         }
+        // Dekor: eşyalar +x'e bakar (yaw = facing − π/2); duvar eşyası yüksekliğinde.
+        for (slot, decor) in room.decor {
+            guard let prop = art.props[decor.prop] else { continue }
+            let p = slot.placement(of: decor)
+            mesh.append(prop, at: SIMD3(Float(p.x), Float(p.y), Float(p.z)), yaw: Float(p.facing - .pi / 2))
+        }
     }
 
     /// Pencere eşyası +x'e bakar; `yaw` y ekseni etrafında (−π/2: +z'ye). Perdeler pencerenin iki yanında.

@@ -41,6 +41,16 @@
         }
       }
     },
+    "Above the sofa": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koltuğun üstü"
+          }
+        }
+      }
+    },
     "Accessories": {
       "localizations": {
         "tr": {
@@ -171,6 +181,26 @@
         }
       }
     },
+    "Back wall": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arka duvar"
+          }
+        }
+      }
+    },
+    "Beanbag": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puf"
+          }
+        }
+      }
+    },
     "Beanie": {
       "localizations": {
         "tr": {
@@ -187,6 +217,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Önce"
+          }
+        }
+      }
+    },
+    "Big plant": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Büyük saksı"
           }
         }
       }
@@ -297,6 +337,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kısa kazıma"
+          }
+        }
+      }
+    },
+    "By the window": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pencere yanı"
+          }
+        }
+      }
+    },
+    "Cactus": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaktüs"
           }
         }
       }
@@ -541,6 +601,16 @@
         }
       }
     },
+    "Corkboard": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantar pano"
+          }
+        }
+      }
+    },
     "Cream stripes": {
       "localizations": {
         "tr": {
@@ -587,6 +657,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gece ve gündüz"
+          }
+        }
+      }
+    },
+    "Decor": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dekor"
           }
         }
       }
@@ -657,6 +737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Odayı düzenle…"
+          }
+        }
+      }
+    },
+    "Empty": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boş"
           }
         }
       }
@@ -751,6 +841,16 @@
         }
       }
     },
+    "File cabinet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya dolabı"
+          }
+        }
+      }
+    },
     "Files the agent touches will be listed here.": {
       "localizations": {
         "tr": {
@@ -827,6 +927,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zemin"
+          }
+        }
+      }
+    },
+    "Floor lamp": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lambader"
           }
         }
       }
@@ -1231,6 +1341,16 @@
         }
       }
     },
+    "Lounge corner": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinlenme köşesi"
+          }
+        }
+      }
+    },
     "Meet the office": {
       "localizations": {
         "tr": {
@@ -1247,6 +1367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mikrofon"
+          }
+        }
+      }
+    },
+    "Mini fridge": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mini buzdolabı"
           }
         }
       }
@@ -1691,6 +1821,16 @@
         }
       }
     },
+    "Picture": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablo"
+          }
+        }
+      }
+    },
     "Pigtails": {
       "localizations": {
         "tr": {
@@ -1807,6 +1947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Önceki oturum"
+          }
+        }
+      }
+    },
+    "Printer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazıcı"
           }
         }
       }
@@ -2087,6 +2237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bir dosya seç."
+          }
+        }
+      }
+    },
+    "Server rack": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunucu kabini"
           }
         }
       }
@@ -2771,6 +2931,16 @@
         }
       }
     },
+    "Trash bin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çöp kutusu"
+          }
+        }
+      }
+    },
     "Typing at the desk while the agent runs tools.": {
       "localizations": {
         "tr": {
@@ -2787,6 +2957,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commit edilmemiş"
+          }
+        }
+      }
+    },
+    "Vending machine": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İçecek otomatı"
           }
         }
       }
@@ -2817,6 +2997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "İzin bekliyor"
+          }
+        }
+      }
+    },
+    "Wall clock": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duvar saati"
           }
         }
       }
