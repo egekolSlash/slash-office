@@ -136,47 +136,50 @@ def part(mesh, mode, **kw):
 
 
 # ---------------------------------------------------------------- baş ve yüz
-HEAD_C, HEAD_R = (0.0, 0.845, -0.03), (0.272, 0.236, 0.250)
+# Süperelipsoit kafa (hair.Head): yatay kesit daire, alın-çene önden bakınca düz, tepe ve ense yuvarlak.
+HEADM = H.Head((0.0, 0.848, -0.057), (0.236, 0.228, 0.234),
+               {"up": (2.0, 2.5, 2.0), "down": (2.7, 4.0, 2.3)})
+HEAD_C = tuple(HEADM.c)
 
 
-def head_shape(p):
-    """Önden yumuşakça basık (kırışıksız), çene biraz dar."""
-    q = p.copy()
-    cz = HEAD_C[2]
-    front = np.clip((q[:, 2] - cz) / HEAD_R[2], 0, 1)
-    q[:, 2] = cz + (q[:, 2] - cz) * (1 - 0.13 * front ** 2)
-    low = np.clip((HEAD_C[1] - q[:, 1]) / HEAD_R[1], 0, 1)
-    q[:, 0] *= 1 - 0.10 * low ** 2
-    return q
+def head_grid(segments=28, rings=18):
+    pos, uv = [], []
+    for i in range(rings + 1):
+        polar = math.pi * i / rings
+        for s in range(segments + 1):
+            ph = 2 * math.pi * s / segments - math.pi
+            pos.append(HEADM.point(ph, polar))
+            uv.append((s / segments, 1 - i / rings))
+    faces = []
+    cols = segments + 1
+    for i in range(rings):
+        for s in range(segments):
+            a, b = i * cols + s, i * cols + s + 1
+            faces += [(a, a + cols, b), (b, a + cols, b + cols)]
+    return G.Mesh(pos, uv, faces)
 
 
-head_full = G.ellipsoid(HEAD_C, HEAD_R, segments=28, rings=18, shape=head_shape)
-ears = G.ellipsoid((0.268, 0.805, -0.045), (0.030, 0.048, 0.028), 10, 6) + \
-    G.ellipsoid((-0.268, 0.805, -0.045), (0.030, 0.048, 0.028), 10, 6)
-nose = G.ellipsoid((0.0, 0.808, 0.222), (0.021, 0.016, 0.014), 8, 5)
+head_full = head_grid()
+# Kulak: kafanın yanında, öne-arkaya basık yarım disk. Burun: yüz düzleminde küçük topuz.
+ears = G.ellipsoid((0.236, 0.765, -0.058), (0.030, 0.052, 0.034), 10, 6) + \
+    G.ellipsoid((-0.236, 0.765, -0.058), (0.030, 0.052, 0.034), 10, 6)
+nose = G.ellipsoid((0.0, 0.790, 0.172), (0.024, 0.017, 0.016), 8, 5)
 
-# Yüz bölgeleri kafa yüzeyinin kendisi (ayrı alt mesh'ler, aynı köşe ve normaller: dikiş yok).
-# (phi: yatay açı, 0 = ön, +x'e doğru artar; el: yükseklik açısı). Öncelik sırası: göz, ağız, yanak.
-FACE_REGIONS = {"eyes": ((-0.62, 0.62), (-0.20, 0.16)), "mouth": ((-0.34, 0.34), (-0.50, -0.22)),
-                "cheeks": ((-0.95, 0.95), (-0.40, 0.02))}
-
-
-def angles(p):
-    q = (p - np.array(HEAD_C)) / np.array(HEAD_R)
-    return np.arctan2(q[:, 0], q[:, 2]), np.arcsin(np.clip(q[:, 1] / np.linalg.norm(q, axis=1), -1, 1))
+# Yüz bölgeleri kafa yüzeyinin kendisi (ayrı alt mesh'ler, aynı köşe ve normaller: dikiş yok). Yüz önden düz olduğu için
+# dokular önden izdüşümle oturur: bölge = (x aralığı, y aralığı), uv bu dikdörtgende doğrusal. Öncelik: göz, ağız, yanak.
+FACE_REGIONS = {"eyes": ((-0.18, 0.18), (0.745, 0.925)), "mouth": ((-0.09, 0.09), (0.62, 0.80)),
+                "cheeks": ((-0.21, 0.21), (0.655, 0.76))}
 
 
 def split_head(mesh):
     normals = mesh.normals()
-    tri_ph, tri_el = angles(mesh.p[mesh.f].mean(axis=1))
+    centers = mesh.p[mesh.f].mean(axis=1)
+    front = mesh.p[mesh.f][:, :, 2].min(axis=1) > HEADM.c[2] + 0.05
     owner = np.full(len(mesh.f), "head", dtype=object)
     for name in reversed(list(FACE_REGIONS)):   # öncelik: sonra yazılan kazanır
-        (p0, p1), (e0, e1) = FACE_REGIONS[name]
-        inside = (tri_ph > p0) & (tri_ph < p1) & (tri_el > e0) & (tri_el < e1)
-        if name == "cheeks":
-            inside &= np.abs(tri_ph) > 0.36
+        (x0, x1), (y0, y1) = FACE_REGIONS[name]
+        inside = front & (centers[:, 0] > x0) & (centers[:, 0] < x1) & (centers[:, 1] > y0) & (centers[:, 1] < y1)
         owner[inside] = name
-    vph, vel = angles(mesh.p)
     out = {}
     for name in ["head"] + list(FACE_REGIONS):
         faces = mesh.f[owner == name]
@@ -184,8 +187,8 @@ def split_head(mesh):
         remap = {v: i for i, v in enumerate(used)}
         uv = mesh.uv[used]
         if name in FACE_REGIONS:
-            (p0, p1), (e0, e1) = FACE_REGIONS[name]
-            uv = np.c_[(vph[used] - p0) / (p1 - p0), (vel[used] - e0) / (e1 - e0)]
+            (x0, x1), (y0, y1) = FACE_REGIONS[name]
+            uv = np.c_[(mesh.p[used, 0] - x0) / (x1 - x0), (mesh.p[used, 1] - y0) / (y1 - y0)]
         sub = G.Mesh(mesh.p[used], uv, np.vectorize(remap.get)(faces))
         out[name] = (sub, normals[used])
     return out
@@ -229,7 +232,7 @@ HAIR_TEX = save_png(T.hair_texture(), "hair/strands.png")
 
 
 HAIRS = []
-HAIR_STYLES = H.styles(H.Head(HEAD_C, HEAD_R, head_shape))
+HAIR_STYLES = H.styles(HEADM)
 HAIR_NAMES = list(HAIR_STYLES)
 for name, (base, crown, band_mesh) in HAIR_STYLES.items():
     parts = [part(add_mesh("hair/" + name, base, "head"), "tinted", tint="hair", texture=HAIR_TEX)]
@@ -240,27 +243,26 @@ for name, (base, crown, band_mesh) in HAIR_STYLES.items():
     HAIRS.append(parts)
 
 # Şapkalar ve gözlük.
-HEADM = H.Head(HEAD_C, HEAD_R, head_shape)
 # Bere: alna kadar inen örgü kapak, kenarında katlama (kapağın alt kenarını izleyen kalın halka), tepede ponpon.
 BEANIE_LIMIT = lambda ph: 1.20 + 0.25 * (abs(ph) / math.pi) ** 2
-beanie = H.cap(HEADM, BEANIE_LIMIT, scale_top=1.17, scale_edge=1.16, segments=32)
+beanie = H.cap(HEADM, BEANIE_LIMIT, scale_top=1.10, scale_edge=1.09, segments=32)
 fold = G.Mesh()
-ring = [HEADM.point(2 * math.pi * k / 32 - math.pi, BEANIE_LIMIT(2 * math.pi * k / 32 - math.pi) - 0.06, 1.19) for k in range(33)]
+ring = [HEADM.point(2 * math.pi * k / 32 - math.pi, BEANIE_LIMIT(2 * math.pi * k / 32 - math.pi) - 0.06, 1.115) for k in range(33)]
 for p0, p1 in zip(ring, ring[1:]):
     fold = fold + G.tube(p0, p1, 0.030, 0.030, 8, 1, cap0=False, cap1=False, u_repeat=1, v_scale=4)
-pompom = G.ellipsoid(tuple(HEADM.point(0, 0, 1.17) + [0, 0.035, 0]), (0.055, 0.05, 0.055), 10, 7)
+pompom = G.ellipsoid(tuple(HEADM.point(0, 0, 1.10) + [0, 0.035, 0]), (0.055, 0.05, 0.055), 10, 7)
 # Kasket: taç + taç kenarından öne uzanan, hafif aşağı eğik siperlik.
 CAP_LIMIT = lambda ph: 1.05 + 0.20 * (abs(ph) / math.pi) ** 2
-cap_crown = H.cap(HEADM, CAP_LIMIT, scale_top=1.14, scale_edge=1.13)
-brim = HEADM.point(0, CAP_LIMIT(0), 1.13)
+cap_crown = H.cap(HEADM, CAP_LIMIT, scale_top=1.09, scale_edge=1.08)
+brim = HEADM.point(0, CAP_LIMIT(0), 1.08)
 visor = G.ellipsoid(tuple(brim + [0, -0.008, 0.075]), (0.17, 0.012, 0.105), 14, 6).transformed(
     lambda q: np.c_[q[:, 0], q[:, 1] - 0.25 * np.maximum(q[:, 2] - brim[2], 0), q[:, 2]])
 # Kulaklık: kulaktan kulağa saçın üstünden geçen bant + kulak kapları.
-arc = [HEADM.point(math.pi / 2 * sgn, polar, 1.22) for sgn in (-1, 1) for polar in (np.linspace(1.75, 0.02, 7) if sgn < 0 else np.linspace(0.02, 1.75, 7))]
+arc = [HEADM.point(math.pi / 2 * sgn, polar, 1.13) for sgn in (-1, 1) for polar in (np.linspace(1.75, 0.02, 7) if sgn < 0 else np.linspace(0.02, 1.75, 7))]
 phones_band = G.Mesh()
 for p0, p1 in zip(arc, arc[1:]):
     phones_band = phones_band + G.tube(p0, p1, 0.016, 0.016, 8, 1, cap0=False, cap1=False)
-cups = G.ellipsoid((0.30, 0.80, -0.04), (0.035, 0.065, 0.06), 10, 7) + G.ellipsoid((-0.30, 0.80, -0.04), (0.035, 0.065, 0.06), 10, 7)
+cups = G.ellipsoid((0.262, 0.78, -0.05), (0.035, 0.065, 0.06), 10, 7) + G.ellipsoid((-0.262, 0.78, -0.05), (0.035, 0.065, 0.06), 10, 7)
 HATS = [
     {"name": "beanie", "parts": [part(add_mesh("hat/beanie", beanie, "head"),
                                       "pattern", tint="top", texture=save_png(T.knit_texture(), "pattern/knit.png")),
@@ -271,12 +273,12 @@ HATS = [
     {"name": "headphones", "parts": [part(add_mesh("hat/headphones-band", phones_band, "head"), "flat", color=[0.22, 0.22, 0.25]),
                                      part(add_mesh("hat/headphones-cups", cups, "head"), "flat", color=[0.30, 0.30, 0.34])]},
 ]
-eye_pts = [HEADM.point(x * 0.31, math.pi / 2 + 0.02, 1.03) for x in (-1, 1)]
+eye_pts = [HEADM.point(x * 0.49, HEADM.polar_at(x * 0.49, 0.81), 1.03) for x in (-1, 1)]
 glasses = G.Mesh()
 for p in eye_pts:
     nrm = p - np.array(HEAD_C); nrm /= np.linalg.norm(nrm)
-    glasses = glasses + G.torus(tuple(p + nrm * 0.012), tuple(nrm), 0.052, 0.008, 18, 5)
-glasses = glasses + G.tube(eye_pts[0] + [0.052, 0.01, 0.02], eye_pts[1] + [-0.052, 0.01, 0.02], 0.006, 0.006, 6, 2)
+    glasses = glasses + G.torus(tuple(p + nrm * 0.010), tuple(nrm), 0.048, 0.007, 18, 5)
+glasses = glasses + G.tube(eye_pts[0] + [0.046, 0.008, 0.012], eye_pts[1] + [-0.046, 0.008, 0.012], 0.006, 0.006, 6, 2)
 GLASSES = [part(add_mesh("accessory/glasses", glasses, "head"), "flat", color=[0.18, 0.15, 0.15])]
 
 # ---------------------------------------------------------------- kıyafetler (gövde kabukları)
@@ -289,11 +291,12 @@ def shell_torso(y0, y1, grow=0.010, segments=16):
     return G.lathe(prof, segments, center=(0, 0, -0.01), zscale=0.86, u_repeat=4, v_scale=8)
 
 
-def sleeves(x1, grow=0.008):
+def sleeves(x1, grow=0.008, puff=0.0):
+    """Kollar: omuzdan `x1`'e; `puff` kısa kolun ağzını genişletir (kutu tişört)."""
     m = G.Mesh()
     for x in (1, -1):
-        m = m + G.tube((0.055 * x, 0.571, -0.021), (x1 * x, 0.571, -0.021), 0.034 + grow + 0.006, 0.031 + grow, 10, 3,
-                       cap0=True, cap1=False, u_repeat=2, v_scale=8)
+        m = m + G.tube((0.055 * x, 0.571, -0.021), (x1 * x, 0.571, -0.021), 0.034 + grow + 0.006 + puff * 0.5,
+                       0.031 + grow + puff, 10, 3, cap0=True, cap1=False, u_repeat=2, v_scale=8)
     return m
 
 
@@ -311,7 +314,7 @@ def pants(y_bottom, grow=0.008):
 
 
 TOPS = {
-    "tee": shell_torso(0.33, 0.618) + sleeves(0.15),
+    "tee": shell_torso(0.32, 0.618, grow=0.014) + sleeves(0.16, puff=0.014),
     "longsleeve": shell_torso(0.33, 0.618) + sleeves(0.30),
     "tank": shell_torso(0.33, 0.600),
     "sweater": shell_torso(0.31, 0.618, grow=0.016) + sleeves(0.30, grow=0.014),
@@ -340,19 +343,28 @@ BOTTOMS = [
 SHOE_TEX = save_png(T.shoe_texture(), "shoes/sneaker.png")
 
 
-def shoe(height, toe=0.072):
-    m = G.Mesh()
+def shoe(height, length=0.080, collar=0.0):
+    """Tıknaz ayakkabı: yuvarlak köşeli üst (bağcıklı doku) + kalın açık renk taban; `collar` bilekli (yüksek)
+    ayakkabıda bileği saran kısım."""
+    upper, sole = G.Mesh(), G.Mesh()
     for x in (1, -1):
-        m = m + G.ellipsoid((0.064 * x, 0.030 + height / 2, 0.018), (0.046, 0.030 + height / 2, toe), 12, 8,
-                            shape=lambda q: np.c_[q[:, 0], np.maximum(q[:, 1], 0.004), q[:, 2]])
-    return m
+        cx = 0.068 * x
+        upper = upper + G.rounded_box((cx, 0.040 + height / 2, 0.018), (0.046, 0.034 + height / 2, length), 3.0, 12, 8,
+                                      floor=0.018)
+        sole = sole + G.rounded_box((cx, 0.012, 0.018), (0.049, 0.013, length + 0.004), 4.0, 12, 4)
+        if collar:
+            upper = upper + G.tube((cx, 0.06, -0.012), (cx, 0.06 + collar, -0.010), 0.044, 0.041, 10, 1, cap0=False,
+                                   cap1=False, u_repeat=1, v_scale=2)
+    return upper, sole
 
 
-SHOES = [
-    {"name": "sneakers", "parts": [part(add_mesh("shoes/sneakers", shoe(0.0), "foot"), "pattern", tint="shoes", texture=SHOE_TEX)]},
-    {"name": "boots", "parts": [part(add_mesh("shoes/boots", shoe(0.05, 0.068), "foot"), "flat", tint="shoes")]},
-    {"name": "slippers", "parts": [part(add_mesh("shoes/slippers", shoe(-0.012, 0.078), "foot"), "flat", tint="shoes")]},
-]
+SHOES = []
+for name, (h, length, collar, mode) in {"sneakers": (0.0, 0.080, 0.045, "pattern"), "boots": (0.05, 0.076, 0.06, "flat"),
+                                        "slippers": (-0.018, 0.084, 0.0, "flat")}.items():
+    upper, sole = shoe(h, length, collar)
+    up = part(add_mesh("shoes/" + name, upper, "foot"), mode, tint="shoes", **({"texture": SHOE_TEX} if mode == "pattern" else {}))
+    SHOES.append({"name": name, "parts": [up, part(add_mesh("shoes/%s-sole" % name, sole, "foot"), "flat",
+                                                   color=[0.95, 0.94, 0.92] if name != "boots" else [0.30, 0.24, 0.20])]})
 
 # ---------------------------------------------------------------- yüz dokuları
 EYES = [[save_png(T.eye_texture(s, e), "face/eye%d_%s.png" % (s, e)) for e in T.EYE_EXPRESSIONS] for s in range(T.EYE_STYLES)]

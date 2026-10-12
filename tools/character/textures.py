@@ -59,92 +59,105 @@ class Canvas:
         return self.polyline(pts, width)
 
 
-# ---------------------------------------------------------------- gözler (256 x 128, iki göz u=0.30 / 0.70)
+# ---------------------------------------------------------------- gözler (256 x 128 = yüzde 0,36 x 0,18 m)
+# İki göz u = 0,20 / 0,80, v = 0,36; birim: doku yüksekliği (0,18 m). Göz: koyu oval, çevresinde yumuşak gri hare, üstte
+# büyük, altta küçük parlama.
 EYE_EXPRESSIONS = ["normal", "happy", "wide", "sleepy", "worried", "side", "closed", "focused"]
 EYE_STYLES = 6
+EYE_X, EYE_Y = (0.20, 0.80), 0.36
+EYE_INK = (0.13, 0.10, 0.10)
+HALO = (0.45, 0.42, 0.42)
 
 
 def eye_texture(style, expression):
     c = Canvas(256, 128)
-    for side, cx in ((-1, 0.25), (1, 0.75)):
-        cy = 0.50
+    k = c.w / c.h
+    # Stil: (yarı genişlik, yarı yükseklik); 1 renkli bebek, 2 kirpik, 3 ağır kapak, 4 çift parlama, 5 kaş.
+    rx, ry = {0: (0.115, 0.150), 1: (0.125, 0.155), 2: (0.110, 0.145), 3: (0.125, 0.120), 4: (0.135, 0.165),
+              5: (0.105, 0.140)}[style]
+    for side, u in zip((-1, 1), EYE_X):
+        cx, cy = u, EYE_Y
         if expression in ("happy", "closed"):
             # Mutlu: yukarı kavis (^), kapalı: aşağı kavis.
             up = expression == "happy"
-            a0, a1 = (math.pi * 0.15, math.pi * 0.85) if up else (math.pi * 1.15, math.pi * 1.85)
-            c.paint(c.arc(cx, cy - (0.12 if up else -0.10), 0.24, 0.26, a0, a1, 0.09), INK)
+            a0, a1 = (math.pi * 0.12, math.pi * 0.88) if up else (math.pi * 1.12, math.pi * 1.88)
+            c.paint(c.arc(cx, cy - (0.06 if up else -0.05), rx * 1.25, ry * 0.75, a0, a1, 0.05), EYE_INK)
             continue
         if expression == "sleepy":
-            c.paint(c.segment(cx - 0.085, cy - 0.04, cx + 0.085, cy - 0.04, 0.08), INK)
+            # Yarı kapalı: alt yarım oval + düz üst kapak.
+            d = np.maximum(c.ellipse(cx, cy - 0.03, rx, ry * 0.75), c.y - (cy - 0.01))
+            c.paint(d, EYE_INK)
+            c.paint(c.segment(cx - rx * 1.2 / k, cy - 0.01, cx + rx * 1.2 / k, cy - 0.01, 0.035), EYE_INK)
             continue
-        size = {0: (0.11, 0.27), 1: (0.135, 0.29), 2: (0.11, 0.26), 3: (0.13, 0.20), 4: (0.15, 0.31), 5: (0.10, 0.25)}[style]
-        rx, ry = size
         if expression == "wide":
-            # Beyazı büyük, bebeği küçük.
-            c.paint(c.ellipse(cx, cy, rx * 1.35, ry * 1.25), INK)
-            c.paint(c.ellipse(cx, cy, rx * 1.35 - 0.035, ry * 1.25 - 0.035), (1, 1, 1))
-            c.paint(c.ellipse(cx, cy, 0.05, 0.09), INK)
+            # Şaşkın: iri, yuvarlak göz, iri parlama.
+            c.paint(c.ellipse(cx, cy + 0.01, rx * 1.20, ry * 1.18), EYE_INK)
+            c.paint(c.ellipse(cx + rx * 0.30 / k, cy + ry * 0.45, rx * 0.48, ry * 0.36), (1, 1, 1))
+            c.paint(c.ellipse(cx - rx * 0.35 / k, cy - ry * 0.40, rx * 0.22, ry * 0.17), (1, 1, 1))
             continue
-        if expression == "focused":
-            ry *= 0.6
-        dx = 0.045 * side if expression == "side" else 0.0
+        h = ry * (0.55 if expression == "focused" else 1.0)
+        dx = 0.04 * side / k if expression == "side" else 0.0
+        c.paint(c.ellipse(cx + dx, cy, rx + 0.022, h + 0.022), HALO, alpha=0.45)
+        c.paint(c.ellipse(cx + dx, cy, rx, h), EYE_INK)
         if style == 1:     # renkli göz bebeği
-            c.paint(c.ellipse(cx + dx, cy, rx, ry), INK)
-            c.paint(c.ellipse(cx + dx, cy - 0.01, rx * 0.72, ry * 0.72), (0.45, 0.28, 0.16))
-            c.paint(c.ellipse(cx + dx, cy - 0.01, rx * 0.40, ry * 0.40), INK)
-        else:
-            c.paint(c.ellipse(cx + dx, cy, rx, ry), INK)
-        # Parlama.
-        c.paint(c.ellipse(cx + dx + rx * 0.35 / (256 / 128), cy + ry * 0.35, rx * 0.30, ry * 0.25), (1, 1, 1))
+            c.paint(c.ellipse(cx + dx, cy - 0.01, rx * 0.70, h * 0.70), (0.42, 0.26, 0.16))
+            c.paint(c.ellipse(cx + dx, cy - 0.01, rx * 0.38, h * 0.38), EYE_INK)
+        # Parlama: üstte büyük, altta küçük.
+        c.paint(c.ellipse(cx + dx + rx * 0.30 / k, cy + h * 0.38, rx * 0.36, h * 0.28), (1, 1, 1))
+        c.paint(c.ellipse(cx + dx - rx * 0.30 / k, cy - h * 0.45, rx * 0.16, h * 0.12), (1, 1, 1), alpha=0.85)
         if style == 4:
-            c.paint(c.ellipse(cx + dx - rx * 0.25 / 2, cy - ry * 0.40, rx * 0.15, ry * 0.12), (1, 1, 1))
+            c.paint(c.ellipse(cx + dx - rx * 0.35 / k, cy + h * 0.10, rx * 0.14, h * 0.11), (1, 1, 1))
         if style == 2:     # kirpik
-            c.paint(c.segment(cx + side * 0.06, cy + ry * 0.75, cx + side * 0.09, cy + ry * 1.10, 0.035), INK)
-        if style == 3 and expression != "focused":   # sakin: üst kapak
-            c.paint(c.segment(cx - 0.075, cy + ry * 0.50, cx + 0.075, cy + ry * 0.50, 0.06), INK)
+            for j in (0, 1):
+                c.paint(c.segment(cx + side * (0.06 + 0.035 * j) / k * 2, cy + h * (0.80 - 0.25 * j),
+                                  cx + side * (0.10 + 0.04 * j) / k * 2, cy + h * (1.05 - 0.25 * j), 0.022), EYE_INK)
+        if style == 3 and expression != "focused":   # ağır üst kapak
+            c.paint(c.segment(cx - rx * 1.15 / k, cy + h * 0.45, cx + rx * 1.15 / k, cy + h * 0.45, 0.04), EYE_INK)
         if style == 5 or expression == "worried":     # kaş
-            tilt = 0.05 if expression == "worried" else 0.0
-            c.paint(c.segment(cx - 0.07, cy + 0.40 - tilt * side, cx + 0.07, cy + 0.40 + tilt * side, 0.05), INK)
+            tilt = 0.04 if expression == "worried" else 0.0
+            by = cy + h + 0.12
+            c.paint(c.segment(cx - 0.10 / k, by - tilt * side, cx + 0.10 / k, by + tilt * side, 0.035), EYE_INK)
     return c.rgba
 
 
-# ---------------------------------------------------------------- ağız (128 x 128, ortada)
+# ---------------------------------------------------------------- ağız (128 x 128 = yüzde 0,18 x 0,18 m, ortada)
 MOUTH_EXPRESSIONS = ["smile", "open", "laugh", "frown", "worried", "scared", "flat", "o", "wow"]
 
 
 def mouth_texture(expression):
     c = Canvas(128, 128)
-    cx, cy = 0.5, 0.55
+    cx, cy = 0.5, 0.50
+    line = 0.035
     if expression == "smile":
-        c.paint(c.arc(cx, cy + 0.06, 0.16, 0.12, math.pi * 1.15, math.pi * 1.85, 0.05), INK)
+        c.paint(c.arc(cx, cy + 0.10, 0.24, 0.17, math.pi * 1.12, math.pi * 1.88, line), INK)
     elif expression in ("open", "laugh"):
-        h = 0.12 if expression == "open" else 0.20
-        d = np.maximum(c.ellipse(cx, cy, 0.18, h), c.y - cy - 0.0)   # yarım elips (üst düz)
+        h = 0.13 if expression == "open" else 0.20
+        d = np.maximum(c.ellipse(cx, cy + 0.04, 0.22, h), c.y - cy - 0.04)   # yarım elips (üst düz)
         c.paint(d - 0.025, INK)
         c.paint(d, MOUTH_IN)
-        c.paint(np.maximum(c.ellipse(cx, cy - h * 0.75, 0.10, h * 0.45), d), TONGUE)
+        c.paint(np.maximum(c.ellipse(cx, cy + 0.04 - h * 0.78, 0.12, h * 0.45), d), TONGUE)
     elif expression == "frown":
-        c.paint(c.arc(cx, cy - 0.10, 0.15, 0.10, math.pi * 0.2, math.pi * 0.8, 0.05), INK)
+        c.paint(c.arc(cx, cy - 0.12, 0.20, 0.13, math.pi * 0.2, math.pi * 0.8, line), INK)
     elif expression == "worried":
-        pts = [(cx - 0.14 + 0.07 * i, cy + (0.02 if i % 2 else -0.02)) for i in range(5)]
-        c.paint(c.polyline(pts, 0.045), INK)
+        pts = [(cx - 0.18 + 0.09 * i, cy + (0.025 if i % 2 else -0.025)) for i in range(5)]
+        c.paint(c.polyline(pts, line), INK)
     elif expression == "scared":
-        d = c.ellipse(cx, cy, 0.10, 0.13)
+        d = c.ellipse(cx, cy, 0.12, 0.15)
         c.paint(d - 0.025, INK); c.paint(d, MOUTH_IN)
     elif expression == "flat":
-        c.paint(c.segment(cx - 0.08, cy, cx + 0.08, cy, 0.045), INK)
+        c.paint(c.segment(cx - 0.11, cy, cx + 0.11, cy, line), INK)
     elif expression in ("o", "wow"):
-        r = 0.05 if expression == "o" else 0.075
+        r = 0.06 if expression == "o" else 0.09
         d = c.ellipse(cx, cy, r, r * 1.25)
         c.paint(d - 0.022, INK); c.paint(d, MOUTH_IN)
     return c.rgba
 
 
 def blush_texture():
-    c = Canvas(256, 64)
-    for cx in (0.24, 0.76):
-        d = c.ellipse(cx, 0.60, 0.075, 0.20)
-        c.paint(d, (1.0, 0.55, 0.55), alpha=0.55)
+    c = Canvas(256, 64)   # yüzde 0,42 x 0,105 m
+    for cx in (0.235, 0.765):
+        d = c.ellipse(cx, 0.60, 0.32, 0.20)
+        c.paint(d, (1.0, 0.55, 0.55), alpha=0.32)
     return c.rgba
 
 
@@ -152,7 +165,8 @@ def blush_texture():
 def hair_texture():
     c = Canvas(128, 128)
     u, v = c.x, c.y
-    strands = 0.86 + 0.05 * np.sin(u * 2 * math.pi * 10 + 1.2 * np.sin(v * 5)) + 0.03 * np.sin(u * 2 * math.pi * 23)
+    crown = np.clip((0.97 - v) / 0.22, 0, 1)        # tepede teller birleşmesin (üstten karpuz gibi görünüyordu)
+    strands = 0.86 + crown * (0.05 * np.sin(u * 2 * math.pi * 10 + 1.2 * np.sin(v * 5)) + 0.03 * np.sin(u * 2 * math.pi * 23))
     shine = 0.14 * np.exp(-((v - 0.74) / 0.07) ** 2) * (0.7 + 0.3 * np.sin(u * 2 * math.pi * 10))
     g = np.clip(strands + shine, 0, 1)
     c.rgba[..., :3] = g[..., None]
@@ -192,12 +206,17 @@ def pattern_texture(name):
 
 
 def shoe_texture():
-    """Ayakkabı: üst kısım (beyaz = ton), taban bandı açık gri, bağcık çizgileri."""
+    """Ayakkabı üstü (u = 0 ön burun, v = 1 üst): ton biraz koyu, önde bağcık yolu açık, yanda koyu şerit."""
     c = Canvas(128, 64)
-    g = np.ones_like(c.x)
-    g = np.where(c.y < 0.28, 0.55, g)   # taban (koyu: tonla çarpılınca koyu ton)
-    laces = (np.abs(((c.x * 6) % 1) - 0.5) < 0.08) & (c.y > 0.55) & (np.abs(c.x - 0.5) < 0.2)
-    g = np.where(laces, 0.85, g)
+    u, v = c.x, c.y
+    front = np.minimum(u, 1 - u)                     # burundan uzaklık (0..0,5)
+    g = np.full_like(u, 0.86)
+    g = np.where((v > 0.30) & (v < 0.40) & (front > 0.12), 0.62, g)          # yan şerit
+    tongue = (front < 0.10) & (v > 0.55)
+    g = np.where(tongue, 1.0, g)                                             # dil / bağcık yolu
+    laces = tongue & (((v * 9) % 1) < 0.35)
+    g = np.where(laces, 0.70, g)
+    g = np.where((front < 0.16) & (v < 0.42), 1.0, g)                        # burun
     c.rgba[..., :3] = g[..., None]
     c.rgba[..., 3] = 1
     return c.rgba

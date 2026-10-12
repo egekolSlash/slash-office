@@ -106,6 +106,17 @@ def ellipsoid(center, radii, segments=16, rings=10, theta=(0.0, math.pi), u_repe
     return m
 
 
+def rounded_box(center, half, n=3.0, segments=14, rings=10, floor=None):
+    """Köşeleri yuvarlak kutu (süperelipsoit, üs `n`): `floor` verilirse altı o yükseklikte düzlenir (taban)."""
+    m = ellipsoid((0, 0, 0), (1, 1, 1), segments, rings)
+    q = np.sign(m.p) * np.abs(m.p) ** (2 / n)
+    q = q * np.asarray(half, float) + np.asarray(center, float)
+    if floor is not None:
+        q[:, 1] = np.maximum(q[:, 1], floor)
+    m.p = q
+    return m
+
+
 def tube(p0, p1, r0, r1, segments=10, rings=4, cap0=True, cap1=True, u_repeat=1.0, v_scale=1.0, flat=1.0):
     """p0'dan p1'e konik tüp; uçlarda yarım küre kapak. `flat`: kesitin ikinci ekseni (yassılık)."""
     p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
