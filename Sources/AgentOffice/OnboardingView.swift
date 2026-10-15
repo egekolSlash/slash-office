@@ -250,8 +250,8 @@ private struct PreferencesStep: View {
                              detail: "The sky follows your Mac's clock: sunrise, daylight, sunset and a starry night.")
             PreferenceToggle(isOn: $autoFocus, title: "Mini office auto-focus", enabled: richOffice,
                              detail: "In Work mode the small office turns to the agent that needs you: a question first, then a working agent, then a finished task.")
-            PreferenceToggle(isOn: $energySaving, title: "Energy saving", enabled: richOffice,
-                             detail: "On: villagers animate at 12–30 fps. Off: always at your display's refresh rate — smoother, uses more CPU.")
+            PreferenceToggle(isOn: $energySaving, title: "Energy saving",
+                             detail: "On: villagers animate at 12–30 fps and terminals without the keyboard redraw a few times a second. Off: the office and every terminal draw at full speed — smoother, uses more CPU.")
         }
     }
 }

@@ -83,10 +83,13 @@ final class OfficeMetalView: NSView {
     static let dayNightKey = "dayNightCycle"
     /// Enerji tasarrufu (varsayılan açık): kapalıyken görünür ofis hep ekran hızında çizilir.
     static let energySavingKey = "energySaving"
+    /// Ayar hiç değiştirilmediyse açık. Terminaller de okur (`TerminalRedraw`).
+    static var energySavingEnabled: Bool {
+        UserDefaults.standard.object(forKey: energySavingKey) == nil ? true : UserDefaults.standard.bool(forKey: energySavingKey)
+    }
 
     private func postSaving() {
-        let defaults = UserDefaults.standard
-        let saving = defaults.object(forKey: Self.energySavingKey) == nil ? true : defaults.bool(forKey: Self.energySavingKey)
+        let saving = Self.energySavingEnabled
         guard saving != lastSaving else { return }
         lastSaving = saving
         loop.post(saving: saving)

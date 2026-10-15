@@ -12,11 +12,24 @@ final class AgentTerminalView: LocalProcessTerminalView {
     var directory: String?
     /// SwiftTerm `becomeFirstResponder`'ı ezmeye izin vermiyor; pencerenin ilk yanıtlayıcısı izlenir.
     private var responderObservation: NSKeyValueObservation?
+    private var windowObservers: [NSObjectProtocol] = []
+    /// SwiftTerm `scrollWheel`'i ezmeye izin vermiyor; bu terminalin üstündeki kaydırmalar yerel dinleyiciyle izlenir.
+    private var scrollMonitor: Any?
+    private var lastScroll: Date?
+
+    isolated deinit {
+        for observer in windowObservers { NotificationCenter.default.removeObserver(observer) }
+        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        observeRedrawTriggers()
+        observeScrolling()
         responderObservation = window?.observe(\.firstResponder, options: [.new]) { [weak self] window, _ in
             MainActor.assumeIsolated {
+                // Klavyeyi alan terminal biriken değişiklikleri hemen göstersin.
+                self?.flushDeferredDisplay()
                 guard let self, window.firstResponder === self else { return }
                 DebugLog.write("terminal became first responder")
                 self.onFocus?()
@@ -97,6 +110,81 @@ final class AgentTerminalView: LocalProcessTerminalView {
             if let font = NSFontManager.shared.font(withFamily: name, traits: [], weight: 5, size: size) { return font }
         }
         return .monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
+    // MARK: - Seyrek çizim (`TerminalRedraw`)
+
+    /// Bekleyen (henüz çizdirilmemiş) bölge.
+    private var deferredDirty: NSRect?
+    private var flushScheduled = false
+    private var flushing = false
+
+    /// nil: hemen çiz. Klavyesi olan terminal hemen, diğerleri ve arka plandaki uygulama seyrek çizer.
+    private var redrawInterval: TimeInterval? {
+        guard let window, !inLiveResize else { return nil }
+        return TerminalRedraw.interval(focused: window.isKeyWindow && window.firstResponder === self, appActive: NSApp.isActive,
+                                       energySaving: OfficeMetalView.energySavingEnabled,
+                                       scrolling: TerminalRedraw.isScrolling(lastScroll: lastScroll, now: Date()))
+    }
+
+    /// Kaydırma başlarken biriken değişiklikler hemen gösterilir; kaydırma süresince terminal hemen çizer.
+    private func observeScrolling() {
+        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+        scrollMonitor = nil
+        guard window != nil else { return }
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let self, event.window === self.window,
+                      self.bounds.contains(self.convert(event.locationInWindow, from: nil)) else { return }
+                self.lastScroll = Date()
+                self.flushDeferredDisplay()
+            }
+            return event
+        }
+    }
+
+    /// SwiftTerm her değişiklikte değişen satırları buradan çizdirir; seyrek çizilen terminalde bölgeler birleştirilip
+    /// aralık dolunca bir kez çizdirilir.
+    override func setNeedsDisplay(_ invalidRect: NSRect) {
+        guard !flushing, let interval = redrawInterval else { return super.setNeedsDisplay(invalidRect) }
+        deferredDirty = deferredDirty.map { $0.union(invalidRect) } ?? invalidRect
+        guard !flushScheduled else { return }
+        flushScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + interval) { [weak self] in
+            MainActor.assumeIsolated { self?.flushDeferredDisplay() }
+        }
+    }
+
+    override var needsDisplay: Bool {
+        get { super.needsDisplay }
+        set {
+            if newValue, !flushing, redrawInterval != nil { setNeedsDisplay(bounds) } else { super.needsDisplay = newValue }
+        }
+    }
+
+    /// Bekleyen bölgeyi çizdirir. Pencere görünmüyorsa (başka pencerenin altında, küçültülmüş) bekletir; görününce çizilir.
+    private func flushDeferredDisplay() {
+        flushScheduled = false
+        guard let rect = deferredDirty, window?.occlusionState.contains(.visible) == true else { return }
+        deferredDirty = nil
+        flushing = true
+        super.setNeedsDisplay(rect)
+        flushing = false
+    }
+
+    private func observeRedrawTriggers() {
+        for observer in windowObservers { NotificationCenter.default.removeObserver(observer) }
+        windowObservers = []
+        guard let window else { return }
+        let triggers: [(Notification.Name, AnyObject?)] = [
+            (NSApplication.didBecomeActiveNotification, nil), (NSWindow.didBecomeKeyNotification, window),
+            (NSWindow.didChangeOcclusionStateNotification, window),
+        ]
+        for (name, object) in triggers {
+            windowObservers.append(NotificationCenter.default.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.flushDeferredDisplay() }
+            })
+        }
     }
 
     // MARK: - Sürükle-bırak (Ghostty gibi): bırakılan dosyaların yolu yazılır, Claude onları referans alır.

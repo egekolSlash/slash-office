@@ -1991,22 +1991,22 @@
         }
       }
     },
-    "On: villagers animate at 12–30 fps and the mini office at 12 fps. Off: the office always draws at your display's refresh rate (smoother, more CPU). Either way it stops while hidden.": {
+    "On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır. Kapalıyken: ofis her zaman ekranının yenileme hızında çizilir (daha akıcı, daha çok CPU). İkisinde de gizliyken durur."
+            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır; klavyesi olmayan terminaller saniyede birkaç kez çizilir (kaydırdığın terminal akıcı kalır). Kapalıyken: ofis ekranının yenileme hızında çizilir ve penceredeki her terminal hemen çizilir (daha akıcı, daha çok CPU). İkisinde de ofis gizliyken durur."
           }
         }
       }
     },
-    "On: villagers animate at 12–30 fps. Off: always at your display's refresh rate — smoother, uses more CPU.": {
+    "On: villagers animate at 12–30 fps and terminals without the keyboard redraw a few times a second. Off: the office and every terminal draw at full speed — smoother, uses more CPU.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Açıkken: köylüler 12–30 fps ile canlandırılır. Kapalıyken: her zaman ekranının yenileme hızında — daha akıcı, daha çok CPU kullanır."
+            "value": "Açıkken: köylüler 12–30 fps ile canlanır, klavyesi olmayan terminaller saniyede birkaç kez çizilir. Kapalıyken: ofis ve tüm terminaller tam hızda çizilir; daha akıcı, daha çok CPU kullanır."
           }
         }
       }

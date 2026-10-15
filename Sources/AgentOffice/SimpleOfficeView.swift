@@ -145,8 +145,8 @@ struct SettingsView: View {
             Toggle("Mini office auto-focus", isOn: $autoFocus).disabled(!richOffice)
             Text("In Work mode, the office on the right turns to the desk that needs attention by itself: asking a question, working, or finished but unseen. After you move it by hand it resumes 3 seconds after your last move; a new question turns it right away.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Toggle("Energy saving", isOn: $energySaving).disabled(!richOffice)
-            Text("On: villagers animate at 12–30 fps and the mini office at 12 fps. Off: the office always draws at your display's refresh rate (smoother, more CPU). Either way it stops while hidden.")
+            Toggle("Energy saving", isOn: $energySaving)
+            Text("On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)
