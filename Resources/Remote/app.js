@@ -31,7 +31,8 @@ const $ = (id) => document.getElementById(id);
 
 const state = {
   token: null, socket: null, connected: false, retry: 1000,
-  sessions: [], current: null, cursor: null, seen: new Set(), loading: false,
+  sessions: [], current: null, cursor: null, seen: new Set(),
+  loading: null, loadingId: null, pending: false, ticket: 0,  // loading: uçuştaki isteğin bileti
 };
 
 function readToken() { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
@@ -86,6 +87,7 @@ $("pair-button").addEventListener("click", async () => {
 function forget() {
   writeToken(null);
   state.token = null;
+  state.connected = false;
   const socket = state.socket;
   state.socket = null;  // önce boşalt: onclose yeniden bağlanmasın
   if (socket) socket.close();
@@ -177,6 +179,7 @@ function renderChatHead() {
 
 function openChat(id) {
   state.current = id; state.cursor = null; state.seen = new Set();
+  state.loading = null; state.pending = false;  // önceki oturumun isteği yenisini engellemesin
   $("messages").replaceChildren();
   $("chat-error").textContent = "";
   $("back").textContent = T.back; $("send").textContent = T.send; $("stop").textContent = T.stop;
@@ -187,13 +190,15 @@ function openChat(id) {
 }
 
 async function loadMore() {
-  if (state.loading || !state.current) return;
-  state.loading = true;
+  if (!state.current) return;
   const id = state.current;
+  if (state.loading !== null && state.loadingId === id) { state.pending = true; return; }  // bitince tekrar çek
+  const ticket = ++state.ticket;
+  state.loading = ticket; state.loadingId = id;
   try {
     const query = state.cursor === null ? "" : `?after=${state.cursor}`;
     const page = await api(`/api/sessions/${encodeURIComponent(id)}/transcript${query}`);
-    if (id !== state.current) return;
+    if (state.loading !== ticket || id !== state.current) return;
     const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
     for (const message of page.messages) {
       if (state.seen.has(message.id)) continue;
@@ -205,7 +210,12 @@ async function loadMore() {
   } catch (error) {
     if (String(error.message) !== "404") $("chat-error").textContent = T.failed;
   } finally {
-    state.loading = false;
+    if (state.loading === ticket) {
+      state.loading = null;
+      const again = state.pending && state.current === id;
+      state.pending = false;
+      if (again) loadMore();
+    }
   }
 }
 

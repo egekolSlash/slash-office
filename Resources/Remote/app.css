@@ -4,6 +4,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 -apple-system, system-ui, sans-serif;
        padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
 h1 { font-size: 22px; margin: 16px 0; }
