@@ -1,0 +1,8 @@
+{
+  "name": "Slash Office",
+  "short_name": "Slash Office",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1a1a26",
+  "theme_color": "#1a1a26"
+}
