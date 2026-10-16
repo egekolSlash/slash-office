@@ -1,2 +1,3 @@
 "NSMicrophoneUsageDescription" = "Slash Office içinde çalışan Claude Code'un ses modu mikrofonu kullanır.";
 "NSHumanReadableCopyright" = "© 2026 Ege Kol. MIT Lisansı.";
+"NSLocalNetworkUsageDescription" = "Slash Office yerel ağı yalnızca Telefondan erişim açıkken, telefonun bağlanabilmesi için kullanır.";

@@ -19,5 +19,6 @@
     <key>NSHumanReadableCopyright</key><string>© 2026 Ege Kol. MIT License.</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSMicrophoneUsageDescription</key><string>Claude Code running inside Slash Office uses the microphone for voice mode.</string>
+    <key>NSLocalNetworkUsageDescription</key><string>Slash Office uses the local network only when Phone access is on, so your phone can connect to it.</string>
 </dict>
 </plist>
