@@ -7,6 +7,8 @@ import Foundation
 @MainActor
 final class TranscriptWatcher {
     var onInterrupt: ((String) -> Void)?
+    /// Kayıt dosyası değişti (en çok saniyede bir); telefon yeni mesajları çeker.
+    var onChange: ((String) -> Void)?
 
     private struct Watch {
         let path: String
@@ -50,6 +52,7 @@ final class TranscriptWatcher {
             try? await Task.sleep(for: Self.minimumInterval - .milliseconds(300))
             guard let self, self.watches[id]?.path == path else { return }
             self.watches[id]?.checkScheduled = false
+            self.onChange?(id)
             if interrupted { self.onInterrupt?(id) }
         }
     }
