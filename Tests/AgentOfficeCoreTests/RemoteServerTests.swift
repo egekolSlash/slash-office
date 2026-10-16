@@ -15,6 +15,13 @@ final class CommandLog: @unchecked Sendable {
     }
 }
 
+final class Gate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var opened = false
+    var isOpen: Bool { lock.withLock { opened } }
+    func open() { lock.withLock { opened = true } }
+}
+
 @Suite(.serialized) struct RemoteServerTests {
     struct Running {
         let server: RemoteServer
@@ -23,7 +30,7 @@ final class CommandLog: @unchecked Sendable {
         let log: CommandLog
     }
 
-    func startServer() async throws -> Running {
+    func startServer(command: (@Sendable (ClientMessage) async -> String?)? = nil) async throws -> Running {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("remote-server-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try Data("<h1>Slash</h1>".utf8).write(to: dir.appendingPathComponent("index.html"))
@@ -31,7 +38,7 @@ final class CommandLog: @unchecked Sendable {
         let log = CommandLog()
         let routes = RemoteRoutes(auth: auth, staticRoot: dir, sessions: { [] }, transcript: { _, _ in nil })
         let server = RemoteServer(handlers: .init(routes: routes,
-                                                  command: { log.add($0); return nil },
+                                                  command: command ?? { log.add($0); return nil },
                                                   welcome: { [.sessions([])] }))
         let port = try await server.start(host: "127.0.0.1", port: 0)
         return Running(server: server, auth: auth, port: port, log: log)
@@ -102,6 +109,32 @@ final class CommandLog: @unchecked Sendable {
         let wrong = socket(running)
         try await wrong.send(.string(#"{"type":"auth","token":"nope"}"#))
         await #expect(throws: (any Error).self) { _ = try await wrong.receive() }
+    }
+
+    @Test func revokedDevicesQueuedCommandsDoNotRun() async throws {
+        let log = CommandLog()
+        let gate = Gate()
+        let running = try await startServer(command: { message in
+            log.add(message)
+            while !gate.isOpen { try? await Task.sleep(for: .milliseconds(5)) }
+            return nil
+        })
+        defer { running.server.stop() }
+        let token = try #require(running.auth.pair(code: running.auth.newPairingCode(), deviceName: "p"))
+        let device = try #require(running.auth.device(forToken: token))
+        let task = socket(running)
+        try await task.send(.string(#"{"type":"auth","token":"\#(token)"}"#))
+        _ = try await receiveText(task)
+        for text in ["bir", "iki", "üç"] {
+            try await task.send(.string(#"{"type":"send.text","sessionId":"s","text":"\#(text)"}"#))
+        }
+        let first = await log.wait(count: 1)
+        #expect(first.count == 1)
+        running.auth.revoke(device.id)
+        running.server.disconnect(deviceId: device.id)
+        gate.open()
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(log.all == [.sendText(sessionId: "s", text: "bir")])
     }
 
     @Test func revokedDeviceIsDisconnected() async throws {

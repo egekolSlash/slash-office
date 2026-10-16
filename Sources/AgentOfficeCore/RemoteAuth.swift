@@ -84,6 +84,11 @@ public final class RemoteAuth: @unchecked Sendable {
         }
     }
 
+    /// Cihaz hâlâ eşleşmiş mi? Son görülmeyi değiştirmez.
+    public func hasDevice(_ id: String) -> Bool {
+        lock.withLock { stored.contains { $0.id == id } }
+    }
+
     /// Cihazı bellekten çıkarır. Diske yazılamazsa false döner (bellekte yine de çıkmıştır);
     /// bu durumda cihaz yeniden başlatmadan sonra geri gelebilir.
     @discardableResult

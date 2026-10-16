@@ -52,6 +52,19 @@ import Testing
         #expect(next.messages.map(\.text) == ["Hepsi geçti."])
     }
 
+    @Test func tailDoesNotDropALineCaughtMidWrite() throws {
+        let url = try file([String(Self.answer.prefix(30))], trailingNewline: false)
+        let page = try #require(TranscriptReader.tail(url: url))
+        #expect(page.messages.isEmpty)
+        #expect(page.cursor == 0)
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data((String(Self.answer.dropFirst(30)) + "\n").utf8))
+        try handle.close()
+        let next = try #require(TranscriptReader.read(url: url, from: 0))
+        #expect(next.messages.map(\.text) == ["Hepsi geçti."])
+    }
+
     @Test func tailKeepsTheLastMessages() throws {
         let url = try file(Array(repeating: Self.answer, count: 10))
         let page = try #require(TranscriptReader.tail(url: url, maxMessages: 3))

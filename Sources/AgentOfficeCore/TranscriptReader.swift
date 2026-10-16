@@ -53,7 +53,8 @@ public enum TranscriptReader {
         guard (try? handle.seek(toOffset: offset)) != nil,
               let data = try? handle.read(upToCount: maxBytes), !data.isEmpty else { return nil }
         guard let newline = data.lastIndex(of: 0x0A) else {
-            let skipped = data.count >= maxBytes ? UInt64(data.count) : 0
+            // Pencere doluysa ve dosyada daha fazlası varsa dev satırdır; aksi halde yazılmakta olan satırdır, beklenir.
+            let skipped = data.count >= maxBytes && offset + UInt64(data.count) < size ? UInt64(data.count) : 0
             return TranscriptPage(messages: [], cursor: offset + skipped)
         }
         let complete = data[data.startIndex...newline]

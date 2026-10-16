@@ -24,6 +24,8 @@ public final class RemoteServer: @unchecked Sendable {
         var buffer = Data()
         var isWebSocket = false
         var deviceId: String?
+        /// `ready` gönderildi; yayınlar ancak bundan sonra bu istemciye gider.
+        var isReady = false
 
         init(connection: NWConnection) { self.connection = connection }
     }
@@ -63,6 +65,10 @@ public final class RemoteServer: @unchecked Sendable {
                     guard !once.done else { return }
                     once.done = true
                     continuation.resume(throwing: error)
+                case .cancelled:
+                    guard !once.done else { return }
+                    once.done = true
+                    continuation.resume(throwing: CancellationError())
                 default:
                     break
                 }
@@ -86,7 +92,7 @@ public final class RemoteServer: @unchecked Sendable {
     public func broadcast(_ event: ServerEvent) {
         let payload = event.jsonData()
         queue.async {
-            for client in self.clients.values where client.deviceId != nil { self.sendFrame(client, .text, payload) }
+            for client in self.clients.values where client.isReady { self.sendFrame(client, .text, payload) }
         }
     }
 
@@ -201,19 +207,23 @@ public final class RemoteServer: @unchecked Sendable {
                 let events = await welcome()
                 self.queue.async {
                     self.sendFrame(client, .text, ServerEvent.ready.jsonData())
+                    client.isReady = true
                     for event in events { self.sendFrame(client, .text, event.jsonData()) }
                 }
             }
             return
         }
-        guard client.deviceId != nil else {
+        guard let deviceId = client.deviceId else {
             closeWebSocket(client, code: 4401)
             return
         }
         let command = handlers.command
+        let auth = handlers.routes.auth
         let previous = commandChain
         commandChain = Task {
             await previous?.value
+            // Sırada beklerken yetkisi alınan telefonun komutu çalışmaz.
+            guard auth.hasDevice(deviceId) else { return }
             if let code = await command(message) {
                 self.queue.async { self.sendFrame(client, .text, ServerEvent.error(code).jsonData()) }
             }
