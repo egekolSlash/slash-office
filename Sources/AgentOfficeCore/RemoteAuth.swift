@@ -49,6 +49,7 @@ public final class RemoteAuth: @unchecked Sendable {
     }
 
     /// Kod doğruysa yeni cihaz kaydedilir ve token döner; yanlışsa deneme hakkı düşer, biterse kod silinir.
+    /// Kayıt diske yazılamazsa cihaz geri alınır ve token verilmez.
     public func pair(code attempt: String, deviceName: String) -> String? {
         let token: String? = lock.withLock {
             guard var current = activeCode() else { return nil }
@@ -60,9 +61,13 @@ public final class RemoteAuth: @unchecked Sendable {
             code = nil
             let token = Self.randomToken()
             let trimmed = deviceName.trimmingCharacters(in: .whitespacesAndNewlines)
-            stored.append(PairedDevice(id: UUID().uuidString, name: trimmed.isEmpty ? "Phone" : String(trimmed.prefix(40)),
-                                       tokenHash: Self.hash(token), pairedAt: now(), lastSeen: nil))
-            save()
+            let device = PairedDevice(id: UUID().uuidString, name: trimmed.isEmpty ? "Phone" : String(trimmed.prefix(40)),
+                                      tokenHash: Self.hash(token), pairedAt: now(), lastSeen: nil)
+            stored.append(device)
+            guard save() else {
+                stored.removeAll { $0.id == device.id }
+                return nil
+            }
             return token
         }
         if token != nil { onChange?() }
@@ -79,12 +84,16 @@ public final class RemoteAuth: @unchecked Sendable {
         }
     }
 
-    public func revoke(_ id: String) {
-        lock.withLock {
+    /// Cihazı bellekten çıkarır. Diske yazılamazsa false döner (bellekte yine de çıkmıştır);
+    /// bu durumda cihaz yeniden başlatmadan sonra geri gelebilir.
+    @discardableResult
+    public func revoke(_ id: String) -> Bool {
+        let saved: Bool = lock.withLock {
             stored.removeAll { $0.id == id }
-            save()
+            return save()
         }
         onChange?()
+        return saved
     }
 
     private func activeCode() -> Code? {
@@ -92,12 +101,26 @@ public final class RemoteAuth: @unchecked Sendable {
         return code
     }
 
-    /// Kilit içinde çağrılır.
-    private func save() {
-        guard let data = try? RemoteJSON.encoder().encode(stored) else { return }
-        try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? data.write(to: fileURL, options: .atomic)
-        chmod(fileURL.path, 0o600)
+    /// Kilit içinde çağrılır. Dosya önce 0600 izinli geçici dosyaya yazılır, sonra atomik olarak yerine taşınır;
+    /// böylece hedef dosya hiçbir zaman daha gevşek izinle görünmez.
+    private func save() -> Bool {
+        let directory = fileURL.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
+                                                    attributes: [.posixPermissions: 0o700])
+            let data = try RemoteJSON.encoder().encode(stored)
+            let temp = directory.appendingPathComponent(".\(fileURL.lastPathComponent).\(UUID().uuidString).tmp")
+            guard FileManager.default.createFile(atPath: temp.path, contents: data, attributes: [.posixPermissions: 0o600]) else {
+                return false
+            }
+            guard rename(temp.path, fileURL.path) == 0 else {
+                try? FileManager.default.removeItem(at: temp)
+                return false
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     static func randomToken() -> String {

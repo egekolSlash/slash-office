@@ -12,6 +12,17 @@ final class TestClock: @unchecked Sendable {
         return (RemoteAuth(fileURL: url, now: { clock.date }), url)
     }
 
+    /// Yazılamaz bir dizin; test bitince izinler geri verilip silinir.
+    func makeDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("remote-dir-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    func setPermissions(_ directory: URL, _ mode: Int) throws {
+        try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: directory.path)
+    }
+
     @Test func correctCodePairsOnce() throws {
         let (auth, _) = makeAuth()
         let code = auth.newPairingCode()
@@ -43,7 +54,7 @@ final class TestClock: @unchecked Sendable {
         let (auth, _) = makeAuth()
         let token = try #require(auth.pair(code: auth.newPairingCode(), deviceName: "iPhone"))
         let device = try #require(auth.device(forToken: token))
-        auth.revoke(device.id)
+        #expect(auth.revoke(device.id))
         #expect(auth.device(forToken: token) == nil)
         #expect(auth.devices.isEmpty)
     }
@@ -63,5 +74,32 @@ final class TestClock: @unchecked Sendable {
         let (auth, _) = makeAuth()
         let token = try #require(auth.pair(code: auth.newPairingCode(), deviceName: "   "))
         #expect(auth.device(forToken: token)?.name == "Phone")
+    }
+
+    @Test func pairFailsWithoutTokenWhenTheFileCannotBeWritten() throws {
+        let directory = try makeDirectory()
+        defer {
+            try? setPermissions(directory, 0o700)
+            try? FileManager.default.removeItem(at: directory)
+        }
+        try setPermissions(directory, 0o500)
+        let auth = RemoteAuth(fileURL: directory.appendingPathComponent("devices.json"))
+        let code = auth.newPairingCode()
+        #expect(auth.pair(code: code, deviceName: "iPhone") == nil)
+        #expect(auth.devices.isEmpty)
+    }
+
+    @Test func revokeReportsFalseWhenTheDiskIsNotUpdated() throws {
+        let directory = try makeDirectory()
+        defer {
+            try? setPermissions(directory, 0o700)
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let auth = RemoteAuth(fileURL: directory.appendingPathComponent("devices.json"))
+        let token = try #require(auth.pair(code: auth.newPairingCode(), deviceName: "iPhone"))
+        let device = try #require(auth.device(forToken: token))
+        try setPermissions(directory, 0o500)
+        #expect(auth.revoke(device.id) == false)
+        #expect(auth.devices.isEmpty)
     }
 }
