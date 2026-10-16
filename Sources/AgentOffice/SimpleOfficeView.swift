@@ -105,6 +105,8 @@ private struct DeskRow: View {
 struct SettingsView: View {
     /// Yeniden başlatmadan önce uyarmak için çalışan ajan sayısı.
     var runningAgents: () -> Int = { 0 }
+    /// Telefondan erişim bölümü; önizlemelerde nil.
+    var remote: RemoteBridge?
     @State private var language = AppRestart.language
     @AppStorage("richOffice") private var richOffice = false
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
@@ -148,6 +150,10 @@ struct SettingsView: View {
             Toggle("Energy saving", isOn: $energySaving)
             Text("On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if let remote {
+                Divider()
+                RemoteSettingsSection(remote: remote)
+            }
         }
         .padding(20)
         .frame(width: 420)

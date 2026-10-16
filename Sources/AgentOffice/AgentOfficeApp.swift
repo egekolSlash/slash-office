@@ -146,7 +146,7 @@ struct AgentOfficeApp: App {
                 .frame(minWidth: 880, minHeight: 560)
         }
         .defaultSize(width: 980, height: 640)
-        Settings { SettingsView(runningAgents: { [delegate] in delegate.model.runningAgentCount }) }
+        Settings { SettingsView(runningAgents: { [delegate] in delegate.model.runningAgentCount }, remote: delegate.model.remote) }
     }
 }
 

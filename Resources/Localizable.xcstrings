@@ -111,6 +111,16 @@
         }
       }
     },
+    "Address": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adres"
+          }
+        }
+      }
+    },
     "After": {
       "localizations": {
         "tr": {
@@ -741,6 +751,16 @@
         }
       }
     },
+    "Could not start: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlatılamadı: %@"
+          }
+        }
+      }
+    },
     "Cream stripes": {
       "localizations": {
         "tr": {
@@ -1171,6 +1191,16 @@
         }
       }
     },
+    "Follow your sessions from your phone, answer and write back. A paired phone can make Claude run anything on this Mac, so pair only your own devices.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumlarını telefondan takip et, cevap ver ve mesaj yaz. Eşleşmiş bir telefon bu Mac'te Claude'a her şeyi yaptırabilir; yalnızca kendi cihazlarını eşleştir."
+          }
+        }
+      }
+    },
     "For Claude Code's voice mode.": {
       "localizations": {
         "tr": {
@@ -1501,6 +1531,16 @@
         }
       }
     },
+    "Last seen %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son görülme: %@"
+          }
+        }
+      }
+    },
     "Laughing": {
       "localizations": {
         "tr": {
@@ -1537,6 +1577,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Açık mavi"
+          }
+        }
+      }
+    },
+    "Local network": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel ağ"
           }
         }
       }
@@ -1667,6 +1717,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "İsim"
+          }
+        }
+      }
+    },
+    "Network": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağ"
           }
         }
       }
@@ -1911,6 +1971,16 @@
         }
       }
     },
+    "Not connected yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz bağlanmadı"
+          }
+        }
+      }
+    },
     "Nothing selected": {
       "localizations": {
         "tr": {
@@ -1991,12 +2061,12 @@
         }
       }
     },
-    "On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.": {
+    "On the local network, traffic is not encrypted. Use it only on networks you trust.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır; klavyesi olmayan terminaller saniyede birkaç kez çizilir (kaydırdığın terminal akıcı kalır). Kapalıyken: ofis ekranının yenileme hızında çizilir ve penceredeki her terminal hemen çizilir (daha akıcı, daha çok CPU). İkisinde de ofis gizliyken durur."
+            "value": "Yerel ağda trafik şifrelenmez. Yalnızca güvendiğin ağlarda kullan."
           }
         }
       }
@@ -2007,6 +2077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Açıkken: köylüler 12–30 fps ile canlanır, klavyesi olmayan terminaller saniyede birkaç kez çizilir. Kapalıyken: ofis ve tüm terminaller tam hızda çizilir; daha akıcı, daha çok CPU kullanır."
+          }
+        }
+      }
+    },
+    "On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır; klavyesi olmayan terminaller saniyede birkaç kez çizilir (kaydırdığın terminal akıcı kalır). Kapalıyken: ofis ekranının yenileme hızında çizilir ve penceredeki her terminal hemen çizilir (daha akıcı, daha çok CPU). İkisinde de ofis gizliyken durur."
           }
         }
       }
@@ -2121,6 +2201,16 @@
         }
       }
     },
+    "Pair a Phone…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefon eşleştir…"
+          }
+        }
+      }
+    },
     "Pants": {
       "localizations": {
         "tr": {
@@ -2177,6 +2267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kişilik"
+          }
+        }
+      }
+    },
+    "Phone access": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefondan erişim"
           }
         }
       }
@@ -2571,6 +2671,16 @@
         }
       }
     },
+    "Revoke": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İptal et"
+          }
+        }
+      }
+    },
     "Role": {
       "localizations": {
         "tr": {
@@ -2657,6 +2767,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Karakter Olarak Kaydet"
+          }
+        }
+      }
+    },
+    "Scan with your phone's camera.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonunun kamerasıyla okut."
           }
         }
       }
@@ -3111,6 +3231,16 @@
         }
       }
     },
+    "Starting…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlatılıyor…"
+          }
+        }
+      }
+    },
     "Stop and Remove": {
       "localizations": {
         "tr": {
@@ -3177,6 +3307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tişört"
+          }
+        }
+      }
+    },
+    "Tailscale is not connected on this Mac. Open Tailscale and sign in; the address appears here by itself.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Mac'te Tailscale bağlı değil. Tailscale'i açıp giriş yap; adres burada kendiliğinden görünür."
           }
         }
       }
@@ -3257,6 +3397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Karakterler kaydedilemedi: %@"
+          }
+        }
+      }
+    },
+    "The code works once, for 2 minutes.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod bir kez ve 2 dakika boyunca geçerli."
           }
         }
       }
@@ -3447,6 +3597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu Claude oturumu Claude Code'un arka planında sürüyor; durumu listede ve ofiste görünür. Burada açınca kaldığı yerden görünür; panel kapansa da çalışmaya devam eder."
+          }
+        }
+      }
+    },
+    "This Mac is not on a local network.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Mac bir yerel ağa bağlı değil."
           }
         }
       }
