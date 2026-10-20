@@ -3,7 +3,8 @@ import Foundation
 /// Mini ofisin kendiliğinden odaklanması: kamera dikkat isteyen masaya döner. Öncelik:
 /// soru soran > çalışan > işi bitip görülmemiş; aynı öncelikte kullanıcının panelde açık tutmadığı (bakmadığı)
 /// oturum, sonra bu duruma en son giren (bir ajana bakarken başkası çalışmaya başlarsa kamera ona döner).
-/// Eşitlikte zaten baktığımız masada kalınır (kamera zıplamasın).
+/// Eşitlikte zaten baktığımız masada kalınır (kamera zıplamasın). Dikkat isteyen yoksa kullanıcının tıklayıp
+/// odakladığı paneldeki köylü; o da yoksa işin döndüğü odalar (açık paneller, en son hareket olan oda) sığdırılır.
 /// Kullanıcı kamerayı elle oynattıysa son jestten 3 sn sonrasına kadar kendiliğinden odak durur.
 public enum OfficeAutoFocus {
     public struct Candidate: Equatable, Sendable {
@@ -18,6 +19,35 @@ public enum OfficeAutoFocus {
             self.id = id; self.state = state; self.unseenFinish = unseenFinish
             self.openInPane = openInPane; self.since = since
         }
+    }
+
+    /// Kameranın kendiliğinden bakacağı yer.
+    public enum Target: Equatable, Sendable {
+        case villager(String)
+        /// Bu odaların hepsi görünecek şekilde sığdır.
+        case rooms([String])
+        /// Bütün ofis.
+        case overview
+
+        public var villager: String? {
+            if case .villager(let id) = self { id } else { nil }
+        }
+    }
+
+    /// `focusedPane`: kullanıcının odakladığı paneldeki masa (ofiste masası varsa). `activeRooms`: işin döndüğü
+    /// odalar, önemlisi önce.
+    public static func target(_ candidates: [Candidate], current: Target, focusedPane: String?,
+                              activeRooms: [String]) -> Target {
+        if let id = pick(candidates, current: current.villager) { return .villager(id) }
+        if let focusedPane { return .villager(focusedPane) }
+        return activeRooms.isEmpty ? .overview : .rooms(activeRooms)
+    }
+
+    /// İşin döndüğü odalar: panelde açık oturumların odaları, sonra en son hareket olan oturumun odası (tekrarsız).
+    public static func activeRooms(openRooms: [String], latestRoom: String?) -> [String] {
+        var result: [String] = []
+        for key in openRooms + (latestRoom.map { [$0] } ?? []) where !result.contains(key) { result.append(key) }
+        return result
     }
 
     /// Elle kamera hareketinden (son jestten) sonra kendiliğinden odağın beklediği süre (sn).
@@ -47,11 +77,11 @@ public enum OfficeAutoFocus {
 
     /// Seçilen hedef şimdi uygulanmalı mı: elle hareketten sonra beklenir, ama yeni bir soru (bekleyen oturum) bu
     /// beklemeyi aşar (soru dikkat ister).
-    public static func shouldApply(target: String?, current: String?, candidates: [Candidate],
+    public static func shouldApply(target: Target, current: Target, candidates: [Candidate],
                                    lastManualMove: Date?, now: Date) -> Bool {
         guard target != current else { return false }
         guard isPaused(lastManualMove: lastManualMove, now: now) else { return true }
-        guard let target, let c = candidates.first(where: { $0.id == target }), case .waiting = c.state else { return false }
+        guard let id = target.villager, let c = candidates.first(where: { $0.id == id }), case .waiting = c.state else { return false }
         return true
     }
 

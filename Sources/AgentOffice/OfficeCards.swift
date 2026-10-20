@@ -1,7 +1,7 @@
 import AgentOfficeCore
 import SwiftUI
 
-/// Sahnenin üstündeki SwiftUI katmanı (spec §5): oda tabelaları, masa kartları ve bekleyenlerin `?` balonu.
+/// Sahnenin üstündeki SwiftUI katmanı (spec §5): en yakın odanın tabelası, masa kartları ve bekleyenlerin `?` balonu.
 /// Konumlar sahneyle aynı `OfficeViewport` izdüşümünden gelir; tıklamalar sahneye geçer.
 struct OfficeCards: View {
     let plan: OfficePlan
@@ -20,7 +20,9 @@ struct OfficeCards: View {
         let horizon = viewport.horizonZ(viewSize: size)
         let shown = { (z: Double, y: Double) in OfficeOverlay.isShown(z: z, anchorY: y, horizonZ: horizon, viewSize: size) }
         ZStack(alignment: .topLeading) {
-            ForEach(plan.rooms, id: \.key) { room in
+            // Tek tabela: kameranın baktığı yere en yakın, ekranda görünen oda (hiçbiri görünmüyorsa yok).
+            let labelled = OfficeOverlay.nearestRoomSign(plan.rooms, viewport: viewport, viewSize: size)
+            ForEach(plan.rooms.filter { $0.key == labelled }, id: \.key) { room in
                 let anchor = OfficeOverlay.roomSignAnchor(room, viewport: viewport, viewSize: size)
                 if shown(room.z, anchor.y) {
                     RoomSign(title: room.title, roomKey: room.key, icon: icons[room.key], compact: detail == .far && !interactive)

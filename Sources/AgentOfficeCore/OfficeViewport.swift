@@ -346,6 +346,29 @@ public enum OfficeOverlay {
         return (p.x, max(p.y, viewSize.height * horizonBand + 14))
     }
 
+    /// Gösterilecek tek oda tabelası: zemini kamerada görünen ve tabelası ekranın içinde kalan odalardan, ekranın
+    /// ortasındaki zemin noktasına en yakın olanı. Hiçbir oda görünmüyorsa nil (tabela yok).
+    public static func nearestRoomSign(_ rooms: [OfficePlan.Room], viewport: OfficeViewport,
+                                       viewSize: OfficeViewport.ViewSize) -> String? {
+        let horizon = viewport.horizonZ(viewSize: viewSize)
+        let center = viewport.point(atX: viewSize.width / 2, y: viewSize.height / 2, height: 0, viewSize: viewSize)
+        func onScreen(_ room: OfficePlan.Room) -> Bool {
+            let sign = roomSignAnchor(room, viewport: viewport, viewSize: viewSize)
+            guard sign.x >= 0, sign.x <= viewSize.width, isShown(z: room.z, anchorY: sign.y, horizonZ: horizon, viewSize: viewSize)
+            else { return false }
+            let r = room.rect
+            let corners = [(r.minX, r.minZ), (r.maxX, r.minZ), (r.minX, r.maxZ), (r.maxX, r.maxZ)]
+                .map { viewport.project(x: $0.0, y: 0, z: $0.1, viewSize: viewSize) }
+            let xs = corners.map(\.x), ys = corners.map(\.y)
+            return xs.max()! > 0 && xs.min()! < viewSize.width && ys.max()! > 0 && ys.min()! < viewSize.height
+        }
+        func distance(_ room: OfficePlan.Room) -> Double {
+            let r = room.rect
+            return hypot(max(r.minX - center.x, 0, center.x - r.maxX), max(r.minZ - center.z, 0, center.z - r.maxZ))
+        }
+        return rooms.filter(onScreen).min { distance($0) < distance($1) }?.key
+    }
+
     /// Kartın ölçeği: başın bulunduğu yerde 1 m'nin görünümdeki boyu / hedefteki boyu; uzaklaştıkça en fazla %30 küçülür.
     public static func cardScale(at point: (x: Double, y: Double, z: Double), viewport: OfficeViewport,
                                  viewSize: OfficeViewport.ViewSize) -> Double {

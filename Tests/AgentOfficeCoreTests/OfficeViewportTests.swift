@@ -283,6 +283,32 @@ import simd
 }
 
 @Suite struct OfficeRoomSignTests {
+    func threeRooms() -> OfficePlan {
+        let members = ["/a", "/b", "/c"].map { OfficePlan.Member(id: $0 + "-1", roomKey: $0) }
+        return OfficePlan.make(members, slots: OfficePlan.assignSlots(members, previous: [:]))
+    }
+
+    /// Tek tabela: kameranın baktığı yere en yakın oda.
+    @Test func onlyTheRoomNearestToTheViewCenterIsLabelled() {
+        let plan = threeRooms(), size = (width: 900.0, height: 600.0)
+        let fit = OfficeViewport.fitting(plan.bounds, height: 1.6, viewSize: size)
+        #expect(OfficeOverlay.nearestRoomSign(plan.rooms, viewport: fit, viewSize: size) != nil)
+        for room in plan.rooms {
+            let r = room.rect
+            let look = OfficeViewport.focusing(x: (r.minX + r.maxX) / 2, z: (r.minZ + r.maxZ) / 2, zoom: 120, fit: fit)
+            #expect(OfficeOverlay.nearestRoomSign(plan.rooms, viewport: look, viewSize: size) == room.key)
+        }
+    }
+
+    /// Kamera odalardan uzakta bir yere bakıyorsa (hiçbiri ekranda değil) tabela yok.
+    @Test func noLabelWhenNoRoomIsOnScreen() {
+        let plan = threeRooms(), size = (width: 900.0, height: 600.0)
+        let fit = OfficeViewport.fitting(plan.bounds, height: 1.6, viewSize: size)
+        let away = OfficeViewport.focusing(x: plan.bounds.maxX + 200, z: plan.bounds.maxZ + 200, zoom: 120, fit: fit)
+        #expect(OfficeOverlay.nearestRoomSign(plan.rooms, viewport: away, viewSize: size) == nil)
+        #expect(OfficeOverlay.nearestRoomSign([], viewport: fit, viewSize: size) == nil)
+    }
+
     /// Oda tabelası arka duvarın orta üstünde; üst banda düşerse bandın altında kalır (gizlenmez).
     @Test func signSitsAtTheTopCenterAndStaysBelowTheBand() {
         let members = [OfficePlan.Member(id: "a", roomKey: "/a"), OfficePlan.Member(id: "b", roomKey: "/a")]

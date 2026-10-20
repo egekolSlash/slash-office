@@ -58,14 +58,34 @@ import Testing
         let now = t0
         let paused = now.addingTimeInterval(-1)
         let question = c("q", .waiting(.question("?")))
-        #expect(OfficeAutoFocus.shouldApply(target: "q", current: "w", candidates: [question, c("w", .working(tool: nil))],
-                                            lastManualMove: paused, now: now))
-        #expect(!OfficeAutoFocus.shouldApply(target: "w", current: nil, candidates: [c("w", .working(tool: nil))],
+        #expect(OfficeAutoFocus.shouldApply(target: .villager("q"), current: .villager("w"),
+                                            candidates: [question, c("w", .working(tool: nil))], lastManualMove: paused, now: now))
+        #expect(!OfficeAutoFocus.shouldApply(target: .villager("w"), current: .overview, candidates: [c("w", .working(tool: nil))],
                                              lastManualMove: paused, now: now))
         // Zaten o soruya bakıyorsa tekrar uygulanmaz.
-        #expect(!OfficeAutoFocus.shouldApply(target: "q", current: "q", candidates: [question], lastManualMove: paused, now: now))
-        #expect(OfficeAutoFocus.shouldApply(target: "w", current: nil, candidates: [c("w", .working(tool: nil))],
+        #expect(!OfficeAutoFocus.shouldApply(target: .villager("q"), current: .villager("q"), candidates: [question],
+                                             lastManualMove: paused, now: now))
+        #expect(OfficeAutoFocus.shouldApply(target: .villager("w"), current: .overview, candidates: [c("w", .working(tool: nil))],
                                             lastManualMove: nil, now: now))
+        // Oda görünümüne geçiş de elle hareketten sonra bekler.
+        #expect(!OfficeAutoFocus.shouldApply(target: .rooms(["a"]), current: .overview, candidates: [], lastManualMove: paused, now: now))
+    }
+
+    /// Dikkat isteyen yoksa odaktaki panelin köylüsü; o da yoksa işin döndüğü odalar; hiçbiri yoksa bütün ofis.
+    @Test func fallsBackToTheFocusedPaneThenActiveRooms() {
+        let idle = [c("a", .idle), c("b", .idle)]
+        #expect(OfficeAutoFocus.target(idle, current: .overview, focusedPane: "b", activeRooms: ["r"]) == .villager("b"))
+        #expect(OfficeAutoFocus.target(idle, current: .overview, focusedPane: nil, activeRooms: ["r", "s"]) == .rooms(["r", "s"]))
+        #expect(OfficeAutoFocus.target(idle, current: .overview, focusedPane: nil, activeRooms: []) == .overview)
+        // Çalışan ya da soru soran, odaktaki panelden önce gelir.
+        let busy = [c("a", .working(tool: nil), open: true), c("b", .idle)]
+        #expect(OfficeAutoFocus.target(busy, current: .overview, focusedPane: "b", activeRooms: []) == .villager("a"))
+    }
+
+    @Test func activeRoomsListOpenPanesFirstWithoutRepeats() {
+        #expect(OfficeAutoFocus.activeRooms(openRooms: ["x", "y"], latestRoom: "x") == ["x", "y"])
+        #expect(OfficeAutoFocus.activeRooms(openRooms: ["x", "x"], latestRoom: "z") == ["x", "z"])
+        #expect(OfficeAutoFocus.activeRooms(openRooms: [], latestRoom: nil) == [])
     }
 
     @Test func manualMovePausesAutoFocusForAWhile() {

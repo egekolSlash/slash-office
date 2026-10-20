@@ -11,8 +11,8 @@ struct OfficeView: View {
     @State private var gpu: OfficeGPU?
     private var camera: OfficeCamera { interactive ? model.officeCamera : model.miniOfficeCamera }
     static let autoFocusKey = "miniOfficeAutoFocus"
-    /// Mini ofisin kendiliğinden baktığı masa (`OfficeAutoFocus`).
-    @State private var autoFocused: String?
+    /// Mini ofisin kendiliğinden baktığı yer (`OfficeAutoFocus`).
+    @State private var autoFocused = OfficeAutoFocus.Target.overview
     @State private var unavailable = false
     /// Köylülerin yerleri: 0,2 sn'de bir okunur, sadece değişince güncellenir (dururken kartlar yeniden çizilmez).
     @State private var villagers: [String: AvatarSim.Position] = [:]
@@ -67,9 +67,9 @@ struct OfficeView: View {
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
             camera.viewSize = (Double(size.width), Double(size.height))
             camera.fit(plan)
-            // Mini ofis boyutu değişince odaktaki köylü yine ortada ve sığar.
-            if !interactive, let autoFocused, !OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) {
-                focusVillager(autoFocused, plan: plan, camera: camera, zoom: OfficeViewport.focusZoom(viewSize: camera.viewSize, fit: camera.fitViewport))
+            // Mini ofis boyutu değişince odaktaki köylü (ya da odalar) yine ortada ve sığar.
+            if !interactive, autoFocused != .overview, !OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()) {
+                frame(autoFocused, plan: plan, camera: camera)
             }
         }
         .onChange(of: plan, initial: true) { camera.fit(plan) }
@@ -129,36 +129,72 @@ struct OfficeView: View {
         }
     }
 
-    private func autoFocusTarget(plan: OfficePlan, desks: [String: OfficeDeskInfo]) -> String? {
-        guard !interactive else { return nil }
-        return OfficeAutoFocus.pick(autoFocusCandidates(desks), current: autoFocused)
+    /// Dikkat isteyen masa; yoksa odaktaki panelin köylüsü; o da yoksa işin döndüğü odalar.
+    private func autoFocusTarget(plan: OfficePlan, desks: [String: OfficeDeskInfo]) -> OfficeAutoFocus.Target {
+        guard !interactive else { return .overview }
+        let focusedPane = model.layout.focused.flatMap { desks[$0] == nil ? nil : $0 }
+        return OfficeAutoFocus.target(autoFocusCandidates(desks), current: autoFocused, focusedPane: focusedPane,
+                                      activeRooms: activeRooms(desks))
+    }
+
+    /// Panelde açık oturumların odaları (sıralı: anahtar her çizimde aynı kalsın) ve en son hareket olan oturumun odası.
+    private func activeRooms(_ desks: [String: OfficeDeskInfo]) -> [String] {
+        let open = Set(model.layout.visible.compactMap { desks[$0]?.roomKey }).sorted()
+        let latest = desks.values.compactMap { info -> (String, Date)? in
+            guard let session = model.store.session(info.id), let at = session.lastEventAt else { return nil }
+            if case .exited = session.state { return nil }
+            return (info.roomKey, at)
+        }.max { $0.1 < $1.1 }?.0
+        return OfficeAutoFocus.activeRooms(openRooms: open, latestRoom: latest)
     }
 
     private func autoFocusKey(plan: OfficePlan, desks: [String: OfficeDeskInfo]) -> String {
-        guard let target = autoFocusTarget(plan: plan, desks: desks) else { return "" }
-        let standing = if case .waiting = desks[target]?.state { true } else { false }
-        return "\(target)|\(standing)"
+        switch autoFocusTarget(plan: plan, desks: desks) {
+        case .villager(let id):
+            let standing = if case .waiting = desks[id]?.state { true } else { false }
+            return "\(id)|\(standing)"
+        case .rooms(let keys): return "rooms|" + keys.joined(separator: ",")
+        case .overview: return ""
+        }
     }
 
-    private func applyAutoFocus(_ target: String?, plan: OfficePlan, camera: OfficeCamera) {
+    private func applyAutoFocus(_ target: OfficeAutoFocus.Target, plan: OfficePlan, camera: OfficeCamera) {
         guard !interactive, UserDefaults.standard.object(forKey: Self.autoFocusKey) as? Bool ?? true else { return }
         let candidates = autoFocusCandidates(deskInfos(plan))
-        let lookingElsewhere = target != nil && camera.target == nil && !isLooking(at: target, plan: plan, camera: camera)
+        let lookingElsewhere = target.villager != nil && camera.target == nil
+            && !isLooking(at: target.villager, plan: plan, camera: camera)
         let apply = OfficeAutoFocus.shouldApply(target: target, current: autoFocused, candidates: candidates,
                                                 lastManualMove: camera.lastManualMove, now: Date())
             || (lookingElsewhere && !OfficeAutoFocus.isPaused(lastManualMove: camera.lastManualMove, now: Date()))
         guard apply else {
-            if target != autoFocused { DebugLog.write("office autofocus waits (manual move) for \(target ?? "-")") }
+            if target != autoFocused { DebugLog.write("office autofocus waits (manual move) for \(target)") }
             return
         }
-        DebugLog.write("office autofocus \(autoFocused ?? "-") -> \(target ?? "-")")
+        DebugLog.write("office autofocus \(autoFocused) -> \(target)")
         autoFocused = target
-        guard let target, plan.rooms.flatMap(\.desks).contains(where: { $0.id == target }) else {
+        frame(target, plan: plan, camera: camera)
+    }
+
+    /// Kamerayı hedefe çevirir: köylüye yaklaşır, odaları sığdırır ya da bütün ofise döner.
+    private func frame(_ target: OfficeAutoFocus.Target, plan: OfficePlan, camera: OfficeCamera) {
+        switch target {
+        case .villager(let id) where plan.rooms.flatMap(\.desks).contains(where: { $0.id == id }):
+            focusVillager(id, plan: plan, camera: camera,
+                          zoom: OfficeViewport.focusZoom(viewSize: camera.viewSize, fit: camera.fitViewport))
+        case .rooms(let keys):
+            let rects = plan.rooms.filter { keys.contains($0.key) }.map(\.rect)
+            // Bütün odalar işteyse bütün ofis zaten sığdırılmış görünümdür.
+            guard let first = rects.first, rects.count < plan.rooms.count else { camera.resetToFit(); return }
+            let union = rects.dropFirst().reduce(first) { a, b in
+                PlanRect(minX: min(a.minX, b.minX), minZ: min(a.minZ, b.minZ), maxX: max(a.maxX, b.maxX), maxZ: max(a.maxZ, b.maxZ))
+            }
+            let fit = OfficeViewport.fitting(union, height: OfficePlan.wallHeight, viewSize: camera.viewSize, margin: 40)
+            // Tek küçük oda köylü odağından daha yakına gelmesin.
+            let zoom = min(fit.zoom, OfficeViewport.focusZoom(viewSize: camera.viewSize, fit: camera.fitViewport))
+            camera.focus(x: fit.targetX, z: fit.targetZ, zoom: zoom)
+        default:
             camera.resetToFit()
-            return
         }
-        focusVillager(target, plan: plan, camera: camera,
-                      zoom: OfficeViewport.focusZoom(viewSize: camera.viewSize, fit: camera.fitViewport))
     }
 
     /// Köylünün gövdesini ortalar: oturuyorsa taburede, soru bekliyorsa masanın yanında ayakta.
