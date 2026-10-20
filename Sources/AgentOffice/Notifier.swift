@@ -14,6 +14,18 @@ enum Notifier {
 
     static var prefs: NotificationPrefs { NotificationPrefs.load(from: .standard) }
 
+    /// İzin normalde ilk açılıştaki izin ekranında istenir. O ekranı görmeden geçen (ayarları eski bundle kimliğinden
+    /// taşınan) kullanıcıya hiç sorulmamış olur ve macOS uygulamayı Bildirimler listesine bile koymaz: açılışta sorulur.
+    /// İzin ekranı daha gösterilmediyse soru ona kalır; verilmiş ya da reddedilmiş izin için bir şey yapılmaz.
+    static func requestAuthorizationIfNeeded() {
+        guard canNotify, UserDefaults.standard.bool(forKey: Onboarding.completedKey) else { return }
+        Task {
+            let center = UNUserNotificationCenter.current()
+            guard await center.notificationSettings().authorizationStatus == .notDetermined else { return }
+            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+        }
+    }
+
     /// Özel ses çalarken bırakılmasın diye tutulur.
     private static var player: NSSound?
 

@@ -44,8 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `swift run` ile bundle'sız çalışırken Dock'ta görünmesi ve klavye odağı alması için.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()
-        // Bildirim izni ilk açılıştaki izin ekranında istenir.
+        // Bildirim izni ilk açılıştaki izin ekranında istenir; o ekranı hiç görmemişse açılışta.
         if Notifier.canNotify { UNUserNotificationCenter.current().delegate = self }
+        Notifier.requestAuthorizationIfNeeded()
         model.start()
         // ⌘= de yazıyı büyütsün (ABD klavyesinde + Shift ister; menüde ⌘+ görünür). Gizli menü öğesi yerine dinleyici:
         // gizli SwiftUI menü öğelerinin kısayolu güvenilir çalışmıyor.
