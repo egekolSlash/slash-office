@@ -318,6 +318,9 @@ final class OfficeMetalRenderer: @unchecked Sendable {
 
     /// Bir kare: `target`'a (drawable ya da ekran dışı doku) çizer. En fazla `framesInFlight` kare uçuşta olur;
     /// gerekirse burada GPU'yu bekler.
+    /// Gökyüzü çizilmez, arka plan saydam kalır (`--villager-frames`: köylüyü videoya maskesiz koymak için).
+    var transparentBackground = false
+
     func encode(to target: MTLTexture, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, avatars: [AvatarInstance],
                 time: Double, commandBuffer cb: MTLCommandBuffer) {
         inFlight.wait()
@@ -364,6 +367,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         let skyLinear = Self.linear(lighting.sky)
         pass.colorAttachments[0].clearColor = MTLClearColor(red: Double(skyLinear.x), green: Double(skyLinear.y),
                                                             blue: Double(skyLinear.z), alpha: 1)
+        if transparentBackground { pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0) }
         pass.colorAttachments[0].storeAction = .multisampleResolve
         pass.depthAttachment.texture = depthMSAA
         pass.depthAttachment.loadAction = .clear
@@ -381,10 +385,12 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         e.setFragmentSamplerState(gpu.patternSampler, index: 0)
         e.setFragmentSamplerState(gpu.shadowSampler, index: 1)
         // Gökyüzü (geçiş ve yıldızlar) en arkada.
-        e.setRenderPipelineState(gpu.skyPipe)
-        e.setDepthStencilState(gpu.skyDepth)
-        e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
-        e.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        if !transparentBackground {
+            e.setRenderPipelineState(gpu.skyPipe)
+            e.setDepthStencilState(gpu.skyDepth)
+            e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+            e.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
         e.setDepthStencilState(gpu.depthWrite)
         if let vb = worldVertices, let ib = worldIndices {
             e.setRenderPipelineState(gpu.worldPipe)

@@ -22,6 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in await OfficeSnapshot.run(arguments: CommandLine.arguments, model: model) }
             return
         }
+        // `--villager-frames <spec> <klasör>`: köylüleri saydam arka planda kare kare çizip çık (tanıtım videosu).
+        if VillagerFrames.requested(CommandLine.arguments) {
+            Task { @MainActor in await VillagerFrames.run(arguments: CommandLine.arguments) }
+            return
+        }
         if OnboardingView.snapshot(arguments: CommandLine.arguments, model: model) { exit(0) }
         if CommandLine.arguments.contains("--customizer-snapshot") {
             let model = self.model
