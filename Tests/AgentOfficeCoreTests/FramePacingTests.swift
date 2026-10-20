@@ -54,4 +54,17 @@ import Testing
         #expect(OfficeArtLocation.find(bundleResources: bundle, repoRoot: repo, fileExists: repoOnly.contains)?.path == "/repo/Resources/OfficeArt")
         #expect(OfficeArtLocation.find(bundleResources: nil, repoRoot: repo, fileExists: { _ in false }) == nil)
     }
+
+    /// Uygulama arka plandayken döngü animasyonları durur; yürüyüş ve yerinde hareket seyrek, jest akıcı kalır.
+    @Test func backgroundAppDrawsOnlyMovement() {
+        for mini in [false, true] {
+            #expect(FramePacing.mode(moving: false, interacting: false, animating: true, visible: true, mini: mini, active: false) == .paused)
+            #expect(FramePacing.mode(moving: true, interacting: false, animating: true, visible: true, mini: mini, active: false) == .fixed(FramePacing.backgroundFPS))
+            #expect(FramePacing.mode(moving: false, acting: true, interacting: false, animating: true, visible: true, mini: mini, active: false) == .fixed(FramePacing.backgroundFPS))
+            #expect(FramePacing.mode(moving: false, interacting: true, animating: true, visible: true, mini: mini, active: false) == .native)
+            #expect(FramePacing.mode(moving: true, interacting: true, animating: true, visible: false, mini: mini, active: false) == .paused)
+        }
+        // Tasarruf kapalıysa arka planda da ekran hızında.
+        #expect(FramePacing.mode(moving: false, interacting: false, animating: true, visible: true, mini: true, saving: false, active: false) == .native)
+    }
 }

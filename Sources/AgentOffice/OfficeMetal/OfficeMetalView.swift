@@ -25,6 +25,7 @@ final class OfficeMetalView: NSView {
     private let camera: OfficeCamera
     private var occlusionObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
+    private var activationObservers: [NSObjectProtocol] = []
     private var clockTimer: Timer?
     private var cameraLink: CADisplayLink?
     private var lastScene: OfficeSceneInput?
@@ -50,6 +51,7 @@ final class OfficeMetalView: NSView {
         wantsLayer = true
         layer = metalLayer
         observeCamera()
+        observeActivation()
         loop.onVillagers = { [weak self] positions, followView in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -119,6 +121,7 @@ final class OfficeMetalView: NSView {
         clockTimer?.invalidate()
         if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
         if let occlusionObserver { NotificationCenter.default.removeObserver(occlusionObserver) }
+        for observer in activationObservers { NotificationCenter.default.removeObserver(observer) }
     }
 
     override func makeBackingLayer() -> CALayer { metalLayer }
@@ -200,6 +203,16 @@ final class OfficeMetalView: NSView {
             DebugLog.write("office camera transition end at \(camera.viewport.targetX),\(camera.viewport.targetZ) z\(camera.viewport.zoom)")
             cameraLink?.invalidate()
             cameraLink = nil
+        }
+    }
+
+    /// Uygulama arka plana geçince döngü animasyonları durur (`FramePacing`, `active`).
+    private func observeActivation() {
+        loop.post(active: NSApp.isActive)
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification] {
+            activationObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.loop.post(active: NSApp.isActive) }
+            })
         }
     }
 
@@ -388,6 +401,8 @@ final class OfficeRenderLoop: @unchecked Sendable {
         var visible = false
         var mini = false
         var saving = true
+        /// Uygulama önde mi.
+        var active = true
         var drawableSize: CGSize?
         var lighting: OfficeDaylight.Lighting?
         var dirty = true
@@ -456,6 +471,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
     func post(visible: Bool, mini: Bool) { send { $0.visible = visible; $0.mini = mini } }
     func postRelease() { send { $0.release = true } }
     func post(saving: Bool) { send { $0.saving = saving } }
+    func post(active: Bool) { send { $0.active = active } }
     func post(lighting: OfficeDaylight.Lighting) { send { $0.lighting = lighting } }
     func post(drawableSize: CGSize) { send { $0.drawableSize = drawableSize } }
     /// Jest sonrası yarım saniye tam hız (kaydırma ve yakınlaştırma akıcı olsun).
@@ -487,7 +503,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
             var mode = FramePacing.mode(moving: moving, acting: state.acting || (follow != nil && !followArrived),
                                         interacting: box.cameraMoving || now < box.interactionUntil,
                                         animating: animating, visible: box.visible, mini: box.mini,
-                                        saving: box.saving)
+                                        saving: box.saving, active: box.active)
             // Duraklamadan önce son durumu bir kez çiz (ör. köylüsüz ofiste plan değişti, boş ofiste gökyüzü).
             let drawOnce = mode == .paused && box.dirty && box.visible
             if mode != lastMode {

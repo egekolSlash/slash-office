@@ -1,6 +1,8 @@
 /// Ofisin kare hızı (spec v4 §1): hareket ya da jest varken ekranın yenileme hızı, sadece döngü animasyonları
 /// varken 12 fps, mini ofiste en fazla 12 (jest hariç), görünmezken ya da canlandırılacak bir şey yokken dur.
 /// Enerji tasarrufu kapalıyken (`saving: false`) görünür ve canlı ofis her zaman ekran hızında, mini dahil.
+/// Uygulama arka plandayken (`active: false`, tasarruf açık) döngü animasyonları çizilmez (değişince bir kare
+/// çizilir); yürüyüş ve yerinde hareket 8 fps'te sürer, jest yine akıcı.
 public enum FramePacing {
     public enum Mode: Equatable, Sendable {
         case native
@@ -8,12 +10,19 @@ public enum FramePacing {
         case paused
     }
 
+    /// Uygulama arka plandayken yürüyüş ve yerinde hareketin kare hızı.
+    public static let backgroundFPS = 8.0
+
     /// `moving`: yürüyen köylü; `acting`: yerinde tek seferlik hareket, oturma/kalkma ya da klip geçişi.
     public static func mode(moving: Bool, acting: Bool = false, interacting: Bool, animating: Bool,
-                            visible: Bool, mini: Bool, saving: Bool = true) -> Mode {
+                            visible: Bool, mini: Bool, saving: Bool = true, active: Bool = true) -> Mode {
         guard visible else { return .paused }
         let busy = moving || interacting
         if !saving { return busy || acting || animating ? .native : .paused }
+        if !active {
+            if interacting { return .native }
+            return moving || acting ? .fixed(backgroundFPS) : .paused
+        }
         if mini {
             // Mini ofiste köylüler en fazla 12 fps; ama jest (kaydırma, yakınlaştırma) akıcı olsun.
             if interacting { return .native }
