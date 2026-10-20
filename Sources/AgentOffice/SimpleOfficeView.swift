@@ -1,5 +1,6 @@
 import AgentOfficeCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Sade ofis (Ayarlar'da "Detaylı ofis" kapalıyken): animasyon ve 3D yok. Her depo bir oda kartı, her oturum
 /// bir masa satırı; renkler durumu gösterir. Tıklama terminali açar, ⇧ ile yanına ekler.
@@ -111,6 +112,12 @@ struct SettingsView: View {
     @AppStorage(OfficeView.autoFocusKey) private var autoFocus = true
     @AppStorage(OfficeMetalView.energySavingKey) private var energySaving = true
     @AppStorage(AppModel.deskOrientationKey) private var deskOrientation = DeskOrientation.horizontal
+    @AppStorage(NotificationPrefs.finishedKey) private var notifyFinished = true
+    @AppStorage(NotificationPrefs.dockBounceKey) private var dockBounce = true
+    @AppStorage(NotificationPrefs.soundKey) private var playSound = true
+    @AppStorage(NotificationPrefs.soundFileKey) private var soundFile = ""
+    @AppStorage(Notifier.soundNameKey) private var soundName = ""
+    @State private var soundError = false
 
     var body: some View {
         Form {
@@ -148,8 +155,55 @@ struct SettingsView: View {
             Toggle("Energy saving", isOn: $energySaving)
             Text("On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Toggle("Notify when an agent finishes", isOn: $notifyFinished)
+            Text("While you're in another app, a notification appears in the corner of the screen when an agent finishes its task. Questions and permission requests are always notified.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Bounce the Dock icon", isOn: $dockBounce)
+            Text("The icon bounces once when an agent finishes, and keeps bouncing until you come back when one is waiting for you.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Play a sound", isOn: $playSound)
+            HStack {
+                if soundFile.isEmpty {
+                    Text("System sound")
+                } else {
+                    Text("Sound: \(soundName.isEmpty ? (soundFile as NSString).lastPathComponent : soundName)")
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                Spacer()
+                Button {
+                    Notifier.playPreview()
+                } label: {
+                    Image(systemName: "play.fill")
+                }
+                .help("Play")
+                Button("Choose…") { chooseSound() }
+                if !soundFile.isEmpty {
+                    Button("Reset to Default") { Notifier.resetSound() }
+                }
+            }
+            .disabled(!playSound)
+            Text("Choose your own MP3, M4A, WAV or AIFF file. Slash Office keeps a copy, so moving or deleting the original is fine.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if soundError {
+                Text("This file couldn't be used as a sound.").font(.callout).foregroundStyle(.red)
+            }
         }
         .padding(20)
         .frame(width: 420)
+    }
+
+    private func chooseSound() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = NotificationPolicy.soundExtensions.compactMap { UTType(filenameExtension: $0) }
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try Notifier.importSound(from: url)
+            soundError = false
+            Notifier.playPreview()
+        } catch {
+            soundError = true
+        }
     }
 }

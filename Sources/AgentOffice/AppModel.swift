@@ -166,7 +166,8 @@ final class AppModel {
 
     private func handle(_ envelope: HookEnvelope) {
         guard envelope.provider == "claude" else { return }
-        let wasWaiting: Bool = if case .waiting = store.session(envelope.session)?.state { true } else { false }
+        let previous = store.session(envelope.session)?.state
+        let wasWaiting: Bool = if case .waiting = previous { true } else { false }
         var events = ClaudeNormalizer.events(from: envelope.payload)
         if kind(of: envelope.session) == .shell {
             // Claude kapanınca terminal açık kalır: durumu yine shell yoklaması belirler.
@@ -182,6 +183,9 @@ final class AppModel {
         watchTranscript(envelope.session)
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
+        }
+        if NotificationPolicy.finished(previous: previous, events: events, current: store.session(envelope.session)?.state) {
+            Notifier.notifyFinished(sessionID: envelope.session, title: displayName(for: envelope.session))
         }
         Notifier.updateBadge(waiting: store.waitingCount)
         // /clear sonrası Claude'un oturum kimliği değişir; resume için en sonuncusunu sakla.

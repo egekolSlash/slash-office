@@ -371,6 +371,16 @@
         }
       }
     },
+    "Bounce the Dock icon": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock simgesini zıplat"
+          }
+        }
+      }
+    },
     "Bow": {
       "localizations": {
         "tr": {
@@ -577,6 +587,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başka klasör… ile seç."
+          }
+        }
+      }
+    },
+    "Choose your own MP3, M4A, WAV or AIFF file. Slash Office keeps a copy, so moving or deleting the original is fine.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kendi MP3, M4A, WAV ya da AIFF dosyanı seç. Slash Office bir kopyasını saklar; aslını taşıman ya da silmen sorun olmaz."
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seç…"
           }
         }
       }
@@ -1941,6 +1971,16 @@
         }
       }
     },
+    "Notify when an agent finishes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajan işini bitirince bildir"
+          }
+        }
+      }
+    },
     "OK": {
       "localizations": {
         "tr": {
@@ -2001,22 +2041,22 @@
         }
       }
     },
-    "On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır; klavyesi olmayan terminaller saniyede birkaç kez çizilir (kaydırdığın terminal akıcı kalır). Kapalıyken: ofis ekranının yenileme hızında çizilir ve penceredeki her terminal hemen çizilir (daha akıcı, daha çok CPU). İkisinde de ofis gizliyken durur."
-          }
-        }
-      }
-    },
     "On: villagers animate at 12–30 fps and terminals without the keyboard redraw a few times a second. Off: the office and every terminal draw at full speed — smoother, uses more CPU.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Açıkken: köylüler 12–30 fps ile canlanır, klavyesi olmayan terminaller saniyede birkaç kez çizilir. Kapalıyken: ofis ve tüm terminaller tam hızda çizilir; daha akıcı, daha çok CPU kullanır."
+          }
+        }
+      }
+    },
+    "On: villagers animate at 12–30 fps, the mini office at 12 fps, and terminals without the keyboard redraw a few times a second (a terminal you scroll stays smooth). Off: the office draws at your display's refresh rate and every terminal in the window redraws right away (smoother, more CPU). Either way the office stops while hidden.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıkken: köylüler 12–30 fps, mini ofis 12 fps ile canlandırılır; klavyesi olmayan terminaller saniyede birkaç kez çizilir (kaydırdığın terminal akıcı kalır). Kapalıyken: ofis ekranının yenileme hızında çizilir ve penceredeki her terminal hemen çizilir (daha akıcı, daha çok CPU). İkisinde de ofis gizliyken durur."
           }
         }
       }
@@ -2257,6 +2297,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saksı"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çal"
+          }
+        }
+      }
+    },
+    "Play a sound": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses çal"
           }
         }
       }
@@ -3041,6 +3101,16 @@
         }
       }
     },
+    "Sound: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses: %@"
+          }
+        }
+      }
+    },
     "Spiky": {
       "localizations": {
         "tr": {
@@ -3181,6 +3251,16 @@
         }
       }
     },
+    "System sound": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem sesi"
+          }
+        }
+      }
+    },
     "T-shirt": {
       "localizations": {
         "tr": {
@@ -3277,6 +3357,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hook sunucusu başlatılamadı: %@"
+          }
+        }
+      }
+    },
+    "The icon bounces once when an agent finishes, and keeps bouncing until you come back when one is waiting for you.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir ajan işini bitirince simge bir kez zıplar; seni bekleyen bir ajan varsa sen dönene kadar zıplamaya devam eder."
           }
         }
       }
@@ -3467,6 +3557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oturum boyunca"
+          }
+        }
+      }
+    },
+    "This file couldn't be used as a sound.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu dosya ses olarak kullanılamadı."
           }
         }
       }
@@ -3697,6 +3797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hangi renk?"
+          }
+        }
+      }
+    },
+    "While you're in another app, a notification appears in the corner of the screen when an agent finishes its task. Questions and permission requests are always notified.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka bir uygulamadayken bir ajan işini bitirince ekranın köşesinde bildirim çıkar. Sorular ve izin istekleri her zaman bildirilir."
           }
         }
       }
