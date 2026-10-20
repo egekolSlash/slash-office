@@ -82,10 +82,7 @@ final class AppModel {
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
 
-    let supportDirectory: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("AgentOffice", isDirectory: true)
-    }()
+    let supportDirectory = SupportDirectory.current
     var socketPath: String { supportDirectory.appendingPathComponent("hook.sock").path }
 
     /// `swift build` hook ikilisini uygulamanın yanına koyar.

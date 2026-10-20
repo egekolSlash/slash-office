@@ -31,8 +31,7 @@ public enum PackStore {
 
     /// Uygulamanın paketlerinin kökü.
     public static var defaultRoot: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AgentOffice/Packs", isDirectory: true)
+        SupportDirectory.current.appendingPathComponent("Packs", isDirectory: true)
     }
 
     /// Uygulamadaki paket listesi (`Resources/packs.json`); yoksa boş.

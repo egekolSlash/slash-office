@@ -1,3 +1,4 @@
+import AgentOfficeCore
 import Foundation
 
 /// `AGENT_OFFICE_DEBUG=1` ile tıklama ve odak olaylarını
@@ -5,8 +6,7 @@ import Foundation
 /// neyin olup neyin olmadığını görmek için.
 enum DebugLog {
     static let isEnabled = ProcessInfo.processInfo.environment["AGENT_OFFICE_DEBUG"] == "1"
-    private static let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("AgentOffice/debug.log")
+    private static let url = SupportDirectory.current.appendingPathComponent("debug.log")
 
     static func write(_ message: @autoclosure () -> String) {
         guard isEnabled else { return }
