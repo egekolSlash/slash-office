@@ -55,6 +55,8 @@ cp Resources/tr.lproj/InfoPlist.strings "$STAGE/Contents/Resources/tr.lproj/"
 cp -R Resources/OfficeArt "$STAGE/Contents/Resources/OfficeArt"
 cp -R Resources/Character "$STAGE/Contents/Resources/Character"
 cp Resources/packs.json "$STAGE/Contents/Resources/packs.json"
+# Telefondan erişimin web uygulaması (RemoteServer sunar).
+cp -R Resources/Remote "$STAGE/Contents/Resources/Remote"
 for exe in AgentOffice agent-office-hook; do
     out="$STAGE/Contents/MacOS/$exe"
     rm -f "$out"

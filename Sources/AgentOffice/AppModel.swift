@@ -12,6 +12,8 @@ final class AppModel {
     let officeCamera = OfficeCamera()
     let miniOfficeCamera = OfficeCamera()
     let diffWatcher = DiffWatcher()
+    /// Telefondan erişim (spec: uzaktan erişim): ayara göre sunucuyu açar, oturumları telefona yayınlar.
+    let remote = RemoteBridge()
     var changesScope: ChangesScope = .uncommitted
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work { didSet { markFocusedSeen() } }
@@ -78,7 +80,7 @@ final class AppModel {
     @ObservationIgnored private var resuming: Set<String> = []
     /// Esc ile kesilen turu kayıt dosyasından yakalar (Claude o an hook göndermez).
     @ObservationIgnored private let transcriptWatcher = TranscriptWatcher()
-    @ObservationIgnored private var transcriptPaths: [String: String] = [:]
+    @ObservationIgnored private(set) var transcriptPaths: [String: String] = [:]
     @ObservationIgnored private var coordinators: [String: TerminalCoordinator] = [:]
     @ObservationIgnored private var server: HookServer?
 
@@ -120,6 +122,7 @@ final class AppModel {
     func start() {
         guard server == nil else { return }
         transcriptWatcher.onInterrupt = { [weak self] id in self?.transcriptInterrupted(id) }
+        transcriptWatcher.onChange = { [weak self] id in self?.remote.transcriptChanged(id) }
         shellTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pollShells() }
         }
@@ -136,6 +139,7 @@ final class AppModel {
         } catch {
             errorMessage = String(localized: "The hook server could not be started: \(error.localizedDescription)")
         }
+        remote.attach(self)
         if ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO"] == "1" {
             loadDemoSessions()
             return
@@ -162,6 +166,7 @@ final class AppModel {
     func stop() {
         terminals.values.forEach { $0.terminate() }
         server?.stop()
+        remote.stop()
     }
 
     private func handle(_ envelope: HookEnvelope) {
@@ -181,6 +186,8 @@ final class AppModel {
             refreshWorkTitle(envelope.session, transcript: path)
         }
         watchTranscript(envelope.session)
+        // Tur bitince izleme durur; son mesaj bu bildirimle gelir.
+        remote.transcriptChanged(envelope.session)
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
         }

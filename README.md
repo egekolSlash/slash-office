@@ -15,6 +15,7 @@ Slash Office belongs to the same family as the multi-agent workspaces and agent 
 - **Attention routing** — every session shows whether it's working, asking a question, waiting for permission, done or stopped. Notifications and ⌘J take you to the agent that's waiting.
 - **Resume** stopped sessions where they left off, including ones Claude Code keeps running in the background.
 - **Review** the focused session's changes (git diff, including just its last turn) and its todo list in the inspector.
+- **Phone access** (off by default) — follow your sessions from your phone, read the conversation live, write to Claude and stop a turn. Your phone connects to Slash Office directly over [Tailscale](https://tailscale.com) or your local network; nothing goes through a server of ours. Pair a phone in **Settings › Phone access**.
 - **The office** — an optional view where every project is a room and every session a villager. A villager types while its agent works, stands up with a **?** when it needs you and shows a **✓** when it finished while you were looking elsewhere. Click a villager to open its terminal; give villagers names and their own look.
 - English and Turkish.
 
@@ -24,7 +25,7 @@ Slash Office belongs to the same family as the multi-agent workspaces and agent 
 - Agent state comes from Claude Code hooks, so idle agents cost nothing; plain terminals are checked once a second.
 - The office draws only while it's visible and stops completely when hidden or minimized. With **Energy saving** on (the default) villagers animate at 12–30 fps; the mini office in Work mode runs at 12 fps.
 - Turn the office off entirely (**Settings › Office view**) and Slash Office is just a fast agent terminal.
-- No background daemons, analytics or network calls of its own; your Claude Code settings are left untouched.
+- No background daemons, analytics or network calls of its own. With **Phone access** on, Slash Office listens on your Tailscale or local network address only, and only paired phones can use it. Your Claude Code settings are left untouched.
 
 ## Requirements
 

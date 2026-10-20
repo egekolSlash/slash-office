@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1a26">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Slash Office</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="bar" class="bar" hidden></div>
+  <main id="pair" class="view" hidden>
+    <h1>Slash Office</h1>
+    <p id="pair-warning"></p>
+    <label><span id="pair-code-label"></span><input id="pair-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+    <label><span id="pair-name-label"></span><input id="pair-name" maxlength="40"></label>
+    <button id="pair-button"></button>
+    <p id="pair-error" class="error"></p>
+  </main>
+  <main id="list" class="view" hidden>
+    <h1>Slash Office</h1>
+    <ul id="sessions" class="sessions"></ul>
+    <p id="empty" class="muted" hidden></p>
+  </main>
+  <main id="chat" class="view chat" hidden>
+    <header class="chat-head">
+      <button id="back" class="link"></button>
+      <div><div id="chat-title" class="title"></div><div id="chat-status" class="muted"></div></div>
+    </header>
+    <details id="todos" class="todos" hidden><summary id="todos-summary"></summary><ul id="todo-list"></ul></details>
+    <ol id="messages" class="messages"></ol>
+    <form id="composer" class="composer">
+      <textarea id="text" rows="1"></textarea>
+      <button id="stop" type="button" class="secondary" hidden></button>
+      <button id="send" type="submit"></button>
+    </form>
+    <p id="chat-error" class="error"></p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

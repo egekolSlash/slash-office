@@ -106,6 +106,8 @@ private struct DeskRow: View {
 struct SettingsView: View {
     /// Yeniden başlatmadan önce uyarmak için çalışan ajan sayısı.
     var runningAgents: () -> Int = { 0 }
+    /// Telefondan erişim bölümü; önizlemelerde nil.
+    var remote: RemoteBridge?
     @State private var language = AppRestart.language
     @AppStorage("richOffice") private var richOffice = false
     @AppStorage(OfficeMetalView.dayNightKey) private var dayNight = true
@@ -187,6 +189,10 @@ struct SettingsView: View {
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if soundError {
                 Text("This file couldn't be used as a sound.").font(.callout).foregroundStyle(.red)
+            }
+            if let remote {
+                Divider()
+                RemoteSettingsSection(remote: remote)
             }
         }
         .padding(20)
