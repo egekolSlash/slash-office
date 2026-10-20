@@ -661,6 +661,16 @@
         }
       }
     },
+    "Close Session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu kapat"
+          }
+        }
+      }
+    },
     "Close pane (the session keeps running)": {
       "localizations": {
         "tr": {

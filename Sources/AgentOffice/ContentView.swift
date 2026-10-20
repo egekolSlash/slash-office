@@ -4,7 +4,6 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var model: AppModel
     @AppStorage("richOffice") private var richOffice = false
-    @State private var pendingRemoval: (id: String, keepListFocus: Bool)?
     @State private var inspectorTab: InspectorTab =
         ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
 
@@ -12,11 +11,7 @@ struct ContentView: View {
     private func requestRemove(_ id: String) { requestRemove(id, keepListFocus: false) }
 
     private func requestRemove(_ id: String, keepListFocus: Bool) {
-        if model.isRunning(id) {
-            pendingRemoval = (id, keepListFocus)
-        } else {
-            model.remove(id, keepListFocus: keepListFocus)
-        }
+        model.requestRemove(id, keepListFocus: keepListFocus)
     }
 
     @Environment(\.openWindow) private var openWindow
@@ -56,14 +51,6 @@ struct ContentView: View {
                 Button("Terminal") { model.newShellSession(cwd: URL(fileURLWithPath: NSHomeDirectory())) }
                 Button("Terminal in Folder…") { model.chooseFolderAndStart(.shell) }
             }
-        }
-        .confirmationDialog("The agent is still running. Removing it will end its process.",
-                            isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } })) {
-            Button("Stop and Remove", role: .destructive) {
-                if let pendingRemoval { model.remove(pendingRemoval.id, keepListFocus: pendingRemoval.keepListFocus) }
-                pendingRemoval = nil
-            }
-            .keyboardShortcut(.defaultAction)
         }
         .sheet(isPresented: $model.showPermissions) {
             PermissionsView { model.finishPermissions() }

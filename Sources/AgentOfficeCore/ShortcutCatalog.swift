@@ -82,6 +82,7 @@ public enum ShortcutCatalog {
         Shortcut("session.removeStopped", "Remove Stopped Session", .delete, [.command, .shift], .sessions),
         Shortcut("session.resumeAll", "Resume All Stopped Sessions", .character("r"), [.command, .shift], .sessions),
         Shortcut("pane.close", "Close Pane", .character("w"), .command, .panes),
+        Shortcut("session.close", "Close Session", .character("w"), [.command, .shift], .sessions),
         Shortcut("agents.customize", "Customize Agents…", .character("a"), [.command, .shift], .sessions),
     ]
 

@@ -390,6 +390,30 @@ final class AppModel {
         if let id = layout.focused, isStopped(id) { remove(id) }
     }
 
+    /// ⇧⌘W: odaktaki oturumu kapatır; süreç çalışıyorsa önce sorar.
+    func closeFocusedSession() {
+        if let id = layout.focused, store.session(id) != nil { requestRemove(id) }
+    }
+
+    /// Çalışan bir ajanı kaldırmadan önce onay ister. NSAlert'in ilk düğmesi Return'e bağlıdır: Enter onaylar, Esc vazgeçer.
+    func requestRemove(_ id: String, keepListFocus: Bool = false) {
+        guard isRunning(id) else { remove(id, keepListFocus: keepListFocus); return }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "The agent is still running. Removing it will end its process.")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "Stop and Remove"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        let finish = { [weak self] (response: NSApplication.ModalResponse) in
+            guard response == .alertFirstButtonReturn, let self, self.store.session(id) != nil else { return }
+            self.remove(id, keepListFocus: keepListFocus)
+        }
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            alert.beginSheetModal(for: window, completionHandler: finish)
+        } else {
+            finish(alert.runModal())
+        }
+    }
+
     /// Terminal var ve süreci kapanmışsa true: çıktısı (ör. hata mesajı) görünür kalsın diye terminal gösterilir.
     func hasEndedTerminal(_ id: String) -> Bool {
         guard let terminal = terminals[id] else { return false }

@@ -136,6 +136,7 @@ struct AgentOfficeApp: App {
                     if let id = model.layout.focused { model.closePane(id) }
                 }
                 .shortcut("pane.close")
+                Button(title("session.close")) { model.closeFocusedSession() }.shortcut("session.close")
             }
             CommandGroup(replacing: .help) {
                 Button("Welcome Guide…") { delegate.model.openOnboarding() }
