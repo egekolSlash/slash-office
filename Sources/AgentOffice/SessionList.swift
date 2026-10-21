@@ -53,6 +53,15 @@ struct SessionList: View {
                         StatusBadge(state: session.state, kind: model.kind(of: session.id))
                     }
                     Spacer(minLength: 0)
+                    if model.kind(of: session.id) == .claude || !session.touchedFiles.isEmpty {
+                        SessionFilesButton(model: model, sessionID: session.id)
+                    }
+                    // Oturumlar birbirine göre sıralandığı için hepsinin kaydı verilir; yarım dakikada bir yenilenir.
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        let logs = Dictionary(model.store.sessions.map { ($0.id, $0.activity) }) { first, _ in first }
+                        ActivityStripe(level: ActivityHeat.levels(logs, now: context.date)[session.id] ?? 0)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 .contentShape(Rectangle())
                 .tag(session.id)

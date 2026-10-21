@@ -1021,6 +1021,16 @@
         }
       }
     },
+    "Edited": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değiştirilen"
+          }
+        }
+      }
+    },
     "Empty": {
       "localizations": {
         "tr": {
@@ -1127,6 +1137,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosya dolabı"
+          }
+        }
+      }
+    },
+    "Files in this session": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturumdaki dosyalar"
+          }
+        }
+      }
+    },
+    "Files the agent edits, reads or mentions will be listed here.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajanın değiştirdiği, okuduğu ya da adını andığı dosyalar burada listelenir."
           }
         }
       }
@@ -1701,6 +1731,16 @@
         }
       }
     },
+    "Mentioned": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adı geçen"
+          }
+        }
+      }
+    },
     "Microphone": {
       "localizations": {
         "tr": {
@@ -1917,6 +1957,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "İçerik yok ya da diff çok büyük."
+          }
+        }
+      }
+    },
+    "No files yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz dosya yok"
           }
         }
       }
@@ -2587,6 +2637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Görünüşü Rastgele Yap"
+          }
+        }
+      }
+    },
+    "Read": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okunan"
           }
         }
       }

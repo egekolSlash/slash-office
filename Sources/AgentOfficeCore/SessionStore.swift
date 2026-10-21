@@ -80,9 +80,14 @@ public enum SessionStore {
 public enum ClaudeTranscript {
     /// Claude bir oturumun transcript'ini ancak ilk mesajdan sonra yazar; transcript yoksa `--resume` başarısız olur.
     public static func exists(sessionID: String, projectsDirectory: URL, fileManager: FileManager = .default) -> Bool {
-        guard let projects = try? fileManager.contentsOfDirectory(atPath: projectsDirectory.path) else { return false }
-        return projects.contains { project in
-            fileManager.fileExists(atPath: projectsDirectory.appendingPathComponent(project).appendingPathComponent("\(sessionID).jsonl").path)
-        }
+        url(sessionID: sessionID, projectsDirectory: projectsDirectory, fileManager: fileManager) != nil
+    }
+
+    /// Oturumun kayıt dosyası; hangi proje klasöründe olduğu bilinmediği için hepsine bakılır.
+    public static func url(sessionID: String, projectsDirectory: URL, fileManager: FileManager = .default) -> URL? {
+        guard let projects = try? fileManager.contentsOfDirectory(atPath: projectsDirectory.path) else { return nil }
+        return projects.lazy
+            .map { projectsDirectory.appendingPathComponent($0).appendingPathComponent("\(sessionID).jsonl") }
+            .first { fileManager.fileExists(atPath: $0.path) }
     }
 }

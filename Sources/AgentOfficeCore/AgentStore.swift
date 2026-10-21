@@ -21,6 +21,8 @@ public final class AgentStore {
         public var workTitle: String?
         /// Çalışırken işini bitirdi ve kullanıcı henüz görmedi.
         public var unseenFinish = false
+        /// Son bir saatteki çalışma ve istekler (listedeki aktiflik şeridi).
+        public var activity = ActivityLog()
 
         /// Ne üzerinde çalışıyor: başlık, yoksa son isteğin kısaltılmışı.
         public var workSummary: String? {
@@ -60,7 +62,9 @@ public final class AgentStore {
             Self.noteAttention(&session, from: previous, at: date)
             switch event {
             case .sessionStarted(let providerID?): session.providerSessionID = providerID
-            case .promptSubmitted(let text): session.lastPrompt = text
+            case .promptSubmitted(let text):
+                session.lastPrompt = text
+                session.activity.notePrompt(at: date)
             case .todosChanged(let todos): session.todos = todos
             case .toolFinished(_, let files):
                 for file in files where !session.touchedFiles.contains(file) { session.touchedFiles.append(file) }
@@ -91,7 +95,10 @@ public final class AgentStore {
     }
 
     static func noteAttention(_ session: inout Session, from previous: AgentState, at date: Date) {
-        if session.state.stateClass != previous.stateClass { session.attentionSince = date }
+        guard session.state.stateClass != previous.stateClass else { return }
+        session.attentionSince = date
+        let busy = if case .working = session.state { true } else { false }
+        session.activity.note(busy: busy, at: date)
     }
 
     static func noteFinish(_ session: inout Session, from previous: AgentState, watched: Bool) {
@@ -118,6 +125,7 @@ public final class AgentStore {
     public func markExited(_ id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].state = .exited
+        sessions[index].activity.note(busy: false, at: .now)
     }
 
     /// Kapanmış bir oturum yeniden başlatılırken durumu sıfırlar.

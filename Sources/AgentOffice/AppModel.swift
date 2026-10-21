@@ -804,6 +804,23 @@ extension AppModel {
         }
     }
 
+    /// Oturumda geçen dosyalar (listedeki dosya düğmesi). Kayıt dosyası hook'lardan biliniyorsa o, yoksa (uygulama
+    /// yeniden açılmış, oturum kapalı) Claude'un oturum kimliğinden bulunur. Kayıt yoksa ajanın dokunduğu dosyalar.
+    func sessionFiles(_ id: String) async -> [SessionFile] {
+        guard let session = store.session(id) else { return [] }
+        let cwd = session.cwd
+        let claudeID = session.providerSessionID ?? records[id]?.claudeSessionID
+        let known = transcriptPaths[id].map(URL.init(fileURLWithPath:))
+        let projects = claudeProjectsDirectory
+        let fromTranscript = await Task.detached(priority: .userInitiated) { () -> [SessionFile]? in
+            let url = known ?? claudeID.flatMap { ClaudeTranscript.url(sessionID: $0, projectsDirectory: projects) }
+            return url.flatMap { TranscriptFiles.read(url: $0, cwd: cwd) }
+        }.value
+        return fromTranscript ?? session.touchedFiles.reversed().map {
+            SessionFile(path: TranscriptFiles.absolute($0, in: cwd), kind: .read)
+        }
+    }
+
     /// Çalışırken ya da beklerken kayıt izlenir; boşta ve kapalıyken izlenmez.
     private func watchTranscript(_ id: String) {
         let active: Bool = switch store.session(id)?.state {
