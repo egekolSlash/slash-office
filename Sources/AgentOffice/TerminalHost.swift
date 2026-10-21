@@ -54,7 +54,7 @@ final class AgentTerminalView: LocalProcessTerminalView {
             guard scheme == "file" else { return super.requestOpenLink(source: source, link: link, params: params) }
             fileURL = FileManager.default.fileExists(atPath: url.path) ? url : nil
         } else {
-            fileURL = FileKind.resolve(link, relativeTo: directory)
+            fileURL = FileKind.resolve(firstOf: linkCandidates(link), relativeTo: directory)
         }
         guard let fileURL else { return }
         if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
@@ -62,6 +62,35 @@ final class AgentTerminalView: LocalProcessTerminalView {
         } else {
             QuickLook.shared.toggle([fileURL])
         }
+    }
+
+    /// SwiftTerm'in eşleşmesi yolun ardındaki metni de içerebilir; tıklanan hücrenin satırı ve biçimi de verilir.
+    /// Hücre boyutu SwiftTerm'de gizli: genişlik onun gibi fontun "W" genişliğinden (piksele yuvarlanmış), yükseklik
+    /// `getOptimalFrameSize`'ın satır sayısına bölünmesinden bulunur.
+    private func linkCandidates(_ link: String) -> [String] {
+        let terminal = getTerminal()
+        guard let event = NSApp.currentEvent, terminal.rows > 0 else { return [link] }
+        let scale = window?.backingScaleFactor ?? 2
+        let cellWidth = max(1, (font.advancement(forGlyph: font.glyph(withName: "W")).width * scale).rounded() / scale)
+        let cellHeight = getOptimalFrameSize().height / CGFloat(terminal.rows)
+        let point = convert(event.locationInWindow, from: nil)
+        let column = Int(point.x / cellWidth)
+        let row = Int((frame.height - point.y) / cellHeight)
+        guard let line = terminal.getLine(row: row) else {
+            return TerminalLink.candidates(cells: [(character: Character, style: Int)](), column: 0, link: link)
+        }
+        // Boş hücre (kod 0) bir yazının hemen ardındaysa geniş karakterin devamıdır, atlanır; değilse boşluktur.
+        // Tıklanan sütun dizideki yerine çevrilir.
+        var cells: [(character: Character, style: Attribute)] = []
+        var clicked = 0
+        for col in 0..<min(terminal.cols, line.count) {
+            let data = line[col]
+            let isEmpty = data.getCharacter() == "\0"
+            if isEmpty, let last = cells.last, !last.character.isWhitespace, col > 0, line[col - 1].getCharacter() != "\0" { continue }
+            if col <= column { clicked = cells.count }
+            cells.append((character: isEmpty ? " " : terminal.getCharacter(for: data), style: data.attribute))
+        }
+        return TerminalLink.candidates(cells: cells, column: clicked, link: link)
     }
 
     /// Ghostty'nin macOS kısayolları: SwiftTerm ⌘⌫'yu yutuyor, ⌘←/→'yu kelime atlamaya çeviriyor; Option Meta

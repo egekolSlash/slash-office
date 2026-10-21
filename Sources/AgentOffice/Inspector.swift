@@ -116,7 +116,7 @@ struct ChangesInspector: View {
     }
 }
 
-private extension View {
+extension View {
     /// Dosya listesi: boşluk Quick Look, çift tık varsayılan uygulamayla açar, sağ tık menüsünde Finder ve yol kopyalama.
     func fileActions(selection: Binding<String?>, url: @escaping (String) -> URL?) -> some View {
         contextMenu(forSelectionType: String.self) { tags in
@@ -133,7 +133,7 @@ private extension View {
 }
 
 /// Dosya satırı: ikon, kalın ad, soluk klasör yolu, +/- sayıları ve renkli durum harfi.
-private struct FileRow: View {
+struct FileRow: View {
     let path: String
     let detail: FileDiff?
 
