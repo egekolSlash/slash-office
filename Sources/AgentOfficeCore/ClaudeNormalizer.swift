@@ -69,23 +69,23 @@ public enum ClaudeNormalizer {
         return id.isEmpty ? nil : id
     }
 
-    static func backgroundTask(tool: String, input: JSONValue?, response: JSONValue?) -> BackgroundTask? {
+    static func backgroundTask(tool: String, input: JSONValue?, response: JSONValue?) -> BackgroundJob? {
         switch tool {
         case "Bash":
             guard input?["run_in_background"]?.bool == true, let id = response?["backgroundTaskId"]?.string else { return nil }
-            return BackgroundTask(id: id, kind: .shell, label: input?["description"]?.string ?? input?["command"]?.string ?? "")
+            return BackgroundJob(id: id, kind: .shell, label: input?["description"]?.string ?? input?["command"]?.string ?? "")
         case "Agent", "Task":
             guard response?["status"]?.string == "async_launched", let id = response?["agentId"]?.string else { return nil }
-            return BackgroundTask(id: id, kind: .subagent, label: input?["description"]?.string ?? "")
+            return BackgroundJob(id: id, kind: .subagent, label: input?["description"]?.string ?? "")
         default:
             return nil
         }
     }
 
-    static func snapshotTask(_ value: JSONValue) -> BackgroundTask? {
+    static func snapshotTask(_ value: JSONValue) -> BackgroundJob? {
         guard value["status"]?.string == "running", let id = value["id"]?.string else { return nil }
-        let kind: BackgroundTask.Kind = value["type"]?.string == "shell" ? .shell : .subagent
-        return BackgroundTask(id: id, kind: kind, label: value["description"]?.string ?? value["command"]?.string ?? "")
+        let kind: BackgroundJob.Kind = value["type"]?.string == "shell" ? .shell : .subagent
+        return BackgroundJob(id: id, kind: kind, label: value["description"]?.string ?? value["command"]?.string ?? "")
     }
 
     static func summary(of input: JSONValue?) -> String? {

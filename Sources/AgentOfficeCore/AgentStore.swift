@@ -24,7 +24,7 @@ public final class AgentStore {
         /// Son bir saatteki çalışma ve istekler (listedeki aktiflik şeridi).
         public var activity = ActivityLog()
         /// Tur bitse de süren arka plan işleri (başlama sırasıyla). Kalıcı değil.
-        public var backgroundTasks: [BackgroundTask] = []
+        public var backgroundTasks: [BackgroundJob] = []
 
         /// Ne üzerinde çalışıyor: başlık, yoksa son isteğin kısaltılmışı.
         public var workSummary: String? {

@@ -50,7 +50,7 @@ struct SessionList: View {
                         if let summary = session.workSummary {
                             Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
                         }
-                        StatusBadge(state: session.state, kind: model.kind(of: session.id))
+                        StatusBadge(state: session.state, kind: model.kind(of: session.id), background: session.backgroundTasks)
                     }
                     Spacer(minLength: 0)
                     if model.kind(of: session.id) == .claude || !session.touchedFiles.isEmpty {

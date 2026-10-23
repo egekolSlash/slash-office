@@ -14,11 +14,11 @@ import Testing
 
     @Test func normalizerReadsStartsSnapshotsAndNotifications() throws {
         let events = try recordedPayloads().flatMap(ClaudeNormalizer.events(from:))
-        #expect(events.contains(.backgroundStarted(BackgroundTask(id: "brlu73wf7", kind: .shell, label: "Sleep 20 seconds then echo done"))))
-        #expect(events.contains(.backgroundStarted(BackgroundTask(id: "ae12137e659ffef4a", kind: .subagent, label: "Sleep 15 and reply ok"))))
+        #expect(events.contains(.backgroundStarted(BackgroundJob(id: "brlu73wf7", kind: .shell, label: "Sleep 20 seconds then echo done"))))
+        #expect(events.contains(.backgroundStarted(BackgroundJob(id: "ae12137e659ffef4a", kind: .subagent, label: "Sleep 15 and reply ok"))))
         #expect(events.contains(.backgroundSnapshot([
-            BackgroundTask(id: "brlu73wf7", kind: .shell, label: "Sleep 20 seconds then echo done"),
-            BackgroundTask(id: "ae12137e659ffef4a", kind: .subagent, label: "Sleep 15 and reply ok"),
+            BackgroundJob(id: "brlu73wf7", kind: .shell, label: "Sleep 20 seconds then echo done"),
+            BackgroundJob(id: "ae12137e659ffef4a", kind: .subagent, label: "Sleep 15 and reply ok"),
         ])))
         #expect(events.contains(.backgroundFinished(id: "ae12137e659ffef4a")))
         #expect(events.contains(.backgroundFinished(id: "brlu73wf7")))
@@ -68,7 +68,7 @@ import Testing
 
     @Test func snapshotKeepsOnlyRunningTasksAndMissingFieldKeepsList() {
         let stop = json(#"{"hook_event_name":"Stop","background_tasks":[{"id":"a","type":"shell","status":"running","command":"npm test"},{"id":"b","type":"subagent","status":"completed","description":"x"}]}"#)
-        #expect(ClaudeNormalizer.events(from: stop) == [.backgroundSnapshot([BackgroundTask(id: "a", kind: .shell, label: "npm test")]), .turnEnded])
+        #expect(ClaudeNormalizer.events(from: stop) == [.backgroundSnapshot([BackgroundJob(id: "a", kind: .shell, label: "npm test")]), .turnEnded])
         #expect(ClaudeNormalizer.events(from: json(#"{"hook_event_name":"Stop"}"#)) == [.turnEnded])
     }
 
@@ -82,7 +82,7 @@ import Testing
     @Test func sessionEndClearsAndInterruptKeepsTasks() {
         let store = AgentStore()
         store.register(id: "a", title: "A", cwd: "/a")
-        let task = BackgroundTask(id: "t", kind: .shell, label: "x")
+        let task = BackgroundJob(id: "t", kind: .shell, label: "x")
         store.apply([.promptSubmitted(text: "go"), .backgroundStarted(task), .interrupted], to: "a")
         #expect(store.session("a")?.backgroundTasks == [task])
         store.apply([.sessionEnded], to: "a")

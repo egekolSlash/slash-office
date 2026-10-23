@@ -23,7 +23,9 @@ struct TerminalPane: View {
                 Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             if model.store.session(id)?.unseenFinish == true { FinishedBadge(compact: true) }
-            if let state = model.store.session(id)?.state { StatusBadge(state: state, kind: model.kind(of: id)) }
+            if let session = model.store.session(id) {
+                StatusBadge(state: session.state, kind: model.kind(of: id), background: session.backgroundTasks)
+            }
             Spacer()
             Button { model.closePane(id) } label: { Image(systemName: "xmark") }
                 .buttonStyle(.plain)
