@@ -299,7 +299,7 @@ def export_mesh(ob, bone, scale):
             n = (nm @ (me.loops[li].normal if tri.use_smooth else tri.normal)).normalized()
             pos += to_app(p, scale)
             nrm += (n.x, n.z, -n.y)
-            uvs += (uv.data[li].uv[0], 1 - uv.data[li].uv[1]) if uv else (0, 0)
+            uvs += (uv.data[li].uv[0], uv.data[li].uv[1]) if uv else (0, 0)
             idx.append(len(idx))
     ev.to_mesh_clear()
     n = len(idx)

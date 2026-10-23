@@ -357,6 +357,8 @@ struct OfficeSceneInput: Equatable, Sendable {
     var projectColors: [String: AvatarLook.RGBA]
     /// Oturum → karakterin kişiliği ve imzası (karaktersizler yok).
     var traits: [String: Traits] = [:]
+    /// Oturum → arka plan işleri (kimlikler, başlama sırasıyla): her biri masada bir minyon.
+    var jobs: [String: [String]] = [:]
 
     struct Traits: Equatable, Sendable {
         var personality: Personality
@@ -365,7 +367,7 @@ struct OfficeSceneInput: Equatable, Sendable {
 
     static func == (a: Self, b: Self) -> Bool {
         a.plan == b.plan && a.desks == b.desks && a.looks == b.looks && a.styles == b.styles && a.terminals == b.terminals
-            && a.traits == b.traits
+            && a.traits == b.traits && a.jobs == b.jobs
             && a.projectColors.count == b.projectColors.count
             && a.projectColors.allSatisfy { key, c in b.projectColors[key].map { $0 == c } ?? false }
     }
@@ -626,7 +628,7 @@ final class OfficeRenderLoop: @unchecked Sendable {
         }
         guard let drawable = layer.nextDrawable(), let cb = gpu.queue.makeCommandBuffer() else { return }
         renderer.encode(to: drawable.texture, viewport: viewport, viewSize: viewSize, avatars: state.instances,
-                        time: state.time, commandBuffer: cb)
+                        minions: state.minions, time: state.time, commandBuffer: cb)
         cb.present(drawable)
         cb.commit()
         OfficeMeasureWindow.frames.add(1, ordering: .relaxed)

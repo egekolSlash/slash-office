@@ -1032,6 +1032,11 @@ extension AppModel {
         store.setWorkTitle(String(localized: "Grid bug in the level editor"), for: "demo-1")
         store.setWorkTitle(String(localized: "Room unlock rules"), for: "demo-3")
         store.apply([.promptSubmitted(text: String(localized: "Add API pagination")), .turnEnded], to: "demo-4", watched: false)
+        // Arka plan işleri: turu bitmiş ama arkada iki iş süren masa (minyonlar) ve çalışırken bir iş daha başlatan masa.
+        store.apply([.backgroundSnapshot([BackgroundJob(id: "demo-tests", kind: .shell, label: "npm test"),
+                                          BackgroundJob(id: "demo-explore", kind: .subagent, label: "Explore")]), .turnEnded],
+                    to: "demo-2", watched: false)
+        store.apply([.backgroundStarted(BackgroundJob(id: "demo-build", kind: .shell, label: "swift build"))], to: "demo-0")
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
             roomIdentities[worktree] = RepoIdentity.Identity(roomKey: "/demo/juice-merge", worktree: (worktree as NSString).lastPathComponent)

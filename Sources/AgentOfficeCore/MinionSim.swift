@@ -272,8 +272,8 @@ public struct MinionSim: Sendable {
             local = SIMD3(p.x, 0, p.z)
             facing = atan2(p.dx * m.dir, p.dz * m.dir)
             if case .idle = m.phase {
-                // Dururken masaya (içeri) döner.
-                facing = atan2(-p.x, -p.z)
+                // Dururken masadan dışarı (çoğunlukla kameraya) döner: yüzü görünsün.
+                facing = atan2(p.x, p.z)
                 motion = .idle
             } else {
                 motion = .walk(cycle: Float(m.distance / (2 * stride)))
