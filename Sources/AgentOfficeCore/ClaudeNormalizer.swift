@@ -12,7 +12,14 @@ public enum ClaudeNormalizer {
         case "SessionStart":
             return [.sessionStarted(providerSessionID: payload["session_id"]?.string)]
         case "UserPromptSubmit":
-            return [.promptSubmitted(text: payload["prompt"]?.string ?? "")]
+            let prompt = payload["prompt"]?.string ?? ""
+            if let id = taskNotificationID(prompt) { return [.backgroundFinished(id: id), .promptSubmitted(text: "")] }
+            return [.promptSubmitted(text: prompt)]
+        case "PreToolUse" where payload["agent_id"] != nil:
+            return []
+        case "PostToolUse" where payload["agent_id"] != nil:
+            let path = payload["tool_input"]?["file_path"]?.string
+            return path.map { [.filesTouched([$0])] } ?? []
         case "PreToolUse":
             let name = payload["tool_name"]?.string ?? "?"
             let input = payload["tool_input"]
@@ -28,7 +35,11 @@ public enum ClaudeNormalizer {
         case "PostToolUse":
             let name = payload["tool_name"]?.string ?? "?"
             let path = payload["tool_input"]?["file_path"]?.string
-            return [.toolFinished(name: name, touchedFiles: path.map { [$0] } ?? [])]
+            var events: [AgentEvent] = [.toolFinished(name: name, touchedFiles: path.map { [$0] } ?? [])]
+            if let task = backgroundTask(tool: name, input: payload["tool_input"], response: payload["tool_response"]) {
+                events.insert(.backgroundStarted(task), at: 0)
+            }
+            return events
         case "Notification":
             let message = payload["message"]?.string ?? ""
             let type = payload["notification_type"]?.string
@@ -37,7 +48,9 @@ public enum ClaudeNormalizer {
                 || (type == nil && message.localizedCaseInsensitiveContains("permission"))
             return isPermission ? [.needsInput(.permission(message))] : []
         case "Stop":
-            return [.turnEnded]
+            // Liste tur bitmeden güncellenir: "bitti" kararı arka planda iş kalıp kalmadığına bakar.
+            guard let tasks = payload["background_tasks"]?.array else { return [.turnEnded] }
+            return [.backgroundSnapshot(tasks.compactMap(snapshotTask)), .turnEnded]
         case "SessionEnd":
             // /clear ve /resume sırasında da gelir ama süreç çalışmaya devam eder; ardından yeni bir SessionStart gelir.
             let reason = payload["reason"]?.string
@@ -45,6 +58,34 @@ public enum ClaudeNormalizer {
         default:
             return []
         }
+    }
+
+    /// `<task-notification><task-id>ID</task-id>…`: Claude'a arka plan işinin bittiğini bildiren prompt.
+    static func taskNotificationID(_ prompt: String) -> String? {
+        guard prompt.hasPrefix("<task-notification>"),
+              let start = prompt.range(of: "<task-id>"), let end = prompt.range(of: "</task-id>"),
+              start.upperBound <= end.lowerBound else { return nil }
+        let id = prompt[start.upperBound..<end.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        return id.isEmpty ? nil : id
+    }
+
+    static func backgroundTask(tool: String, input: JSONValue?, response: JSONValue?) -> BackgroundTask? {
+        switch tool {
+        case "Bash":
+            guard input?["run_in_background"]?.bool == true, let id = response?["backgroundTaskId"]?.string else { return nil }
+            return BackgroundTask(id: id, kind: .shell, label: input?["description"]?.string ?? input?["command"]?.string ?? "")
+        case "Agent", "Task":
+            guard response?["status"]?.string == "async_launched", let id = response?["agentId"]?.string else { return nil }
+            return BackgroundTask(id: id, kind: .subagent, label: input?["description"]?.string ?? "")
+        default:
+            return nil
+        }
+    }
+
+    static func snapshotTask(_ value: JSONValue) -> BackgroundTask? {
+        guard value["status"]?.string == "running", let id = value["id"]?.string else { return nil }
+        let kind: BackgroundTask.Kind = value["type"]?.string == "shell" ? .shell : .subagent
+        return BackgroundTask(id: id, kind: kind, label: value["description"]?.string ?? value["command"]?.string ?? "")
     }
 
     static func summary(of input: JSONValue?) -> String? {

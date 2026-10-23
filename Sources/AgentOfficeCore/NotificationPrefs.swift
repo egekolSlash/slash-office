@@ -42,8 +42,9 @@ public enum NotificationPolicy {
 
     /// Tur cevapla bitti mi: çalışırken (ya da izin/soru beklerken) Stop geldi ve oturum boşta kaldı.
     /// Esc ile kesilen tur (Stop gelmez) ve zaten boştaki oturuma gelen Stop sayılmaz.
-    public static func finished(previous: AgentState?, events: [AgentEvent], current: AgentState?) -> Bool {
-        guard current == .idle, events.contains(where: { if case .turnEnded = $0 { true } else { false } }) else { return false }
+    /// Arka planda iş sürüyorsa (`background > 0`) henüz bitmiş sayılmaz; son iş bitince Claude'un açtığı turun Stop'u bildirir.
+    public static func finished(previous: AgentState?, events: [AgentEvent], current: AgentState?, background: Int = 0) -> Bool {
+        guard current == .idle, background == 0, events.contains(where: { if case .turnEnded = $0 { true } else { false } }) else { return false }
         switch previous {
         case .working, .waiting: return true
         default: return false

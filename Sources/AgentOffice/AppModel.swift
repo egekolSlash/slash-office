@@ -191,7 +191,9 @@ final class AppModel {
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
         }
-        if NotificationPolicy.finished(previous: previous, events: events, current: store.session(envelope.session)?.state) {
+        let after = store.session(envelope.session)
+        if NotificationPolicy.finished(previous: previous, events: events, current: after?.state,
+                                       background: after?.backgroundTasks.count ?? 0) {
             Notifier.notifyFinished(sessionID: envelope.session, title: displayName(for: envelope.session))
         }
         Notifier.updateBadge(waiting: store.waitingCount)
