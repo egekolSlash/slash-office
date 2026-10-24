@@ -13,6 +13,8 @@ public struct RemoteSession: Codable, Equatable, Sendable {
     public var finishedUnseen: Bool
     /// Telefondan mesaj gönderilebilir mi (oturum bu Mac'te bir panelde çalışıyor).
     public var canSend: Bool
+    /// Tur bitse de süren arka plan işi sayısı (eski istemciler yok sayar).
+    public var background: Int = 0
 }
 
 public struct RemoteTodo: Codable, Equatable, Sendable {
@@ -117,7 +119,8 @@ public enum RemoteSnapshot {
             RemoteSession(id: session.id, title: session.title, status: status(session.state), detail: detail(session.state),
                           summary: session.workSummary, todos: session.todos.map(todo),
                           finishedUnseen: session.unseenFinish && session.state != .exited,
-                          canSend: session.state != .exited && canSend(session.id))
+                          canSend: session.state != .exited && canSend(session.id),
+                          background: session.backgroundTasks.count)
         }
         return mapped.enumerated()
             .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }

@@ -78,7 +78,7 @@ private struct DeskRow: View {
                 Text(verbatim: "?").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
                     .frame(width: 16, height: 16).background(Circle().fill(.orange))
             } else {
-                StatusBadge(state: session.state, kind: model.kind(of: session.id)).lineLimit(1)
+                StatusBadge(state: session.state, kind: model.kind(of: session.id), background: session.backgroundTasks).lineLimit(1)
             }
         }
         .padding(.horizontal, 6)

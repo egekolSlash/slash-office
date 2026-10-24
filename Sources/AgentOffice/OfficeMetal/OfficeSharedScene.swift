@@ -9,6 +9,8 @@ final class OfficeSharedScene: @unchecked Sendable {
 
     struct Frame {
         var instances: [AvatarInstance]
+        /// Arka plan işi minyonları.
+        var minions: [MinionInstance] = []
         var time: Double
         /// Yürüyen köylü (native kare hızı).
         var moving: Bool
@@ -18,6 +20,7 @@ final class OfficeSharedScene: @unchecked Sendable {
 
     private let lock = NSLock()
     private var sim: AvatarSim?
+    private var minions = MinionSim()
     private var lastScene: OfficeSceneInput?
     private var synced = false
     private var clock = 0.0
@@ -30,6 +33,7 @@ final class OfficeSharedScene: @unchecked Sendable {
         if sim == nil { sim = AvatarSim(skeleton: skeleton) }
         guard scene != lastScene else { return }
         lastScene = scene
+        minions.sync(plan: scene.plan, jobs: scene.jobs)
         sim?.sync(plan: scene.plan, desks: scene.desks, looks: scene.looks, projectColors: scene.projectColors, live: synced,
                   characters: scene.traits.mapValues { ($0.personality, $0.signature) })
         synced = true
@@ -41,7 +45,10 @@ final class OfficeSharedScene: @unchecked Sendable {
         let dt = lastTick.map { min(max(now - $0, 0), 0.1) } ?? 0
         lastTick = now
         clock += dt
-        if dt > 0 { sim?.tick(dt: dt) }
+        if dt > 0 {
+            sim?.tick(dt: dt)
+            minions.tick(dt: dt)
+        }
         return frame()
     }
 
@@ -65,8 +72,9 @@ final class OfficeSharedScene: @unchecked Sendable {
 
     private func frame() -> Frame {
         let instances = sim?.instances ?? []
-        return Frame(instances: instances, time: clock, moving: sim?.isWalking ?? false,
-                     acting: (sim?.isActing ?? false) || instances.contains { $0.blend < 1 })
+        return Frame(instances: instances, minions: minions.instances, time: clock,
+                     moving: (sim?.isWalking ?? false) || minions.isMoving,
+                     acting: (sim?.isActing ?? false) || !minions.isEmpty || instances.contains { $0.blend < 1 })
     }
 
     func cachedWorld(for key: OfficeWorldKey) -> (mesh: OfficeMesh, site: PlanRect)? {

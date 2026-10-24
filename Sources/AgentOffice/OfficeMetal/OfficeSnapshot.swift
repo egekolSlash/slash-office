@@ -97,6 +97,10 @@ enum OfficeSnapshot {
         let looks = Dictionary(uniqueKeysWithValues: desks.keys.map { ($0, model.look(for: $0)) })
         if live { sim.sync(plan: OfficePlan.make([], slots: [:]), desks: [:], looks: [:], projectColors: [:], live: false) }
         sim.sync(plan: plan, desks: states, looks: looks, projectColors: colors, live: live)
+        var minions = MinionSim()
+        minions.sync(plan: plan, jobs: model.store.sessions.reduce(into: [:]) { result, session in
+            if !session.backgroundTasks.isEmpty { result[session.id] = session.backgroundTasks.map(\.id) }
+        })
         print("office snapshot: scene built, \(desks.count) desks, \(mesh.vertices.count) vertices")
 
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: OfficeGPU.colorFormat, width: size.width, height: size.height, mipmapped: false)
@@ -107,9 +111,10 @@ enum OfficeSnapshot {
         func renderFrame(dt: Double) async {
             time += dt
             sim.tick(dt: dt)
+            minions.tick(dt: dt)
             let cb = gpu.queue.makeCommandBuffer()!
             renderer.encode(to: texture, viewport: camera.viewport, viewSize: camera.viewSize, avatars: sim.instances,
-                            time: time, commandBuffer: cb)
+                            minions: minions.instances, time: time, commandBuffer: cb)
             let (done, finish) = AsyncStream<Void>.makeStream()
             cb.addCompletedHandler { _ in finish.finish() }
             cb.commit()
@@ -135,7 +140,10 @@ enum OfficeSnapshot {
         }
         // `--advance <sn>`: köylüleri önce bu kadar ilerlet (dolaşma, koltuk, sebil anlarını görmek için).
         if let i = arguments.firstIndex(of: "--advance"), let seconds = Double(arguments[i + 1]) {
-            for _ in 0..<Int(seconds * 30) { sim.tick(dt: 1.0 / 30) }
+            for _ in 0..<Int(seconds * 30) {
+                sim.tick(dt: 1.0 / 30)
+                minions.tick(dt: 1.0 / 30)
+            }
         }
         // `--villager <id>`: kamera o köylünün o anki yerine yakından (pozları görmek için).
         if let i = arguments.firstIndex(of: "--villager"), i + 1 < arguments.count,

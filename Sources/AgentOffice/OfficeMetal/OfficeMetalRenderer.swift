@@ -23,6 +23,8 @@ final class OfficeGPU: @unchecked Sendable {
     let ringIndexCount: Int
     /// Köylüler (karakter paketi); paket yüklenemezse ofis sade görünüme düşer.
     let character: CharacterGPU
+    /// Arka plan işi minyonları; paket yoksa minyon çizilmez.
+    let minion: MinionGPU?
     /// Baş üstü efektleri ve baş kemiği + dinlenmedeki baş tepesi (efektlerin dayanağı).
     let effects: OfficeEffects?
     let head: (bone: Int, top: SIMD3<Float>)
@@ -42,7 +44,11 @@ final class OfficeGPU: @unchecked Sendable {
                     DebugLog.write("character pack failed: \(error)")
                 }
             }
-            let gpu = try OfficeGPU(art: art, character: character)
+            var minion: MinionArt?
+            if let minionDir = MinionArt.find(bundleResources: Bundle.main.resourceURL, repoRoot: repoRoot) {
+                do { minion = try MinionArt.load(directory: minionDir) } catch { DebugLog.write("minion pack failed: \(error)") }
+            }
+            let gpu = try OfficeGPU(art: art, character: character, minion: minion)
             // İndirilmiş paketler (ek kıyafetler) temel kataloğa birleşir.
             let packs = PackStore.installed()
             if !packs.isEmpty { gpu.character.setPacks(packs.map { ($0.id, $0.directory) }) }
@@ -61,7 +67,7 @@ final class OfficeGPU: @unchecked Sendable {
 
     enum Failure: Error { case noDevice, resource(String) }
 
-    init(art: OfficeArtFile, character characterArt: CharacterArt?) throws {
+    init(art: OfficeArtFile, character characterArt: CharacterArt?, minion minionArt: MinionArt? = nil) throws {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else { throw Failure.noDevice }
         self.device = device
         self.queue = queue
@@ -69,6 +75,7 @@ final class OfficeGPU: @unchecked Sendable {
         let library = try device.makeLibrary(source: OfficeShaders.source, options: nil)
         guard let characterArt else { throw Failure.resource("character pack") }
         character = try CharacterGPU(art: characterArt, device: device, queue: queue, library: library)
+        minion = minionArt.flatMap { try? MinionGPU(art: $0, device: device, queue: queue) }
         skeleton = characterArt.skeleton
         head = (characterArt.bones.firstIndex(of: "Head") ?? 0, SIMD3(0, 1.05, -0.03))
         effects = try? OfficeEffects(device: device, queue: queue, library: library)
@@ -322,7 +329,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
     var transparentBackground = false
 
     func encode(to target: MTLTexture, viewport: OfficeViewport, viewSize: OfficeViewport.ViewSize, avatars: [AvatarInstance],
-                time: Double, commandBuffer cb: MTLCommandBuffer) {
+                minions allMinions: [MinionInstance] = [], time: Double, commandBuffer cb: MTLCommandBuffer) {
         inFlight.wait()
         let semaphore = inFlight
         cb.addCompletedHandler { _ in semaphore.signal() }
@@ -340,9 +347,14 @@ final class OfficeMetalRenderer: @unchecked Sendable {
                          skyTop: SIMD4(Self.linear(lighting.sky * 0.86), 0),
                          skyHorizon: SIMD4(Self.linear(lighting.sky + (SIMD3(1, 1, 1) - lighting.sky) * 0.3), 0),
                          light: SIMD4(Float(lighting.emissive), Float(lighting.stars), Float(lighting.interior), 0))
-        let villagerCount = writeBones(avatars)
+        let minions = gpu.minion == nil ? [] : allMinions
+        let villagerCount = writeBones(avatars, minions: minions)
         let ringCount = writeRings(avatars, time: time)
-        let characterItems = villagerCount > 0 ? gpu.character.items(for: avatars, boneCount: gpu.skeleton.boneCount, time: time) : []
+        var characterItems = villagerCount > 0 ? gpu.character.items(for: avatars, boneCount: gpu.skeleton.boneCount, time: time) : []
+        if let minionGPU = gpu.minion, !minions.isEmpty {
+            characterItems += minionGPU.items(for: minions, boneBase: avatars.count * gpu.skeleton.boneCount)
+        }
+        let drawsCharacters = !characterItems.isEmpty
 
         if staticShadowDirty, let vb = worldVertices, let ib = worldIndices, let staticShadow {
             staticShadowDirty = false
@@ -353,7 +365,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
                 e.drawIndexedPrimitives(type: .triangle, indexCount: worldIndexCount, indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0)
             }
         }
-        if villagerCount > 0, let villagerShadow {
+        if drawsCharacters, let villagerShadow {
             shadowPass(cb, villagerShadow) { e in
                 bindVillagers(e, &u)
                 gpu.character.encode(characterItems, on: e, shadow: true)
@@ -398,7 +410,7 @@ final class OfficeMetalRenderer: @unchecked Sendable {
             e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
             e.drawIndexedPrimitives(type: .triangle, indexCount: worldIndexCount, indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0)
         }
-        if villagerCount > 0 {
+        if drawsCharacters {
             bindVillagers(e, &u)
             gpu.character.encode(characterItems, on: e, shadow: false)
         }
@@ -452,15 +464,24 @@ final class OfficeMetalRenderer: @unchecked Sendable {
         e.endEncoding()
     }
 
-    /// Köylülerin kemik matrisleri bu karenin halka tamponuna (köylü i'nin paleti i × kemik sayısından başlar).
-    private func writeBones(_ avatars: [AvatarInstance]) -> Int {
-        guard !avatars.isEmpty else { return 0 }
+    /// Köylülerin kemik matrisleri bu karenin halka tamponuna (köylü i'nin paleti i × kemik sayısından başlar);
+    /// ardından minyonlarınki (minyon j: köylüler × kemik + j × minyon kemik sayısı).
+    private func writeBones(_ avatars: [AvatarInstance], minions: [MinionInstance]) -> Int {
+        let minionBones = gpu.minion?.boneCount ?? 0
+        guard !avatars.isEmpty || !minions.isEmpty else { return 0 }
         let bones = gpu.skeleton.boneCount
-        let boneBuffer = Self.ensure(&boneBuffers[frame], gpu.device, max(1, avatars.count * bones) * MemoryLayout<simd_float4x4>.stride)
-        let bp = boneBuffer.contents().bindMemory(to: simd_float4x4.self, capacity: max(1, avatars.count * bones))
+        let total = max(1, avatars.count * bones + minions.count * minionBones)
+        let boneBuffer = Self.ensure(&boneBuffers[frame], gpu.device, total * MemoryLayout<simd_float4x4>.stride)
+        let bp = boneBuffer.contents().bindMemory(to: simd_float4x4.self, capacity: total)
         for (i, a) in avatars.enumerated() {
             let pose = gpu.skeleton.pose(of: a)
             for b in 0..<bones { bp[i * bones + b] = b < pose.count ? pose[b] : matrix_identity_float4x4 }
+        }
+        if let minionGPU = gpu.minion {
+            let base = avatars.count * bones
+            for (j, m) in minions.enumerated() {
+                for (b, matrix) in minionGPU.bones(for: m).enumerated() { bp[base + j * minionBones + b] = matrix }
+            }
         }
         return avatars.count
     }

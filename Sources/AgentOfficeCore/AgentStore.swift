@@ -23,6 +23,8 @@ public final class AgentStore {
         public var unseenFinish = false
         /// Son bir saatteki çalışma ve istekler (listedeki aktiflik şeridi).
         public var activity = ActivityLog()
+        /// Tur bitse de süren arka plan işleri (başlama sırasıyla). Kalıcı değil.
+        public var backgroundTasks: [BackgroundJob] = []
 
         /// Ne üzerinde çalışıyor: başlık, yoksa son isteğin kısaltılmışı.
         public var workSummary: String? {
@@ -56,6 +58,7 @@ public final class AgentStore {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         var session = sessions[index]
         for event in events {
+            Self.noteBackground(&session, event)
             let previous = session.state
             session.state = AgentStateMachine.reduce(session.state, event)
             Self.noteFinish(&session, from: previous, watched: watched)
@@ -63,8 +66,12 @@ public final class AgentStore {
             switch event {
             case .sessionStarted(let providerID?): session.providerSessionID = providerID
             case .promptSubmitted(let text):
+                // Arka plan bildirimi (boş metin) kullanıcının isteği değildir: son istek ve şerit değişmez.
+                guard !text.isEmpty else { break }
                 session.lastPrompt = text
                 session.activity.notePrompt(at: date)
+            case .filesTouched(let files):
+                for file in files where !session.touchedFiles.contains(file) { session.touchedFiles.append(file) }
             case .todosChanged(let todos): session.todos = todos
             case .toolFinished(_, let files):
                 for file in files where !session.touchedFiles.contains(file) { session.touchedFiles.append(file) }
@@ -103,7 +110,23 @@ public final class AgentStore {
 
     static func noteFinish(_ session: inout Session, from previous: AgentState, watched: Bool) {
         if case .working = session.state { session.unseenFinish = false; return }
-        if case .working = previous, session.state == .idle, !watched { session.unseenFinish = true }
+        if case .working = previous, session.state == .idle, session.backgroundTasks.isEmpty, !watched { session.unseenFinish = true }
+    }
+
+    static func noteBackground(_ session: inout Session, _ event: AgentEvent) {
+        switch event {
+        case .backgroundStarted(let task):
+            if let i = session.backgroundTasks.firstIndex(where: { $0.id == task.id }) { session.backgroundTasks[i] = task }
+            else { session.backgroundTasks.append(task) }
+        case .backgroundFinished(let id):
+            session.backgroundTasks.removeAll { $0.id == id }
+        case .backgroundSnapshot(let tasks):
+            session.backgroundTasks = tasks
+        case .sessionEnded:
+            session.backgroundTasks = []
+        default:
+            break
+        }
     }
 
     public func setState(_ state: AgentState, for id: String) {

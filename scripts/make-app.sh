@@ -54,6 +54,7 @@ cp Resources/tr.lproj/InfoPlist.strings "$STAGE/Contents/Resources/tr.lproj/"
 # Ofis v3 varlıkları (köylü + eşyalar, scripts/build-office-art.sh ile üretilir).
 cp -R Resources/OfficeArt "$STAGE/Contents/Resources/OfficeArt"
 cp -R Resources/Character "$STAGE/Contents/Resources/Character"
+cp -R Resources/Minion "$STAGE/Contents/Resources/Minion"
 cp Resources/packs.json "$STAGE/Contents/Resources/packs.json"
 # Telefondan erişimin web uygulaması (RemoteServer sunar).
 cp -R Resources/Remote "$STAGE/Contents/Resources/Remote"

@@ -191,7 +191,9 @@ final class AppModel {
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
         }
-        if NotificationPolicy.finished(previous: previous, events: events, current: store.session(envelope.session)?.state) {
+        let after = store.session(envelope.session)
+        if NotificationPolicy.finished(previous: previous, events: events, current: after?.state,
+                                       background: after?.backgroundTasks.count ?? 0) {
             Notifier.notifyFinished(sessionID: envelope.session, title: displayName(for: envelope.session))
         }
         Notifier.updateBadge(waiting: store.waitingCount)
@@ -1030,6 +1032,11 @@ extension AppModel {
         store.setWorkTitle(String(localized: "Grid bug in the level editor"), for: "demo-1")
         store.setWorkTitle(String(localized: "Room unlock rules"), for: "demo-3")
         store.apply([.promptSubmitted(text: String(localized: "Add API pagination")), .turnEnded], to: "demo-4", watched: false)
+        // Arka plan işleri: turu bitmiş ama arkada iki iş süren masa (minyonlar) ve çalışırken bir iş daha başlatan masa.
+        store.apply([.backgroundSnapshot([BackgroundJob(id: "demo-tests", kind: .shell, label: "npm test"),
+                                          BackgroundJob(id: "demo-explore", kind: .subagent, label: "Explore")]), .turnEnded],
+                    to: "demo-2", watched: false)
+        store.apply([.backgroundStarted(BackgroundJob(id: "demo-build", kind: .shell, label: "swift build"))], to: "demo-0")
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
             roomIdentities[worktree] = RepoIdentity.Identity(roomKey: "/demo/juice-merge", worktree: (worktree as NSString).lastPathComponent)

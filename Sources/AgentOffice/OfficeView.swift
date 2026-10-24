@@ -54,6 +54,9 @@ struct OfficeView: View {
             }),
             traits: desks.keys.reduce(into: [:]) { result, id in
                 if let c = model.character(for: id) { result[id] = .init(personality: c.personality, signature: c.signature) }
+            },
+            jobs: desks.keys.reduce(into: [:]) { result, id in
+                if let jobs = model.store.session(id)?.backgroundTasks, !jobs.isEmpty { result[id] = jobs.map(\.id) }
             })
         let camera = camera
         return OfficeMetalRepresentable(

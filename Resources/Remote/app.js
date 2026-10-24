@@ -12,6 +12,7 @@ const STRINGS = {
     bad_message: "The Mac did not understand that.", failed: "Could not load.",
     status: { starting: "Starting", idle: "Idle", working: "Working", permission: "Needs permission", question: "Asking", exited: "Stopped" },
     finished: "Done",
+    background: (n) => `${n} in background`,
   },
   tr: {
     pairWarning: "Eşleşmiş bir telefon Mac'inde Claude'a her şeyi yaptırabilir. Yalnızca kendi telefonunu eşleştir.",
@@ -23,6 +24,7 @@ const STRINGS = {
     bad_message: "Mac bunu anlamadı.", failed: "Yüklenemedi.",
     status: { starting: "Başlıyor", idle: "Boşta", working: "Çalışıyor", permission: "İzin bekliyor", question: "Soru soruyor", exited: "Durdu" },
     finished: "Bitti",
+    background: (n) => `${n} arka planda`,
   },
 };
 const T = STRINGS[(navigator.language || "en").toLowerCase().startsWith("tr") ? "tr" : "en"];
@@ -151,7 +153,8 @@ function renderList() {
     const line = session.status === "permission" || session.status === "question" ? session.detail : session.summary;
     if (line) text.append(el("div", "summary", line));
     item.append(text);
-    const badge = session.finishedUnseen && session.status === "idle" ? T.finished : T.status[session.status];
+    const badge = session.status === "idle" && session.background > 0 ? T.background(session.background)
+      : session.finishedUnseen && session.status === "idle" ? T.finished : T.status[session.status];
     item.append(el("span", `badge ${session.status}`, badge));
     item.addEventListener("click", () => { location.hash = `s=${encodeURIComponent(session.id)}`; });
     list.append(item);
