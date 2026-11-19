@@ -45,6 +45,15 @@ import Testing
         #expect(decoded.payload["tool_input"]?["file_path"]?.string == "/a")
     }
 
+    /// Arka plan işinin kimliği kırpmadan sağ çıkar; çıktının geri kalanı atılır.
+    @Test func envelopeKeepsBackgroundTaskFields() throws {
+        let raw = Data(#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"x","run_in_background":true},"tool_response":{"stdout":"huge","backgroundTaskId":"b1","interrupted":false}}"#.utf8)
+        let line = try #require(HookEnvelope.encodeLine(session: "s", provider: "claude", rawPayload: raw))
+        let decoded = try JSONDecoder().decode(HookEnvelope.self, from: line)
+        #expect(decoded.payload["tool_response"] == json(#"{"backgroundTaskId":"b1"}"#))
+        #expect(ClaudeNormalizer.events(from: decoded.payload).first == .backgroundStarted(BackgroundJob(id: "b1", kind: .shell, label: "x")))
+    }
+
     @Test func largeNestedPayloadEncodesQuickly() throws {
         let items = (0..<60_000).map { #"{"line":\#($0),"text":"some output text here"}"# }.joined(separator: ",")
         let raw = Data(#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"x"},"tool_response":[\#(items)]}"#.utf8)

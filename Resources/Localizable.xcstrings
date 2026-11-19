@@ -161,6 +161,16 @@
         }
       }
     },
+    "Add a test for the combo chain": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kombo zinciri için test ekle"
+          }
+        }
+      }
+    },
     "Address": {
       "localizations": {
         "tr": {
@@ -1061,6 +1071,16 @@
         }
       }
     },
+    "Ease the tiles into place": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taşları yerine yumuşakça oturt"
+          }
+        }
+      }
+    },
     "Edit Appearance…": {
       "localizations": {
         "tr": {
@@ -1237,6 +1257,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld dosya"
+          }
+        }
+      }
+    },
+    "Find where the merge animation starts": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birleşme animasyonunun başladığı yeri bul"
           }
         }
       }
@@ -2071,6 +2101,16 @@
         }
       }
     },
+    "No plan yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz plan yok"
+          }
+        }
+      }
+    },
     "No projects yet": {
       "localizations": {
         "tr": {
@@ -2107,16 +2147,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terminal açık değil"
-          }
-        }
-      }
-    },
-    "No to-do list": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Todo listesi yok"
           }
         }
       }
@@ -2537,6 +2567,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Düz"
+          }
+        }
+      }
+    },
+    "Plan": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan"
           }
         }
       }
@@ -2977,6 +3017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Halı"
+          }
+        }
+      }
+    },
+    "Run the test suite": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testleri çalıştır"
           }
         }
       }
@@ -3531,6 +3581,16 @@
         }
       }
     },
+    "Steps": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adımlar"
+          }
+        }
+      }
+    },
     "Stop and Remove": {
       "localizations": {
         "tr": {
@@ -3821,6 +3881,16 @@
         }
       }
     },
+    "The plan changed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan değişti"
+          }
+        }
+      }
+    },
     "The room could not be saved: %@": {
       "localizations": {
         "tr": {
@@ -3887,16 +3957,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gökyüzü Mac'inin saatine göre değişir: gün doğumu, gündüz, gün batımı ve yıldızlı gece."
-          }
-        }
-      }
-    },
-    "The to-do tool is off in this Claude Code setup. Plans from Codex sessions will appear here.": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bu Claude Code kurulumunda todo aracı kapalı. Codex oturumlarında plan burada görünecek."
           }
         }
       }
@@ -4147,6 +4207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ne açmak istersin?"
+          }
+        }
+      }
+    },
+    "When Claude breaks a job into steps, they appear here and are checked off as it works.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude bir işi adımlara böldüğünde adımlar burada görünür ve çalıştıkça işaretlenir."
           }
         }
       }

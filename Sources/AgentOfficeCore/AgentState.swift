@@ -38,7 +38,7 @@ public enum AgentStateMachine {
             return .waiting(reason)
         case .turnEnded:
             return .idle
-        case .todosChanged, .backgroundStarted, .backgroundFinished, .backgroundSnapshot, .filesTouched:
+        case .todosChanged, .taskCreated, .taskUpdated, .taskDeleted, .planProposed, .backgroundStarted, .backgroundFinished, .backgroundSnapshot, .filesTouched:
             return state
         case .sessionEnded:
             return .exited

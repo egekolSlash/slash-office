@@ -9,7 +9,10 @@ public final class AgentStore {
         public var title: String
         public var cwd: String
         public var state: AgentState = .starting
+        /// Claude'un adım adım planı (görev araçları ya da TodoWrite).
         public var todos: [TodoItem] = []
+        /// Plan modunda önerilen son plan (Markdown).
+        public var plan: String?
         public var lastPrompt: String?
         public var providerSessionID: String?
         public var lastEventAt: Date?
@@ -64,7 +67,13 @@ public final class AgentStore {
             Self.noteFinish(&session, from: previous, watched: watched)
             Self.noteAttention(&session, from: previous, at: date)
             switch event {
-            case .sessionStarted(let providerID?): session.providerSessionID = providerID
+            case .sessionStarted(let providerID?):
+                // /clear: Claude yeni oturum kimliğiyle baştan başlar, görev listesi de yenidir.
+                if let previous = session.providerSessionID, previous != providerID {
+                    session.todos = []
+                    session.plan = nil
+                }
+                session.providerSessionID = providerID
             case .promptSubmitted(let text):
                 // Arka plan bildirimi (boş metin) kullanıcının isteği değildir: son istek ve şerit değişmez.
                 guard !text.isEmpty else { break }
@@ -73,6 +82,8 @@ public final class AgentStore {
             case .filesTouched(let files):
                 for file in files where !session.touchedFiles.contains(file) { session.touchedFiles.append(file) }
             case .todosChanged(let todos): session.todos = todos
+            case .taskCreated, .taskUpdated, .taskDeleted: Self.noteTask(&session.todos, event)
+            case .planProposed(let plan): session.plan = plan
             case .toolFinished(_, let files):
                 for file in files where !session.touchedFiles.contains(file) { session.touchedFiles.append(file) }
             default: break
@@ -113,6 +124,25 @@ public final class AgentStore {
         if case .working = previous, session.state == .idle, session.backgroundTasks.isEmpty, !watched { session.unseenFinish = true }
     }
 
+    /// Görev araçlarından gelen tek adımlık değişiklikler. Bütün adımları bitmiş bir plana yeni adım gelirse
+    /// yeni bir plan başlamıştır: eskisi silinir.
+    static func noteTask(_ todos: inout [TodoItem], _ event: AgentEvent) {
+        switch event {
+        case .taskCreated(let id, let title):
+            if !todos.isEmpty, todos.allSatisfy({ $0.status == .done }) { todos = [] }
+            if let i = todos.firstIndex(where: { $0.id == id }) { todos[i].title = title }
+            else { todos.append(TodoItem(id: id, title: title, status: .pending)) }
+        case .taskUpdated(let id, let status, let title):
+            guard let i = todos.firstIndex(where: { $0.id == id }) else { return }
+            if let status { todos[i].status = status }
+            if let title { todos[i].title = title }
+        case .taskDeleted(let id):
+            todos.removeAll { $0.id == id }
+        default:
+            break
+        }
+    }
+
     static func noteBackground(_ session: inout Session, _ event: AgentEvent) {
         switch event {
         case .backgroundStarted(let task):
@@ -143,12 +173,23 @@ public final class AgentStore {
         sessions[index].title = title
         sessions[index].touchedFiles = []
         sessions[index].todos = []
+        sessions[index].plan = nil
     }
 
     public func markExited(_ id: String) {
         guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[index].state = .exited
         sessions[index].activity.note(busy: false, at: .now)
+    }
+
+    /// Diskten okunan görev listesi. Hook'lardan gelen liste daha yeni olabilir: sadece listede olmayan bir adım
+    /// varsa (uygulama kapalıyken eklenmiş) ya da liste boşsa yerine geçer.
+    public func restoreTodos(_ todos: [TodoItem], for id: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }), !todos.isEmpty else { return }
+        let known = Set(sessions[index].todos.compactMap(\.id))
+        let usesTasks = sessions[index].todos.allSatisfy { $0.id != nil }
+        guard usesTasks, sessions[index].todos.isEmpty || todos.contains(where: { !known.contains($0.id ?? "") }) else { return }
+        sessions[index].todos = todos
     }
 
     /// Kapanmış bir oturum yeniden başlatılırken durumu sıfırlar.

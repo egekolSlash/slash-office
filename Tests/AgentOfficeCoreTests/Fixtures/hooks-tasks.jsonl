@@ -1,0 +1,16 @@
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PreToolUse", "tool_name": "TaskCreate", "tool_input": {"subject": "a", "description": "Görev a"}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "TaskCreated", "task_id": "1", "task_subject": "a", "task_description": "Görev a"}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PostToolUse", "tool_name": "TaskCreate", "tool_input": {"subject": "a", "description": "Görev a"}, "tool_response": {"task": {"id": "1", "subject": "a", "description": "Görev a"}}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PreToolUse", "tool_name": "TaskCreate", "tool_input": {"subject": "b", "description": "Görev b"}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "TaskCreated", "task_id": "2", "task_subject": "b", "task_description": "Görev b"}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PostToolUse", "tool_name": "TaskCreate", "tool_input": {"subject": "b", "description": "Görev b"}, "tool_response": {"task": {"id": "2", "subject": "b", "description": "Görev b"}}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PreToolUse", "tool_name": "TaskCreate", "tool_input": {"subject": "c", "description": "Görev c"}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "TaskCreated", "task_id": "3", "task_subject": "c", "task_description": "Görev c"}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PostToolUse", "tool_name": "TaskCreate", "tool_input": {"subject": "c", "description": "Görev c"}, "tool_response": {"task": {"id": "3", "subject": "c", "description": "Görev c"}}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PreToolUse", "tool_name": "TaskUpdate", "tool_input": {"taskId": "1", "status": "in_progress"}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PostToolUse", "tool_name": "TaskUpdate", "tool_input": {"taskId": "1", "status": "in_progress"}, "tool_response": {"success": true, "taskId": "1", "updatedFields": ["status"], "statusChange": {"from": "pending", "to": "in_progress"}}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PreToolUse", "tool_name": "TaskUpdate", "tool_input": {"taskId": "1", "status": "completed"}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "TaskCompleted", "task_id": "1", "task_subject": "a", "task_description": "Görev a"}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PostToolUse", "tool_name": "TaskUpdate", "tool_input": {"taskId": "1", "status": "completed"}, "tool_response": {"success": true, "taskId": "1", "updatedFields": ["status"], "statusChange": {"from": "in_progress", "to": "completed"}}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PreToolUse", "tool_name": "TaskUpdate", "tool_input": {"taskId": "3", "status": "deleted"}}
+{"session_id": "49b690fa-f0fa-4f78-8236-d5228f3e49f5", "hook_event_name": "PostToolUse", "tool_name": "TaskUpdate", "tool_input": {"taskId": "3", "status": "deleted"}, "tool_response": {"success": true, "taskId": "3", "updatedFields": ["deleted"], "statusChange": {"from": "pending", "to": "deleted"}}}

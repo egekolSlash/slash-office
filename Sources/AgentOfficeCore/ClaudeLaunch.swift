@@ -12,7 +12,12 @@ public struct LaunchCommand: Equatable, Sendable {
 }
 
 public enum ClaudeLaunch {
-    public static let hookEvents = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification", "Stop", "SessionEnd"]
+    public static let hookEvents = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "TaskCreated",
+                                    "Notification", "Stop", "SessionEnd"]
+
+    /// Yeni modellerde Claude Code'un görev araçları (TaskCreate / TaskUpdate) varsayılan olarak kapalı; açılınca
+    /// Claude çok adımlı işi adımlara böler ve To-Do sekmesi bu adımları gösterir.
+    public static let todoToolsVariable = "CLAUDE_CODE_ENABLE_TODO_TOOLS"
 
     /// `--settings` ile verilen, sadece bu oturuma hook ekleyen ayar dosyası.
     public static func settingsJSON(hookCommand: String) -> Data {
@@ -42,7 +47,8 @@ public enum ClaudeLaunch {
                                tag: String? = nil) -> LaunchCommand {
         let flag = resume ? "--resume" : "--session-id"
         let script = "exec \(shellQuote(claudePath)) \(flag) \(shellQuote(sessionID)) --settings \(shellQuote(settingsPath))"
-        let environment = LaunchEnvironment.prepare(baseEnvironment, sessionID: tag ?? sessionID, socketPath: socketPath)
+        var environment = LaunchEnvironment.prepare(baseEnvironment, sessionID: tag ?? sessionID, socketPath: socketPath)
+        environment[todoToolsVariable] = "1"
         return LaunchCommand(executable: "/bin/zsh", args: ["-l", "-c", script], environment: environment, currentDirectory: cwd)
     }
 

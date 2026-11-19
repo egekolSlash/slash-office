@@ -83,10 +83,18 @@ struct ContentView: View {
             Picker("Inspector", selection: $model.inspectorTab) {
                 Text("Sessions").tag(InspectorTab.sessions)
                 Text("Changes").tag(InspectorTab.changes)
-                Text("To-Do").tag(InspectorTab.todo)
+                todoTabTitle.tag(InspectorTab.todo)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            // To-Do sekmesi son bölüm: noktası kontrolün sağ üst köşesine konur.
+            .overlay(alignment: .topTrailing) {
+                if model.hasUnseenTodos {
+                    Circle().fill(.red).frame(width: 7, height: 7).offset(x: 2, y: -2)
+                        .accessibilityLabel(Text("The plan changed"))
+                        .allowsHitTesting(false)
+                }
+            }
             .padding(6)
             switch model.inspectorTab {
             case .sessions: SessionList(model: model, requestRemove: { requestRemove($0, keepListFocus: true) })
@@ -94,6 +102,13 @@ struct ContentView: View {
             case .todo: TodoInspector(model: model)
             }
         }
+    }
+
+    /// Odaktaki oturumun planı varsa biten adım sayısı: "To-Do 2/5".
+    private var todoTabTitle: Text {
+        guard let id = model.layout.focused, let todos = model.store.session(id)?.todos, !todos.isEmpty else { return Text("To-Do") }
+        let done = todos.filter { $0.status == .done }.count
+        return Text("To-Do") + Text(verbatim: " \(done)/\(todos.count)")
     }
 
     /// Ayarlar'daki "Detaylı ofis": açıkken SpriteKit ofisi, kapalıyken sade kartlar.

@@ -34,7 +34,8 @@ import Testing
             #expect(entry?["hooks"]?.array?.first?["command"]?.string == "'/a b/agent-office-hook' claude")
         }
         #expect(value["hooks"]?["PreToolUse"]?.array?.first?["matcher"]?.string == "*")
-        #expect(Set(ClaudeLaunch.hookEvents) == ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification", "Stop", "SessionEnd"])
+        #expect(Set(ClaudeLaunch.hookEvents) == ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "TaskCreated",
+                                                 "Notification", "Stop", "SessionEnd"])
     }
 
     @Test func newAndResumeCommands() {
@@ -70,6 +71,8 @@ import Testing
                                                              "AGENT_OFFICE_SESSION": "parent", "HOME": "/h", "PATH": "/a:/b"])
         #expect(command.environment["CLAUDECODE"] == nil)
         #expect(command.environment["CLAUDE_CODE_ENTRYPOINT"] == nil)
+        // Görev araçları (adım adım plan, To-Do sekmesi) her Claude oturumunda açık.
+        #expect(command.environment["CLAUDE_CODE_ENABLE_TODO_TOOLS"] == "1")
         #expect(command.environment["AGENT_OFFICE_SESSION"] == "s")
         #expect(command.environment["HOME"] == "/h")
         #expect(command.environment["PATH"] == "/a:/b")

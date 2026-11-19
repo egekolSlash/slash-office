@@ -18,6 +18,8 @@ public enum ClaudeNormalizer {
         case "PreToolUse" where payload["agent_id"] != nil:
             return []
         case "PostToolUse" where payload["agent_id"] != nil:
+            // Subagent'lar oturumun görev listesini paylaşır: adım güncellemesi ana oturumun planına işlenir.
+            if payload["tool_name"]?.string == "TaskUpdate" { return taskUpdate(payload["tool_input"]).map { [$0] } ?? [] }
             let path = payload["tool_input"]?["file_path"]?.string
             return path.map { [.filesTouched([$0])] } ?? []
         case "PreToolUse":
@@ -31,6 +33,9 @@ public enum ClaudeNormalizer {
             if name == "TodoWrite", let todos = input?["todos"]?.array {
                 events.append(.todosChanged(todos.map(todoItem)))
             }
+            if name == "ExitPlanMode", let plan = input?["plan"]?.string, !plan.isEmpty {
+                events.append(.planProposed(plan))
+            }
             return events
         case "PostToolUse":
             let name = payload["tool_name"]?.string ?? "?"
@@ -39,7 +44,12 @@ public enum ClaudeNormalizer {
             if let task = backgroundTask(tool: name, input: payload["tool_input"], response: payload["tool_response"]) {
                 events.insert(.backgroundStarted(task), at: 0)
             }
+            // Sadece başarılı güncelleme PostToolUse'a gelir; yeni adım TaskCreated ile gelir (kimliği orada).
+            if name == "TaskUpdate", let update = taskUpdate(payload["tool_input"]) { events.append(update) }
             return events
+        case "TaskCreated":
+            guard let id = payload["task_id"]?.string, let subject = payload["task_subject"]?.string else { return [] }
+            return [.taskCreated(id: id, title: subject)]
         case "Notification":
             let message = payload["message"]?.string ?? ""
             let type = payload["notification_type"]?.string
@@ -100,11 +110,26 @@ public enum ClaudeNormalizer {
     }
 
     static func todoItem(_ value: JSONValue) -> TodoItem {
-        let status: TodoItem.Status = switch value["status"]?.string {
+        TodoItem(title: value["content"]?.string ?? "", status: todoStatus(value["status"]?.string) ?? .pending)
+    }
+
+    static func todoStatus(_ value: String?) -> TodoItem.Status? {
+        switch value {
         case "completed": .done
         case "in_progress": .inProgress
-        default: .pending
+        case "pending": .pending
+        default: nil
         }
-        return TodoItem(title: value["content"]?.string ?? "", status: status)
+    }
+
+    /// TaskUpdate girdisi: `taskId`, isteğe bağlı `status` (pending / in_progress / completed / deleted) ve `subject`.
+    static func taskUpdate(_ input: JSONValue?) -> AgentEvent? {
+        guard let id = input?["taskId"]?.string else { return nil }
+        let status = input?["status"]?.string
+        if status == "deleted" { return .taskDeleted(id: id) }
+        let subject = input?["subject"]?.string.flatMap { $0.isEmpty ? nil : $0 }
+        let mapped = todoStatus(status)
+        guard mapped != nil || subject != nil else { return nil }
+        return .taskUpdated(id: id, status: mapped, title: subject)
     }
 }

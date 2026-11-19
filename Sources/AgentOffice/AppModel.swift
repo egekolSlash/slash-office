@@ -19,7 +19,13 @@ final class AppModel {
     var mode: WorkspaceMode = .work { didSet { markFocusedSeen() } }
     /// Sağ sütunun alt kısmında gösterilen sekme (⌘1 oturumlar, ⌘2 değişiklikler, ⌘3 todo).
     var inspectorTab: InspectorTab =
-        ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
+        switch ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] {
+        case "diff": .changes
+        case "todo": .todo
+        default: .sessions
+        }
+    /// Her oturumun To-Do sekmesinde en son görülen adım listesi; farklıysa sekmede kırmızı nokta çıkar.
+    var seenTodos: [String: [TodoItem]] = [:]
     var errorMessage: String?
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
     /// Özelleştirme penceresinde seçilecek köylü ("Edit Appearance…" ile açılınca).
@@ -194,6 +200,7 @@ final class AppModel {
         }
         noteBackgroundHook(envelope.session, events: events)
         store.apply(events, to: envelope.session, watched: SeenPolicy.finishIsWatched)
+        restoreTasks(envelope.session, after: events)
         if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) {
             transcriptPaths[envelope.session] = path
             refreshWorkTitle(envelope.session, transcript: path)
@@ -479,6 +486,7 @@ final class AppModel {
         terminals[id] = nil
         transcriptWatcher.stop(id)
         transcriptPaths[id] = nil
+        seenTodos[id] = nil
         coordinators[id] = nil
         records[id] = nil
         if avatarLooks[id] != nil { setLook(nil, for: id) }
@@ -523,6 +531,25 @@ final class AppModel {
             claudePath: claude, attachID: attachID, cwd: record.cwd, socketPath: socketPath,
             baseEnvironment: launchEnvironment, tag: record.id))
         return true
+    }
+
+    /// Claude'un görev listesi diskte de durur: oturum açılınca (yeniden açılan uygulamada resume) ve bilinmeyen bir
+    /// adım güncellenince oradan okunur.
+    private func restoreTasks(_ id: String, after events: [AgentEvent]) {
+        guard let session = store.session(id), let claudeID = session.providerSessionID else { return }
+        let needed = events.contains { event in
+            switch event {
+            case .sessionStarted: true
+            case .taskUpdated(let task, _, _): !session.todos.contains { $0.id == task }
+            default: false
+            }
+        }
+        guard needed else { return }
+        let directory = ClaudeTaskFiles.directory(claudeSessionID: claudeID, environment: launchEnvironment)
+        let wasEmpty = session.todos.isEmpty
+        store.restoreTodos(ClaudeTaskFiles.load(directory), for: id)
+        // Yeniden açılışta diskten gelen eski plan "yeni" sayılmaz.
+        if wasEmpty, let todos = store.session(id)?.todos { seenTodos[id] = todos }
     }
 
     @discardableResult
@@ -1060,6 +1087,12 @@ extension AppModel {
                                           BackgroundJob(id: "demo-explore", kind: .subagent, label: "Explore")]), .turnEnded],
                     to: "demo-2", watched: false)
         store.apply([.backgroundStarted(BackgroundJob(id: "demo-build", kind: .shell, label: "swift build"))], to: "demo-0")
+        // Adım adım plan (To-Do sekmesi).
+        let steps = [String(localized: "Find where the merge animation starts"), String(localized: "Ease the tiles into place"),
+                     String(localized: "Add a test for the combo chain"), String(localized: "Run the test suite")]
+        store.apply(steps.enumerated().map { .taskCreated(id: String($0.offset + 1), title: $0.element) }
+                    + [.taskUpdated(id: "1", status: .done, title: nil), .taskUpdated(id: "2", status: .inProgress, title: nil)],
+                    to: "demo-0")
         // Demo klasörleri gerçek depo değil: worktree'ler elle aynı odaya konur.
         for worktree in ["/demo/juice-merge-worktree1", "/demo/juice-merge-worktree2"] {
             roomIdentities[worktree] = RepoIdentity.Identity(roomKey: "/demo/juice-merge", worktree: (worktree as NSString).lastPathComponent)

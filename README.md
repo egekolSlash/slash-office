@@ -14,7 +14,7 @@ Slash Office belongs to the same family as the multi-agent workspaces and agent 
 - **Split panes** — up to four panes; drag a session from the list (or a pane by its header) onto an edge of another pane to split it.
 - **Attention routing** — every session shows whether it's working, asking a question, waiting for permission, done or stopped. Notifications and ⌘J take you to the agent that's waiting.
 - **Resume** stopped sessions where they left off, including ones Claude Code keeps running in the background.
-- **Review** the focused session's changes (git diff, including just its last turn) and its todo list in the inspector.
+- **Review** the focused session's changes (git diff, including just its last turn) and its step-by-step plan in the inspector. Claude sessions start with Claude Code's task tools on (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1`), so each step shows up in the To-Do tab and is checked off as Claude works.
 - **Phone access** (beta, off by default) — follow your sessions from your phone, read the conversation live, write to Claude and stop a turn. Your phone connects to Slash Office directly over [Tailscale](https://tailscale.com) or your local network; nothing goes through a server of ours. Pair a phone in **Settings › Phone access**.
 - **The office** — an optional view where every project is a room and every session a villager. A villager types while its agent works, stands up with a **?** when it needs you and shows a **✓** when it finished while you were looking elsewhere. Click a villager to open its terminal; give villagers names and their own look.
 - English and Turkish.

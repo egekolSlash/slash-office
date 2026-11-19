@@ -12,6 +12,17 @@ import Testing
         }
     }
 
+    /// Hook istemcisinden geçen (kırpılmış) olaylarla da başlangıçlar tanınır.
+    @Test func startsSurviveHookEnvelope() throws {
+        let events = try recordedPayloads().flatMap { payload -> [AgentEvent] in
+            let raw = try JSONEncoder().encode(payload)
+            let line = try #require(HookEnvelope.encodeLine(session: "s", provider: "claude", rawPayload: raw))
+            return ClaudeNormalizer.events(from: try JSONDecoder().decode(HookEnvelope.self, from: line).payload)
+        }
+        #expect(events.contains(.backgroundStarted(BackgroundJob(id: "brlu73wf7", kind: .shell, label: "Sleep 20 seconds then echo done"))))
+        #expect(events.contains(.backgroundStarted(BackgroundJob(id: "ae12137e659ffef4a", kind: .subagent, label: "Sleep 15 and reply ok"))))
+    }
+
     @Test func normalizerReadsStartsSnapshotsAndNotifications() throws {
         let events = try recordedPayloads().flatMap(ClaudeNormalizer.events(from:))
         #expect(events.contains(.backgroundStarted(BackgroundJob(id: "brlu73wf7", kind: .shell, label: "Sleep 20 seconds then echo done"))))

@@ -47,6 +47,8 @@ public struct ShellIntegration: Equatable, Sendable {
         echo "agent-office: claude not found ($real)" >&2
         exit 127
     fi
+    # Step-by-step plans (task tools) for the To-Do tab, unless the user set it.
+    export CLAUDE_CODE_ENABLE_TODO_TOOLS="${CLAUDE_CODE_ENABLE_TODO_TOOLS:-1}"
     if [ -n "$AGENT_OFFICE_CLAUDE_SETTINGS" ] && [ -f "$AGENT_OFFICE_CLAUDE_SETTINGS" ]; then
         exec "$real" --settings "$AGENT_OFFICE_CLAUDE_SETTINGS" "$@"
     fi

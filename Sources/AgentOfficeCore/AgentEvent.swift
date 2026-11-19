@@ -5,10 +5,13 @@ public enum InputReason: Equatable, Sendable {
 
 public struct TodoItem: Equatable, Sendable {
     public enum Status: Equatable, Sendable { case pending, inProgress, done }
+    /// Claude'un görev kimliği (TaskCreate); TodoWrite listesinde yok.
+    public var id: String?
     public var title: String
     public var status: Status
 
-    public init(title: String, status: Status) {
+    public init(id: String? = nil, title: String, status: Status) {
+        self.id = id
         self.title = title
         self.status = status
     }
@@ -36,6 +39,14 @@ public enum AgentEvent: Equatable, Sendable {
     case needsInput(InputReason)
     case turnEnded
     case todosChanged([TodoItem])
+    /// Claude planına adım ekledi (TaskCreated hook'u).
+    case taskCreated(id: String, title: String)
+    /// Adımın durumu ya da başlığı değişti (TaskUpdate); nil alan değişmedi.
+    case taskUpdated(id: String, status: TodoItem.Status?, title: String?)
+    /// Adım plandan çıkarıldı (TaskUpdate, status "deleted").
+    case taskDeleted(id: String)
+    /// Plan modunda önerilen plan (ExitPlanMode, Markdown).
+    case planProposed(String)
     case sessionEnded
     case inputIdle
     /// Kullanıcı turu Esc ile kesti (kayıt dosyasında görüldü; Claude bunun için hook göndermez).

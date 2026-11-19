@@ -239,25 +239,74 @@ struct DiffTextView: NSViewRepresentable {
     }
 }
 
-/// Ajanın todo/plan listesi.
+/// Ajanın adım adım planı: Claude'un görev araçlarıyla açtığı adımlar (yapılınca işaretlenir) ve plan modunda
+/// önerdiği plan.
 struct TodoInspector: View {
     @Bindable var model: AppModel
+    @State private var planExpanded = true
 
     var body: some View {
         if let id = model.layout.focused, let session = model.store.session(id) {
-            if session.todos.isEmpty {
-                ContentUnavailableView("No to-do list", systemImage: "checklist",
-                                       description: Text("The to-do tool is off in this Claude Code setup. Plans from Codex sessions will appear here."))
+            if session.todos.isEmpty && session.plan == nil {
+                ContentUnavailableView("No plan yet", systemImage: "checklist",
+                                       description: Text("When Claude breaks a job into steps, they appear here and are checked off as it works."))
             } else {
-                List(Array(session.todos.enumerated()), id: \.offset) { _, item in
-                    Label(item.title, systemImage: symbol(item.status))
-                        .foregroundStyle(item.status == .done ? .secondary : .primary)
-                        .fontWeight(item.status == .inProgress ? .semibold : .regular)
+                List {
+                    if !session.todos.isEmpty { steps(session.todos) }
+                    if let plan = session.plan { planSection(plan) }
                 }
+                // Bakarken gelen değişiklikler de görülmüş sayılır.
+                .task(id: session.todos) { model.markTodosSeen(id) }
             }
         } else {
             ContentUnavailableView("No session selected", systemImage: "checklist")
         }
+    }
+
+    private func steps(_ todos: [TodoItem]) -> some View {
+        let done = todos.filter { $0.status == .done }.count
+        return Section {
+            ForEach(Array(todos.enumerated()), id: \.offset) { _, item in
+                Label {
+                    Text(item.title)
+                        .strikethrough(item.status == .done, color: .secondary)
+                        .foregroundStyle(item.status == .done ? .secondary : .primary)
+                        .fontWeight(item.status == .inProgress ? .semibold : .regular)
+                } icon: {
+                    Image(systemName: symbol(item.status))
+                        .foregroundStyle(item.status == .pending ? Color.secondary : Color.accentColor)
+                        .symbolEffect(.pulse, isActive: item.status == .inProgress)
+                }
+            }
+        } header: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Steps")
+                    Spacer()
+                    Text(verbatim: "\(done)/\(todos.count)").monospacedDigit()
+                }
+                ProgressView(value: Double(done), total: Double(max(todos.count, 1)))
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
+            }
+        }
+    }
+
+    private func planSection(_ plan: String) -> some View {
+        Section {
+            DisclosureGroup("Plan", isExpanded: $planExpanded) {
+                Text(Self.markdown(plan))
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// Satır sonlarını koruyarak kalın, kod, bağlantı gibi satır içi Markdown'ı işler.
+    private static func markdown(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
     }
 
     private func symbol(_ status: TodoItem.Status) -> String {
