@@ -1,7 +1,8 @@
 import AgentOfficeCore
 import SwiftUI
 
-/// ⌘T / ⌘D ile açılan boş panel: T terminal (ana klasörde), C Claude (proje bu panelin içinde seçilir).
+/// ⌘T / ⌘D ile açılan boş panel: T terminal (ana klasörde), C Claude (proje bu panelin içinde seçilir), F terminal
+/// için klasör. Proje seçicide ⌘O başka bir klasör, ⇧⌘O proje klasörü ekler (altındaki her klasör listelenir).
 struct LauncherPane: View {
     @Bindable var model: AppModel
     let id: String
@@ -17,7 +18,7 @@ struct LauncherPane: View {
         self.id = id
         // ⌘N doğrudan Claude proje seçimiyle açılır.
         _step = State(initialValue: AppModel.launcherStartsWithClaude(id) ? .project(.claude) : .choose)
-        _selection = State(initialValue: model.recentProjects.first)
+        _selection = State(initialValue: model.pickerProjects.first)
     }
     enum Field { case choice, search }
 
@@ -50,9 +51,14 @@ struct LauncherPane: View {
                 ChoiceButton(key: "T", title: "Terminal", detail: "In your home folder", symbol: "apple.terminal") { openTerminal() }
                 ChoiceButton(key: "C", title: "Claude", detail: "Choose a project", symbol: "sparkles") { startPicking(.claude) }
             }
-            Button("Choose Folder for Terminal…") { startPicking(.shell) }
-                .buttonStyle(.link)
-                .font(.callout)
+            Button { startPicking(.shell) } label: {
+                HStack(spacing: 6) {
+                    Text("Choose Folder for Terminal…")
+                    KeyCap("F")
+                }
+            }
+            .buttonStyle(.link)
+            .font(.callout)
             Text("Press Esc to close").font(.caption).foregroundStyle(.white.opacity(0.4))
         }
         .padding(24)
@@ -63,6 +69,7 @@ struct LauncherPane: View {
             switch press.characters.lowercased() {
             case "t": openTerminal(); return .handled
             case "c": startPicking(.claude); return .handled
+            case "f": startPicking(.shell); return .handled
             default: return .ignored
             }
         }
@@ -75,7 +82,8 @@ struct LauncherPane: View {
 
     private func startPicking(_ kind: SessionKind) {
         query = ""
-        selection = model.recentProjects.first
+        model.watchProjectRoots()
+        selection = model.pickerProjects.first
         step = .project(kind)
         focus = .search
     }
@@ -83,17 +91,19 @@ struct LauncherPane: View {
     // MARK: - Proje seçimi
 
     private func projectPicker(_ kind: SessionKind) -> some View {
-        let projects = RecentProjects.filter(model.recentProjects, query: query)
+        let projects = RecentProjects.filter(model.pickerProjects, query: query)
+        // Kısayollar yalnız odaktaki panelde: iki seçici açıkken ⌘O ikisini birden tetiklemesin.
+        let active = model.layout.focused == id
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(kind == .claude ? String(localized: "Claude: choose a project") : String(localized: "Terminal: choose a folder")).font(.headline)
                 Spacer()
-                Text("↑↓ select · ↩ open · Esc back").font(.caption).foregroundStyle(.secondary)
+                Text("↑↓ select · ↩ open · ⌘O other folder · Esc back").font(.caption).foregroundStyle(.secondary)
             }
             TextField("Search…", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .focused($focus, equals: .search)
-                .onChange(of: query) { selection = RecentProjects.filter(model.recentProjects, query: query).first }
+                .onChange(of: query) { selection = RecentProjects.filter(model.pickerProjects, query: query).first }
                 .onKeyPress(.downArrow) { move(1, in: projects); return .handled }
                 .onKeyPress(.upArrow) { move(-1, in: projects); return .handled }
                 .onKeyPress(.escape) { step = .choose; focus = .choice; return .handled }
@@ -110,13 +120,19 @@ struct LauncherPane: View {
                 .onChange(of: selection) { if let selection { proxy.scrollTo(selection) } }
                 .overlay {
                     if projects.isEmpty {
-                        ContentUnavailableView(model.recentProjects.isEmpty ? String(localized: "No projects yet") : String(localized: "No matching projects"),
-                                               systemImage: "folder", description: Text("Choose one with Other Folder…"))
+                        ContentUnavailableView(model.pickerProjects.isEmpty ? String(localized: "No projects yet") : String(localized: "No matching projects"),
+                                               systemImage: "folder", description: Text("Choose one with Other Folder… (⌘O), or add the folder that holds your projects (⇧⌘O)."))
                     }
                 }
             }
+            if !model.projectRoots.isEmpty { projectRootsRow }
             HStack {
                 Button("Other Folder…") { model.chooseFolderAndStart(kind, replacing: id) }
+                    .keyboardShortcut(active ? KeyboardShortcut("o", modifiers: .command) : nil)
+                    .help("Open any folder (⌘O)")
+                Button("Add Projects Folder…") { model.addProjectRoot(); focus = .search }
+                    .keyboardShortcut(active ? KeyboardShortcut("o", modifiers: [.command, .shift]) : nil)
+                    .help("Add a folder that holds your projects: every folder inside it is listed here and kept up to date (⇧⌘O)")
                 Spacer()
                 Button("Open") { if let selection { open(selection, kind) } }
                     .disabled(selection == nil)
@@ -125,6 +141,26 @@ struct LauncherPane: View {
         .padding(16)
         .frame(maxWidth: 560)
         .task(id: projects) { model.loadProjectIcons(projects) }
+    }
+
+    /// Proje klasörleri; her birinin yanında listeden çıkarma düğmesi.
+    private var projectRootsRow: some View {
+        HStack(spacing: 8) {
+            Text("Projects from:").foregroundStyle(.secondary)
+            ForEach(model.projectRoots, id: \.self) { root in
+                HStack(spacing: 3) {
+                    Text(verbatim: (root as NSString).abbreviatingWithTildeInPath)
+                    Button { model.removeProjectRoot(root) } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Stop listing the projects in this folder")
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.caption)
+        .lineLimit(1)
     }
 
     private func move(_ step: Int, in projects: [String]) {
@@ -143,6 +179,19 @@ struct LauncherPane: View {
         case .claude: model.newClaudeSession(cwd: url, replacing: id)
         case .shell: model.newShellSession(cwd: url, replacing: id)
         }
+    }
+}
+
+private struct KeyCap: View {
+    let key: String
+    init(_ key: String) { self.key = key }
+
+    var body: some View {
+        Text(verbatim: key)
+            .font(.system(.caption, design: .monospaced).bold())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
     }
 }
 

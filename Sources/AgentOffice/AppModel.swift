@@ -41,6 +41,11 @@ final class AppModel {
     var onboardingReopened = false
     /// "Yeni" panelde gösterilen son projeler (en yenisi başta).
     private(set) var recentProjects: [String] = UserDefaults.standard.stringArray(forKey: "recentProjects") ?? []
+    /// "Proje klasörleri" (ör. ~/git): altlarındaki her klasör seçicide listelenir. Hatırlanır.
+    var projectRoots: [String] = UserDefaults.standard.stringArray(forKey: AppModel.projectRootsKey) ?? []
+    /// Köklerde bulunan projeler; kökler izlenir, yeni proje gelince yenilenir.
+    var discoveredProjects: [String] = []
+    @ObservationIgnored var rootWatchers: [String: DispatchSourceFileSystemObject] = [:]
     /// Ghostty'nin config'i ve teması; uygulama açılırken okunur.
     private(set) var appearance = GhosttyConfig.load()
     /// ⌘= / ⌘- ile değişir, tüm terminallere uygulanır ve hatırlanır; ⌘0 Ghostty'deki boyuta döner.
@@ -164,6 +169,7 @@ final class AppModel {
         if let first = store.sessions.first?.id { layout.show(first) }
         // Durmuş görünen oturumlardan arka planda süren var mı.
         refreshAgents()
+        watchProjectRoots()
         // Kayıtlı oturumların klasörleri de son projelere girer (eskisi sona).
         for record in records.values.sorted(by: { $0.createdAt < $1.createdAt }) where record.cwd != NSHomeDirectory() {
             if !recentProjects.contains(record.cwd) { recentProjects.append(record.cwd) }

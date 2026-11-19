@@ -131,6 +131,36 @@
         }
       }
     },
+    "Add Projects Folder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje klasörünü ekle"
+          }
+        }
+      }
+    },
+    "Add Projects Folder…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje klasörü ekle…"
+          }
+        }
+      }
+    },
+    "Add a folder that holds your projects: every folder inside it is listed here and kept up to date (⇧⌘O)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projelerinin durduğu klasörü ekle: içindeki her klasör burada listelenir ve güncel tutulur (⇧⌘O)"
+          }
+        }
+      }
+    },
     "Address": {
       "localizations": {
         "tr": {
@@ -611,6 +641,16 @@
         }
       }
     },
+    "Choose a folder that holds your projects. Every folder inside it will be listed and kept up to date.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projelerinin durduğu klasörü seç. İçindeki her klasör listelenecek ve güncel tutulacak."
+          }
+        }
+      }
+    },
     "Choose a project": {
       "localizations": {
         "tr": {
@@ -621,12 +661,12 @@
         }
       }
     },
-    "Choose one with Other Folder…": {
+    "Choose one with Other Folder… (⌘O), or add the folder that holds your projects (⇧⌘O).": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Başka klasör… ile seç."
+            "value": "Başka klasör… (⌘O) ile seç ya da projelerinin durduğu klasörü ekle (⇧⌘O)."
           }
         }
       }
@@ -2291,6 +2331,16 @@
         }
       }
     },
+    "Open any folder (⌘O)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herhangi bir klasörü aç (⌘O)"
+          }
+        }
+      }
+    },
     "Original": {
       "localizations": {
         "tr": {
@@ -2627,6 +2677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Proje klasörü bulunamadı: %@\nKlasör taşındıysa oturumu kaldırıp yeniden aç."
+          }
+        }
+      }
+    },
+    "Projects from:": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeler:"
           }
         }
       }
@@ -3481,6 +3541,16 @@
         }
       }
     },
+    "Stop listing the projects in this folder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu klasördeki projeleri listeleme"
+          }
+        }
+      }
+    },
     "Stopped": {
       "localizations": {
         "tr": {
@@ -4221,12 +4291,12 @@
         }
       }
     },
-    "↑↓ select · ↩ open · Esc back": {
+    "↑↓ select · ↩ open · ⌘O other folder · Esc back": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "↑↓ seç · ↩ aç · Esc geri"
+            "value": "↑↓ seç · ↩ aç · ⌘O başka klasör · Esc geri"
           }
         }
       }
