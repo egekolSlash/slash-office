@@ -303,14 +303,63 @@ final class OfficeMetalView: NSView {
         return (Double(p.x), Double(bounds.height - p.y))
     }
 
+    /// Basılan noktadan beri tuş basılı; eşiği geçince sürükleme olur (haritayı tutup kaydırır, tıklama sayılmaz).
+    private var pressPoint: (Double, Double)?
+    private var dragging = false
+
     override func mouseDown(with event: NSEvent) {
         if interactive { window?.makeFirstResponder(self) }
+        pressPoint = point(event)
+        dragging = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        drag(event)
     }
 
     override func mouseUp(with event: NSEvent) {
+        let wasDragging = endDrag()
+        guard !wasDragging else { return }
         let (x, y) = point(event)
         onClick?(x, y, event.clickCount, event.modifierFlags.contains(.shift))
         loop.postInteraction()
+    }
+
+    override func otherMouseDown(with event: NSEvent) {
+        pressPoint = point(event)
+        dragging = false
+    }
+
+    override func otherMouseDragged(with event: NSEvent) {
+        drag(event)
+    }
+
+    override func otherMouseUp(with event: NSEvent) {
+        endDrag()
+    }
+
+    private func drag(_ event: NSEvent) {
+        guard let start = pressPoint else { return }
+        if !dragging {
+            let (x, y) = point(event)
+            guard OfficePointer.isDrag(fromX: start.0, fromY: start.1, toX: x, toY: y) else { return }
+            dragging = true
+            NSCursor.closedHand.push()
+            // Eşik içinde birikmiş hareket de uygulanır: harita imleçten geri kalmaz.
+            onPan?(x - start.0, y - start.1)
+        } else {
+            onPan?(Double(event.deltaX), Double(event.deltaY))
+        }
+        loop.postInteraction()
+    }
+
+    @discardableResult
+    private func endDrag() -> Bool {
+        let wasDragging = dragging
+        if dragging { NSCursor.pop() }
+        dragging = false
+        pressPoint = nil
+        return wasDragging
     }
 
     override func rightMouseDown(with event: NSEvent) {
@@ -320,12 +369,14 @@ final class OfficeMetalView: NSView {
 
     override func scrollWheel(with event: NSEvent) {
         let (x, y) = point(event)
-        if event.modifierFlags.contains(.command) {
-            let delta = Double(event.scrollingDeltaY) * (event.hasPreciseScrollingDeltas ? 0.01 : 0.1)
-            onZoom?(exp(delta), x, y)
-        } else {
-            let scale = event.hasPreciseScrollingDeltas ? 1.0 : 10.0
-            onPan?(Double(event.scrollingDeltaX) * scale, Double(event.scrollingDeltaY) * scale)
+        let flags = event.modifierFlags
+        let action = OfficePointer.scroll(deltaX: Double(event.scrollingDeltaX), deltaY: Double(event.scrollingDeltaY),
+                                          precise: event.hasPreciseScrollingDeltas,
+                                          gestureDevice: !event.phase.isEmpty || !event.momentumPhase.isEmpty,
+                                          command: flags.contains(.command), shift: flags.contains(.shift))
+        switch action {
+        case .zoom(let factor): onZoom?(factor, x, y)
+        case .pan(let dx, let dy): onPan?(dx, dy)
         }
         loop.postInteraction()
     }
