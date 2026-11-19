@@ -36,7 +36,7 @@ public struct Shortcut: Equatable, Sendable, Identifiable {
         }
     }
 
-    public enum Group: Sendable, CaseIterable { case sessions, panes, modes, text }
+    public enum Group: Sendable, CaseIterable { case sessions, panes, modes, inspector, text }
 
     public let id: String
     /// İngilizce başlık (String Catalog anahtarı).
@@ -67,9 +67,13 @@ public enum ShortcutCatalog {
         Shortcut("session.newClaude", "New Claude Session", .character("n"), .command, .sessions),
         Shortcut("pane.new", "New Pane", .character("t"), .command, .panes),
         Shortcut("pane.newBeside", "New Pane Beside", .character("d"), .command, .panes),
-        Shortcut("mode.office", "Office", .character("1"), .command, .modes),
-        Shortcut("mode.work", "Work", .character("2"), .command, .modes),
-        Shortcut("mode.focus", "Focus", .character("3"), .command, .modes),
+        // Sağ sütunun sekmeleri ⌘1-3'te (en sık kullanılan); modlar ⌃⌘1-3'te.
+        Shortcut("inspector.sessions", "Sessions", .character("1"), .command, .inspector),
+        Shortcut("inspector.changes", "Changes", .character("2"), .command, .inspector),
+        Shortcut("inspector.todo", "To-Do", .character("3"), .command, .inspector),
+        Shortcut("mode.office", "Office", .character("1"), [.control, .command], .modes),
+        Shortcut("mode.work", "Work", .character("2"), [.control, .command], .modes),
+        Shortcut("mode.focus", "Focus", .character("3"), [.control, .command], .modes),
         Shortcut("text.bigger", "Bigger Text", .character("+"), .command, .text),
         Shortcut("text.smaller", "Smaller Text", .character("-"), .command, .text),
         Shortcut("text.actual", "Actual Size", .character("0"), .command, .text),

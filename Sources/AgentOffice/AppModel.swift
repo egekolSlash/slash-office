@@ -17,6 +17,9 @@ final class AppModel {
     var changesScope: ChangesScope = .uncommitted
     var layout = TerminalLayout()
     var mode: WorkspaceMode = .work { didSet { markFocusedSeen() } }
+    /// Sağ sütunun alt kısmında gösterilen sekme (⌘1 oturumlar, ⌘2 değişiklikler, ⌘3 todo).
+    var inspectorTab: InspectorTab =
+        ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
     var errorMessage: String?
     /// İzin ekranı ilk açılışta bir kez gösterilir; sonra Ajanlar > İzinler… ile açılır.
     /// Özelleştirme penceresinde seçilecek köylü ("Edit Appearance…" ile açılınca).
@@ -46,6 +49,10 @@ final class AppModel {
             UserDefaults.standard.set(terminalFontSize, forKey: "terminalFontSize")
             for terminal in terminals.values { terminal.apply(appearance, fontSize: terminalFontSize) }
         }
+    }
+    /// Oturum listesinin sıralaması (sağ üstteki menü); hatırlanır.
+    var sessionSort: SessionSort = UserDefaults.standard.string(forKey: AppModel.sessionSortKey).flatMap(SessionSort.init(rawValue:)) ?? .manual {
+        didSet { UserDefaults.standard.set(sessionSort.rawValue, forKey: Self.sessionSortKey) }
     }
     /// Proje klasörü → ikon (resim ya da proje türü sembolü); arka planda bir kez bulunur.
     private(set) var projectIcons: [String: LoadedProjectIcon] = [:]
@@ -148,7 +155,7 @@ final class AppModel {
         rooms = StyleStore<RoomRecord>.load(from: roomStylesURL)
         characters = CharacterFile.load(from: charactersURL)
         // Önceki oturumlar durmuş olarak geri gelir; her claude süreci ayrı bellek tuttuğu için otomatik başlatılmaz.
-        for record in SessionStore.load(from: recordsURL).sorted(by: { $0.createdAt < $1.createdAt }) {
+        for record in SessionStore.load(from: recordsURL).sorted(by: SessionRecord.listOrder) {
             records[record.id] = record
             store.register(id: record.id, title: record.title, cwd: record.cwd, state: .exited)
             store.setWorkTitle(record.workTitle, for: record.id)
@@ -256,6 +263,10 @@ final class AppModel {
     }
 
     func saveRecords() {
+        // Listedeki elle verilen sıra kayıtlarla saklanır.
+        for (index, session) in store.sessions.enumerated() where records[session.id]?.listIndex != index {
+            records[session.id]?.listIndex = index
+        }
         do {
             try SessionStore.save(Array(records.values), to: recordsURL)
         } catch {
@@ -382,7 +393,7 @@ final class AppModel {
 
     /// Durmuş (süreci çalışmayan) oturumlar, liste sırasıyla.
     var stoppedSessionIDs: [String] {
-        store.sessions.filter { $0.state == .exited && !isRunning($0.id) }.map(\.id)
+        listedSessionIDs().filter(isStopped)
     }
 
     func isStopped(_ id: String) -> Bool { store.session(id)?.state == .exited && !isRunning(id) }
@@ -454,7 +465,7 @@ final class AppModel {
 
     /// `keepListFocus`: listeden silinince klavye listede kalır ve seçim komşu oturuma geçer (art arda ⌘⌫ için).
     func remove(_ id: String, keepListFocus: Bool = false) {
-        let order = store.sessions.map(\.id)
+        let order = listedSessionIDs()
         let neighbor = order.firstIndex(of: id).flatMap { index in
             index + 1 < order.count ? order[index + 1] : (index > 0 ? order[index - 1] : nil)
         }
@@ -963,6 +974,12 @@ extension AppModel {
         terminalFontSize = appearance.fontSize
     }
 
+    /// ⌘1-3: sağ sütunda o sekmeyi açar; sütun yalnız çalışma modunda göründüğü için oraya geçer.
+    func showInspector(_ tab: InspectorTab) {
+        inspectorTab = tab
+        if mode != .work { mode = .work }
+    }
+
     func cycleFocus(backward: Bool = false) {
         layout.cycle(backward: backward)
         focusTerminalView()
@@ -970,12 +987,12 @@ extension AppModel {
 
     /// ⌘[ / ⌘]: odaktaki paneldeki oturumu listedeki önceki / sonrakiyle değiştirir; başka panelde açık olanları atlar.
     func showAdjacentSession(_ offset: Int) {
-        guard let next = layout.adjacent(in: store.sessions.map(\.id), offset: offset) else { return }
+        guard let next = layout.adjacent(in: listedSessionIDs(), offset: offset) else { return }
         showTerminal(next)
     }
 
     func jumpToWaiting() {
-        let ids = store.sessions.map(\.id)
+        let ids = listedSessionIDs()
         let next = WaitingNavigator.next(after: layout.focused, ids: ids) { id in
             if case .waiting = self.store.session(id)?.state { true } else { false }
         }

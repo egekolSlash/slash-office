@@ -23,6 +23,8 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     public var workTitle: String?
     /// Oturumun karakteri: kimlik, `random` (elle rastgele seçildi) ya da nil (odasının kadrosundan otomatik).
     public var characterID: String?
+    /// Listedeki elle verilen sıra (sürükleyerek); eski kayıtlarda yok, onlar açılış zamanına göre dizilir.
+    public var listIndex: Int?
 
     public init(id: String, title: String, cwd: String, claudeSessionID: String?, createdAt: Date, kind: SessionKind = .claude) {
         self.id = id
@@ -47,6 +49,17 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         turnTree = try container.decodeIfPresent(String.self, forKey: .turnTree)
         workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle)
         characterID = try container.decodeIfPresent(String.self, forKey: .characterID)
+        listIndex = try container.decodeIfPresent(Int.self, forKey: .listIndex)
+    }
+
+    /// Açılışta listenin sırası: elle verilen sıra, sırası olmayanlar (eski kayıtlar) açılış zamanıyla sonda.
+    public static func listOrder(_ a: SessionRecord, _ b: SessionRecord) -> Bool {
+        switch (a.listIndex, b.listIndex) {
+        case let (x?, y?) where x != y: x < y
+        case (_?, nil): true
+        case (nil, _?): false
+        default: a.createdAt < b.createdAt
+        }
     }
 }
 

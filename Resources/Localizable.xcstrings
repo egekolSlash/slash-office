@@ -1731,6 +1731,16 @@
         }
       }
     },
+    "Manual": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elle"
+          }
+        }
+      }
+    },
     "Match the top": {
       "localizations": {
         "tr": {
@@ -1807,6 +1817,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mod"
+          }
+        }
+      }
+    },
+    "Most Active": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En aktif"
           }
         }
       }
@@ -2671,6 +2691,16 @@
         }
       }
     },
+    "Recently Active": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En son aktif"
+          }
+        }
+      }
+    },
     "Refresh": {
       "localizations": {
         "tr": {
@@ -3311,6 +3341,26 @@
         }
       }
     },
+    "Sort By": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sırala"
+          }
+        }
+      }
+    },
+    "Sort sessions. Drag a session in the list to put it in your own order.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumları sırala. Kendi sıranı vermek için listede bir oturumu sürükle."
+          }
+        }
+      }
+    },
     "Sound: %@": {
       "localizations": {
         "tr": {
@@ -3407,6 +3457,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başlatılıyor…"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durum"
           }
         }
       }

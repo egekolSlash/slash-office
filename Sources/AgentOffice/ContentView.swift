@@ -4,8 +4,6 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var model: AppModel
     @AppStorage("richOffice") private var richOffice = false
-    @State private var inspectorTab: InspectorTab =
-        ProcessInfo.processInfo.environment["AGENT_OFFICE_DEMO_TAB"] == "diff" ? .changes : .sessions
 
     /// Çalışan bir ajanı kaldırmadan önce onay ister.
     private func requestRemove(_ id: String) { requestRemove(id, keepListFocus: false) }
@@ -82,7 +80,7 @@ struct ContentView: View {
     /// Sağ sütunun alt kısmı: oturum listesi, odaktaki oturumun diff'i ve todo listesi.
     private var inspector: some View {
         VStack(spacing: 0) {
-            Picker("Inspector", selection: $inspectorTab) {
+            Picker("Inspector", selection: $model.inspectorTab) {
                 Text("Sessions").tag(InspectorTab.sessions)
                 Text("Changes").tag(InspectorTab.changes)
                 Text("To-Do").tag(InspectorTab.todo)
@@ -90,7 +88,7 @@ struct ContentView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .padding(6)
-            switch inspectorTab {
+            switch model.inspectorTab {
             case .sessions: SessionList(model: model, requestRemove: { requestRemove($0, keepListFocus: true) })
             case .changes: ChangesInspector(model: model)
             case .todo: TodoInspector(model: model)

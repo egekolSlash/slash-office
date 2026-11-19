@@ -157,6 +157,16 @@ public final class AgentStore {
         sessions[index].state = .starting
     }
 
+    /// Elle verilen sıra: listede olmayan kimlikler yok sayılır, sırada olmayan oturumlar eski sıralarıyla sona eklenir.
+    public func reorder(_ ids: [String]) {
+        let rank = Dictionary(ids.enumerated().map { ($1, $0) }) { first, _ in first }
+        let reordered = sessions.enumerated()
+            .sorted { (rank[$0.element.id] ?? ids.count + $0.offset, $0.offset) < (rank[$1.element.id] ?? ids.count + $1.offset, $1.offset) }
+            .map(\.element)
+        guard reordered.map(\.id) != sessions.map(\.id) else { return }
+        sessions = reordered
+    }
+
     public func remove(_ id: String) {
         sessions.removeAll { $0.id == id }
     }

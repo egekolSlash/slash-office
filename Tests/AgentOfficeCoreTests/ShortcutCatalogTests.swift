@@ -34,10 +34,20 @@ import Testing
         #expect(ShortcutCatalog.shortcut("session.removeStopped").symbols == "⇧⌘⌫")
         #expect(ShortcutCatalog.shortcut("agents.customize").symbols == "⇧⌘A")
         #expect(ShortcutCatalog.shortcut("session.close").symbols == "⇧⌘W")
+        #expect(ShortcutCatalog.shortcut("mode.office").symbols == "⌃⌘1")
+    }
+
+    /// ⌘1-3 sağ sütunun sekmeleri (oturumlar, değişiklikler, todo); modlar ⌃⌘1-3.
+    @Test func numberShortcutsOpenInspectorTabs() {
+        #expect(ShortcutCatalog.shortcut("inspector.sessions").symbols == "⌘1")
+        #expect(ShortcutCatalog.shortcut("inspector.changes").symbols == "⌘2")
+        #expect(ShortcutCatalog.shortcut("inspector.todo").symbols == "⌘3")
+        #expect(["mode.office", "mode.work", "mode.focus"].map { ShortcutCatalog.shortcut($0).symbols } == ["⌃⌘1", "⌃⌘2", "⌃⌘3"])
     }
 
     @Test func everyMenuCommandHasAShortcut() {
-        let ids = ["session.newClaude", "pane.new", "pane.newBeside", "mode.office", "mode.work", "mode.focus",
+        let ids = ["session.newClaude", "pane.new", "pane.newBeside", "inspector.sessions", "inspector.changes",
+                   "inspector.todo", "mode.office", "mode.work", "mode.focus",
                    "text.bigger", "text.smaller", "text.actual", "session.jumpToWaiting", "session.previous",
                    "session.next", "pane.previous", "pane.next", "session.resume", "session.removeStopped",
                    "session.resumeAll", "pane.close", "session.close", "agents.customize"]

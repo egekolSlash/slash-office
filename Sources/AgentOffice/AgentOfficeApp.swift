@@ -121,6 +121,10 @@ struct AgentOfficeApp: App {
                 CustomizeAgentsButton()
                 Button("Permissions…") { model.showPermissions = true }
                 Divider()
+                Button(title("inspector.sessions")) { model.showInspector(.sessions) }.shortcut("inspector.sessions")
+                Button(title("inspector.changes")) { model.showInspector(.changes) }.shortcut("inspector.changes")
+                Button(title("inspector.todo")) { model.showInspector(.todo) }.shortcut("inspector.todo")
+                Divider()
                 Button(title("mode.office")) { model.mode = .office }.shortcut("mode.office")
                 Button(title("mode.work")) { model.mode = .work }.shortcut("mode.work")
                 Button(title("mode.focus")) { model.mode = .focus }.shortcut("mode.focus")
