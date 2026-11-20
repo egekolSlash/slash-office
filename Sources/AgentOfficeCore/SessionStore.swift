@@ -1,7 +1,20 @@
 import Foundation
 
 public enum SessionKind: String, Codable, Sendable {
-    case claude, shell
+    case claude, shell, codex, gemini
+
+    /// Ajan oturumu mu (düz terminal değil).
+    public var isAgent: Bool { self != .shell }
+
+    /// Hook olaylarının sağlayıcı adı (`agent-office-hook <provider>`); oturumun beklediği sağlayıcı bu değilse olay
+    /// yok sayılır (ör. terminaldeki claude hariç).
+    public func accepts(hookProvider provider: String) -> Bool {
+        switch self {
+        case .claude, .shell: provider == "claude"
+        case .codex: provider == "codex"
+        case .gemini: provider == "antigravity"
+        }
+    }
 }
 
 /// Uygulama yeniden açıldığında oturumu geri getirmek için gereken kalıcı bilgi.

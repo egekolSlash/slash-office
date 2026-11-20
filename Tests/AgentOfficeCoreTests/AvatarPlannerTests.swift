@@ -14,6 +14,8 @@ import Testing
         #expect(AvatarActivity.for(state: .starting) == .dozing)
         #expect(AvatarActivity.for(state: .exited) == .away)
         #expect(AvatarActivity.hasAvatar(kind: .claude, state: .idle))
+        #expect(AvatarActivity.hasAvatar(kind: .codex, state: .idle))
+        #expect(AvatarActivity.hasAvatar(kind: .gemini, state: .idle))
         #expect(!AvatarActivity.hasAvatar(kind: .shell, state: .idle))
         #expect(AvatarActivity.hasAvatar(kind: .shell, state: .working(tool: "claude")))
     }

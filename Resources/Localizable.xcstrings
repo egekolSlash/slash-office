@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ not found. Searched directories: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bulunamadı. Aranan dizinler: %@"
+          }
+        }
+      }
+    },
     "%@ · Appearance": {
       "localizations": {
         "tr": {
@@ -811,6 +821,26 @@
         }
       }
     },
+    "Codex": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex"
+          }
+        }
+      }
+    },
+    "Codex: choose a project": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex: proje seç"
+          }
+        }
+      }
+    },
     "Coffee machine": {
       "localizations": {
         "tr": {
@@ -1427,6 +1457,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eşyalar"
+          }
+        }
+      }
+    },
+    "Gemini": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini"
+          }
+        }
+      }
+    },
+    "Gemini: choose a project": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini: proje seç"
           }
         }
       }
@@ -4341,12 +4391,12 @@
         }
       }
     },
-    "`claude` not found. Searched directories: %@": {
+    "`%@` not found. Searched directories: %@": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "`claude` bulunamadı. Aranan dizinler: %@"
+            "value": "`%@` bulunamadı. Aranan dizinler: %@"
           }
         }
       }

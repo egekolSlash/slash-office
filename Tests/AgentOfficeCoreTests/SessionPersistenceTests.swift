@@ -59,6 +59,17 @@ import Testing
         #expect(SessionStore.load(from: url).first?.kind == .shell)
     }
 
+    @Test func codexAndGeminiKindsRoundTrip() throws {
+        let url = tempURL()
+        let records = [SessionKind.codex, .gemini].map { kind in
+            SessionRecord(id: kind.rawValue, title: "proj", cwd: "/p", claudeSessionID: nil,
+                          createdAt: Date(timeIntervalSince1970: 0), kind: kind)
+        }
+        try SessionStore.save(records, to: url)
+        let kinds = Dictionary(uniqueKeysWithValues: SessionStore.load(from: url).map { ($0.id, $0.kind) })
+        #expect(kinds == ["codex": .codex, "gemini": .gemini])
+    }
+
     @Test func baselineRoundTripsAndOldRecordsHaveNone() throws {
         let url = tempURL()
         var record = SessionRecord(id: "s", title: "p", cwd: "/p", claudeSessionID: nil, createdAt: Date(timeIntervalSince1970: 0))

@@ -13,9 +13,9 @@ public enum AvatarActivity: Equatable, Sendable {
         }
     }
 
-    /// Aşama 1 kuralı: Claude oturumunda her zaman; terminalde sadece bir şey çalışırken (hook'lu claude dahil).
+    /// Aşama 1 kuralı: ajan oturumunda (Claude, Codex, Gemini) her zaman; terminalde sadece bir şey çalışırken (hook'lu claude dahil).
     public static func hasAvatar(kind: SessionKind, state: AgentState) -> Bool {
-        kind == .claude || (state != .idle && state != .starting && state != .exited)
+        kind.isAgent || (state != .idle && state != .starting && state != .exited)
     }
 }
 

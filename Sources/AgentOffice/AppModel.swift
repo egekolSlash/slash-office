@@ -189,10 +189,12 @@ final class AppModel {
     }
 
     private func handle(_ envelope: HookEnvelope) {
-        guard envelope.provider == "claude" else { return }
+        // Her oturum kendi CLI'ının olaylarını alır (shell: içinde açılan claude).
+        guard kind(of: envelope.session).accepts(hookProvider: envelope.provider) else { return }
+        let isClaude = envelope.provider == "claude"
         let previous = store.session(envelope.session)?.state
         let wasWaiting: Bool = if case .waiting = previous { true } else { false }
-        var events = ClaudeNormalizer.events(from: envelope.payload)
+        var events = Self.events(provider: envelope.provider, payload: envelope.payload)
         if kind(of: envelope.session) == .shell {
             // Claude kapanınca terminal açık kalır: durumu yine shell yoklaması belirler.
             events.removeAll { if case .sessionEnded = $0 { true } else { false } }
@@ -200,14 +202,17 @@ final class AppModel {
         }
         noteBackgroundHook(envelope.session, events: events)
         store.apply(events, to: envelope.session, watched: SeenPolicy.finishIsWatched)
-        restoreTasks(envelope.session, after: events)
-        if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) {
-            transcriptPaths[envelope.session] = path
-            refreshWorkTitle(envelope.session, transcript: path)
+        // Görev dosyaları ve kayıt dosyası (başlık, Esc ile kesme, telefondaki konuşma) Claude'a özgü biçimde.
+        if isClaude {
+            restoreTasks(envelope.session, after: events)
+            if let path = ClaudeNormalizer.transcriptPath(from: envelope.payload) {
+                transcriptPaths[envelope.session] = path
+                refreshWorkTitle(envelope.session, transcript: path)
+            }
+            watchTranscript(envelope.session)
+            // Tur bitince izleme durur; son mesaj bu bildirimle gelir.
+            remote.transcriptChanged(envelope.session)
         }
-        watchTranscript(envelope.session)
-        // Tur bitince izleme durur; son mesaj bu bildirimle gelir.
-        remote.transcriptChanged(envelope.session)
         if let session = store.session(envelope.session), case .waiting(let reason) = session.state, !wasWaiting {
             Notifier.notifyWaiting(sessionID: session.id, title: displayName(for: session.id), reason: reason)
         }
@@ -217,9 +222,9 @@ final class AppModel {
             Notifier.notifyFinished(sessionID: envelope.session, title: displayName(for: envelope.session))
         }
         Notifier.updateBadge(waiting: store.waitingCount)
-        // /clear sonrası Claude'un oturum kimliği değişir; resume için en sonuncusunu sakla.
+        // /clear sonrası ajanın oturum kimliği değişir; resume için en sonuncusunu sakla.
         if let claudeID = store.session(envelope.session)?.providerSessionID,
-           var record = records[envelope.session], record.kind == .claude, record.claudeSessionID != claudeID {
+           var record = records[envelope.session], record.kind.isAgent, record.claudeSessionID != claudeID {
             record.noteClaudeSession(claudeID)
             records[envelope.session] = record
             saveRecords()
@@ -230,10 +235,21 @@ final class AppModel {
         if events.contains(where: Self.changesFiles) { diffChanged(envelope.session) }
     }
 
-    /// Dosyaya dokunmuş olabilecek olaylar: dosya yazan tool'lar, Bash ve tur sonu.
+    /// Hook payload'ı, gönderen CLI'ın biçimine göre ortak olaylara çevrilir.
+    private static func events(provider: String, payload: JSONValue) -> [AgentEvent] {
+        switch provider {
+        case "codex": CodexNormalizer.events(from: payload)
+        case "antigravity": AntigravityNormalizer.events(from: payload)
+        default: ClaudeNormalizer.events(from: payload)
+        }
+    }
+
+    /// Dosyaya dokunmuş olabilecek olaylar: dosya yazan tool'lar, kabuk komutları (Claude ve Codex `Bash`,
+    /// Antigravity `run_command`) ve tur sonu.
     private static func changesFiles(_ event: AgentEvent) -> Bool {
         switch event {
-        case .toolFinished(let name, let files): !files.isEmpty || ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"].contains(name)
+        case .toolFinished(let name, let files):
+            !files.isEmpty || ["Edit", "Write", "MultiEdit", "NotebookEdit", "Bash", "apply_patch", "run_command"].contains(name)
         case .turnEnded: true
         default: false
         }
@@ -304,6 +320,28 @@ final class AppModel {
         present(id, replacing: replacing)
     }
 
+    /// Seçilen türde yeni oturum: Claude, Codex, Gemini ya da düz terminal.
+    func newSession(_ kind: SessionKind, cwd: URL, replacing: String? = nil) {
+        switch kind {
+        case .claude: newClaudeSession(cwd: cwd, replacing: replacing)
+        case .shell: newShellSession(cwd: cwd, replacing: replacing)
+        case .codex, .gemini: newCLISession(kind, cwd: cwd, replacing: replacing)
+        }
+    }
+
+    /// Codex ya da Gemini oturumu. Hook'u olmadığı için açılınca doğrudan hazır (boşta) görünür.
+    private func newCLISession(_ kind: SessionKind, cwd: URL, replacing: String?) {
+        let id = UUID().uuidString.lowercased()
+        let record = SessionRecord(id: id, title: cwd.lastPathComponent, cwd: cwd.path, claudeSessionID: nil, createdAt: .now, kind: kind)
+        guard launchCLI(record: record, resume: false) else { return }
+        records[id] = record
+        saveRecords()
+        store.register(id: id, title: record.title, cwd: record.cwd, state: .idle)
+        captureBaseline(id, cwd: record.cwd)
+        noteRecentProject(record.cwd)
+        present(id, replacing: replacing)
+    }
+
     func newShellSession(cwd: URL, replacing: String? = nil) {
         let id = UUID().uuidString.lowercased()
         let title = cwd.path == NSHomeDirectory() ? "~" : cwd.lastPathComponent
@@ -340,6 +378,13 @@ final class AppModel {
         // Süreç hâlâ çalışıyorsa yeni terminal açmak eskisini (ve içindeki claude'u) öldürür.
         if terminals[id]?.process.running == true {
             store.restart(id)
+            return
+        }
+        if record.kind == .codex || record.kind == .gemini {
+            guard launchCLI(record: record, resume: true) else { return }
+            store.restart(id)
+            store.setState(.idle, for: id)
+            if show { showTerminal(id) }
             return
         }
         if record.kind == .shell {
@@ -467,9 +512,9 @@ final class AppModel {
         }
     }
 
-    /// Panelde süreci çalışan Claude oturumu sayısı (yeniden başlatma uyarısı için; düz terminaller sayılmaz).
+    /// Panelde süreci çalışan ajan oturumu sayısı (yeniden başlatma uyarısı için; düz terminaller sayılmaz).
     var runningAgentCount: Int {
-        terminals.filter { id, terminal in terminal.process.running && records[id]?.kind == .claude }.count
+        terminals.filter { id, terminal in terminal.process.running && records[id]?.kind.isAgent == true }.count
     }
 
     func isRunning(_ id: String) -> Bool {
@@ -514,13 +559,53 @@ final class AppModel {
             ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH))
     }
 
-    private func locateClaude() -> String? {
+    private func locateClaude() -> String? { locateExecutable("claude") }
+
+    /// Bulunamazsa aranan dizinlerle birlikte hata gösterir.
+    private func locateExecutable(_ name: String) -> String? {
         let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
-        guard let claude = ExecutableLocator.find("claude", searchDirectories: dirs) else {
-            errorMessage = String(localized: "`claude` not found. Searched directories: \(dirs.joined(separator: ", "))")
+        guard let path = ExecutableLocator.find(name, searchDirectories: dirs) else {
+            errorMessage = String(localized: "`\(name)` not found. Searched directories: \(dirs.joined(separator: ", "))")
             return nil
         }
-        return claude
+        return path
+    }
+
+    /// Codex ya da Gemini (Antigravity `agy`, yoksa `gemini`) oturumunu klasöründe başlatır. `resume`: bilinen son
+    /// oturumdan (yoksa klasördeki son oturumdan) devam eder. Hook yardımcısı varsa durum hook'larla izlenir.
+    @discardableResult
+    private func launchCLI(record: SessionRecord, resume: Bool) -> Bool {
+        let candidates = AgentCLI.candidates(for: record.kind)
+        let dirs = ExecutableLocator.defaultDirectories(home: NSHomeDirectory(), pathVariable: launchPATH)
+        guard let (cli, path) = candidates.lazy.compactMap({ cli in
+            ExecutableLocator.find(cli.executableName, searchDirectories: dirs).map { (cli, $0) }
+        }).first else {
+            let names = candidates.map { "`\($0.executableName)`" }.joined(separator: " / ")
+            errorMessage = String(localized: "\(names) not found. Searched directories: \(dirs.joined(separator: ", "))")
+            return false
+        }
+        attachedClients.remove(record.id)
+        startTerminal(record: record, command: AgentCLILaunch.command(
+            cli: cli, executablePath: path, resume: resume, sessionID: record.claudeSessionID,
+            hookCommand: hookCommand(for: cli), socketPath: socketPath, cwd: record.cwd,
+            baseEnvironment: launchEnvironment, tag: record.id))
+        return true
+    }
+
+    /// CLI'ın hook komutu; yardımcı yoksa ya da kurulamadıysa nil (oturum hook'suz açılır, durum izlenmez).
+    private func hookCommand(for cli: AgentCLI) -> String? {
+        guard let provider = cli.hookProvider, FileManager.default.isExecutableFile(atPath: hookBinaryPath) else { return nil }
+        if cli == .antigravity {
+            do {
+                if try AntigravityHooks.install(at: AntigravityHooks.defaultURL(), hookBinaryPath: hookBinaryPath) {
+                    DebugLog.write("antigravity hooks installed: \(AntigravityHooks.defaultURL().path)")
+                }
+            } catch {
+                DebugLog.write("antigravity hooks install failed: \(error)")
+                return nil
+            }
+        }
+        return "\(ClaudeLaunch.shellQuote(hookBinaryPath)) \(provider)"
     }
 
     /// Arka planda çalışan Claude oturumunu panelde açar.
@@ -642,10 +727,7 @@ final class AppModel {
         panel.canChooseFiles = false
         panel.prompt = kind == .shell ? String(localized: "Open Terminal") : String(localized: "Start Agent")
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        switch kind {
-        case .claude: newClaudeSession(cwd: url, replacing: replacing)
-        case .shell: newShellSession(cwd: url, replacing: replacing)
-        }
+        newSession(kind, cwd: url, replacing: replacing)
     }
 
     /// Shell oturumu `cd` ile başka klasöre geçti: ofisteki proje, başlık, ikon ve diff yeni klasöre taşınır.

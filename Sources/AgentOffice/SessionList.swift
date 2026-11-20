@@ -111,7 +111,7 @@ struct SessionList: View {
                         StatusBadge(state: session.state, kind: model.kind(of: session.id), background: session.backgroundTasks)
                     }
                     Spacer(minLength: 0)
-                    if model.kind(of: session.id) == .claude || !session.touchedFiles.isEmpty {
+                    if model.kind(of: session.id).isAgent || !session.touchedFiles.isEmpty {
                         SessionFilesButton(model: model, sessionID: session.id)
                     }
                     // Oturumlar birbirine göre sıralandığı için hepsinin kaydı verilir; yarım dakikada bir yenilenir.

@@ -10,7 +10,7 @@ Slash Office belongs to the same family as the multi-agent workspaces and agent 
 
 ## What it does
 
-- **Parallel agents** — start Claude Code sessions in any project folder; each runs in its own embedded terminal. Plain terminals work too.
+- **Parallel agents** — start Claude Code sessions in any project folder; each runs in its own embedded terminal. Plain terminals work too. [Codex](https://github.com/openai/codex) and Gemini sessions open the same way (**X** / **G** in a new pane); Gemini starts the [Antigravity CLI](https://antigravity.google) (`agy`, Gemini CLI's successor) and falls back to `gemini`. Their state comes from hooks too: Codex gets them per session (approve them once in Codex with `/hooks`), Antigravity through a `slash-office` entry Slash Office adds to `~/.gemini/config/hooks.json`. Antigravity has no permission hook, so a session waiting for approval still shows as working.
 - **Split panes** — up to four panes; drag a session from the list (or a pane by its header) onto an edge of another pane to split it.
 - **Attention routing** — every session shows whether it's working, asking a question, waiting for permission, done or stopped. Notifications and ⌘J take you to the agent that's waiting.
 - **Resume** stopped sessions where they left off, including ones Claude Code keeps running in the background.
@@ -118,7 +118,7 @@ All optional, requested from the guide (or **Agents › Permissions…**):
 
 ## How it works
 
-Slash Office starts each Claude session with a per-session `--settings` file that adds [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks); the small `agent-office-hook` helper forwards hook events to the app over a local Unix socket. Slash Office itself sends nothing over the network, and your own Claude Code settings are not modified.
+Slash Office starts each Claude session with a per-session `--settings` file that adds [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks); the small `agent-office-hook` helper forwards hook events to the app over a local Unix socket. Slash Office itself sends nothing over the network, and your own Claude Code settings are not modified. Codex sessions get their hooks the same way, per session (`-c hooks.…`); Codex asks you to approve them once with `/hooks`. The Antigravity CLI cannot take per-session hooks, so Slash Office adds a single `slash-office` entry to `~/.gemini/config/hooks.json` (your other entries are kept); outside Slash Office sessions it does nothing, and it never blocks a tool even if the app is removed.
 
 ## Like it?
 

@@ -1,8 +1,8 @@
 import AgentOfficeCore
 import SwiftUI
 
-/// ⌘T / ⌘D ile açılan boş panel: T terminal (ana klasörde), C Claude (proje bu panelin içinde seçilir), F terminal
-/// için klasör. Proje seçicide ⌘O başka bir klasör, ⇧⌘O proje klasörü ekler (altındaki her klasör listelenir).
+/// ⌘T / ⌘D ile açılan boş panel: T terminal (ana klasörde), C Claude, X Codex, G Gemini (proje bu panelin içinde
+/// seçilir), F terminal için klasör. Proje seçicide ⌘O başka bir klasör, ⇧⌘O proje klasörü ekler (altındaki her klasör listelenir).
 struct LauncherPane: View {
     @Bindable var model: AppModel
     let id: String
@@ -47,9 +47,13 @@ struct LauncherPane: View {
     private var choose: some View {
         VStack(spacing: 18) {
             Text("What would you like to open?").font(.title3.weight(.semibold)).foregroundStyle(.white.opacity(0.9))
-            HStack(spacing: 14) {
-                ChoiceButton(key: "T", title: "Terminal", detail: "In your home folder", symbol: "apple.terminal") { openTerminal() }
-                ChoiceButton(key: "C", title: "Claude", detail: "Choose a project", symbol: "sparkles") { startPicking(.claude) }
+            // Dar panelde dört kart yan yana sığmaz: 2×2 dizilir.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) { terminalChoice; claudeChoice; codexChoice; geminiChoice }
+                Grid(horizontalSpacing: 14, verticalSpacing: 14) {
+                    GridRow { terminalChoice; claudeChoice }
+                    GridRow { codexChoice; geminiChoice }
+                }
             }
             Button { startPicking(.shell) } label: {
                 HStack(spacing: 6) {
@@ -69,11 +73,26 @@ struct LauncherPane: View {
             switch press.characters.lowercased() {
             case "t": openTerminal(); return .handled
             case "c": startPicking(.claude); return .handled
+            case "x": startPicking(.codex); return .handled
+            case "g": startPicking(.gemini); return .handled
             case "f": startPicking(.shell); return .handled
             default: return .ignored
             }
         }
         .onKeyPress(.escape) { model.closePane(id); return .handled }
+    }
+
+    private var terminalChoice: some View {
+        ChoiceButton(key: "T", title: "Terminal", detail: "In your home folder", symbol: "apple.terminal") { openTerminal() }
+    }
+    private var claudeChoice: some View {
+        ChoiceButton(key: "C", title: "Claude", detail: "Choose a project", symbol: "sparkles") { startPicking(.claude) }
+    }
+    private var codexChoice: some View {
+        ChoiceButton(key: "X", title: "Codex", detail: "Choose a project", symbol: "chevron.left.forwardslash.chevron.right") { startPicking(.codex) }
+    }
+    private var geminiChoice: some View {
+        ChoiceButton(key: "G", title: "Gemini", detail: "Choose a project", symbol: "diamond") { startPicking(.gemini) }
     }
 
     private func openTerminal() {
@@ -96,7 +115,7 @@ struct LauncherPane: View {
         let active = model.layout.focused == id
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(kind == .claude ? String(localized: "Claude: choose a project") : String(localized: "Terminal: choose a folder")).font(.headline)
+                Text(Self.pickerTitle(kind)).font(.headline)
                 Spacer()
                 Text("↑↓ select · ↩ open · ⌘O other folder · Esc back").font(.caption).foregroundStyle(.secondary)
             }
@@ -163,6 +182,15 @@ struct LauncherPane: View {
         .lineLimit(1)
     }
 
+    private static func pickerTitle(_ kind: SessionKind) -> String {
+        switch kind {
+        case .claude: String(localized: "Claude: choose a project")
+        case .codex: String(localized: "Codex: choose a project")
+        case .gemini: String(localized: "Gemini: choose a project")
+        case .shell: String(localized: "Terminal: choose a folder")
+        }
+    }
+
     private func move(_ step: Int, in projects: [String]) {
         guard !projects.isEmpty else { return }
         let index = selection.flatMap { projects.firstIndex(of: $0) } ?? -1
@@ -174,11 +202,7 @@ struct LauncherPane: View {
             model.errorMessage = String(localized: "Folder not found: \(path)")
             return
         }
-        let url = URL(fileURLWithPath: path)
-        switch kind {
-        case .claude: model.newClaudeSession(cwd: url, replacing: id)
-        case .shell: model.newShellSession(cwd: url, replacing: id)
-        }
+        model.newSession(kind, cwd: URL(fileURLWithPath: path), replacing: id)
     }
 }
 
